@@ -1,0 +1,10 @@
+*.exe
+*.sdf
+*.pdb
+*.tlog
+DecisionSupport/Anova_CUDA/x64/
+DecisionSupport/Anova_CUDA/anova_cuda/x64/
+DecisionSupport/Pareto/x64/
+DecisionSupport/Pareto/Pareto/Debug/
+DecisionSupport/Pareto/Debug
+DecisionSupport/Python/Logs
