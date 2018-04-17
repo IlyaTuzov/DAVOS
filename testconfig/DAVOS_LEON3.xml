@@ -1,0 +1,639 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<data>
+
+    <DAVOS
+        DesignBuilder = "off"
+        FaultInjection = "on"
+        DecisionSupport = "on"
+        report_dir = "#RUNDIR/../../../HTWEB/Test"        
+        dbfile = "LEON3_InjectionResult.db"  >
+        
+
+        <ExperimentalDesign
+            max_proc = "4"
+            retry_attempts = "2"            
+            overwrite_existing = "on"            
+            build_factorial_design = "on"
+            implement_design = "on"
+            implement_default_config = "off"
+            build_testbench_random_inputs = "off"		
+            simulate_switching_activity = "on"
+            only_update_testbench = "off"		
+            first_index = ""
+            last_index = ""	        
+        >
+            
+            <generic            
+                custom_parameters = "{
+                    'device': 'xc6vcx240t-ff784-2',
+                    'speed_grade': '2',
+                    'intstyle': 'ise',
+                    'ifn': 'mc8051_core.prj',
+                    'top_design_unit': 'leon3mp',
+                    'rpw_tpw': '-rpw 100 -tpw 0',
+                    'basic_netgen_options': '-mhf -fn -ar Structure -w -ofmt vhdl',
+                    'waveform_file' : 'xpower_wave.wcfg',
+                    'isim_gui': 'off' }"
+                                              
+                design_label = "LEON3_ISE_"
+                design_dir = "../../../Projects/Processors/grlib-gpl-1.4.1-b4156/designs"
+                template_dir = "./LEON3_TEMPLATE"
+                log_dir = "./netgen/log"
+                netlist_dir = "./netgen"
+                
+                clk_net = "clk"
+                rst_net = ""		                        
+                testbench_template_file = ""
+                sim_project_file = "../testbench_par.prj"
+                testbench_file = "testbench.vhd"
+                testbench_top_unit = "testbench"
+                clk_constant = "clkperiod"
+                uut_root = "d3"
+                std_start_time 	= "1940500"
+                std_observation_time 	= "35000"
+                std_clock_period = "8.5"
+                
+            />        
+
+            <ImplementationFlow name = "XilinxISE" EntryPhase = "Synthesis" >
+
+            
+                <phase 
+                    name =  "Synthesis"
+                    script_builder = "XilinxISE"
+                    result_handler = "ProcessISEreports"
+                    next = "Translate">
+                
+                    <!-- Default Synthesis Options -->
+                    <option name = "opt_mode" default = "Speed" />
+                    <option name = "opt_level" default = "1" />
+                    <option name = "power" default = "NO" />
+                    <option name = "iuc" default = "NO" />
+                    <option name = "keep_hierarchy" default = "No" />
+                    <option name = "netlist_hierarchy" default = "As_Optimized" />
+                    <option name = "glob_opt" default = "AllClockNets" />
+                    <option name = "rtlview" default = "Yes" />
+                    <option name = "read_cores" default = "YES" />
+                    <option name = "write_timing_constraints" default = "NO" />
+                    <option name = "cross_clock_analysis" default = "NO" />
+                    <option name = "hierarchy_separator" default = "/" />
+                    <option name = "bus_delimiter" default = "()" />
+                    <option name = "slice_utilization_ratio" default = "100%" />
+                    <option name = "bram_utilization_ratio" default = "100%" />
+                    <option name = "dsp_utilization_ratio" default = "100%" />
+                    <option name = "case" default = "Maintain" />		
+                    <option name = "fsm_extract" default = "YES" />
+                    <option name = "fsm_encoding" default = "Auto" />
+                    <option name = "safe_implementation" default = "No" />
+                    <option name = "fsm_style" default = "LUT" />
+                    <option name = "ram_extract" default = "Yes" />
+                    <option name = "ram_style" default = "Auto" />
+                    <option name = "rom_extract" default = "Yes" />
+                    <option name = "rom_style" default = "Auto" />
+                    <option name = "auto_bram_packing" default = "NO" />
+                    <option name = "shreg_extract" default = "YES" />
+                    <option name = "shreg_min_size" default = "2" />
+                    <option name = "resource_sharing" default = "YES" />
+                    <option name = "use_dsp48" default = "Auto" />
+                    <option name = "async_to_sync" default = "NO" />
+                    <option name = "iobuf" default = "YES" />
+                    <option name = "max_fanout" default = "100000" />
+                    <option name = "bufg" default = "32" />
+                    <option name = "register_duplication" default = "YES" />
+                    <option name = "equivalent_register_removal" default = "YES" />
+                    <option name = "register_balancing" default = "No" />
+                    <option name = "iob" default = "Auto" />
+                    <option name = "lc" default = "Auto" />
+                    <option name = "reduce_control_sets" default = "Auto" />
+                    <option name = "use_clock_enable" default = "Auto" />
+                    <option name = "use_sync_set" default = "Auto" />
+                    <option name = "use_sync_reset" default = "Auto" />
+                    <option name = "optimize_primitives" default = "NO" />           
+                </phase>
+            
+
+                <phase 
+                    name =  "Translate"
+                    script_builder = "XilinxISE"
+                    result_handler = "ProcessISEreports"
+                    next = "Map">
+                
+                    <option name = "dd" default = "_ngo" />
+                    <option name = "sd" default = "../../netlists/xilinx/Virtex2" />
+                    <option name = "r"  default = "" />
+                    <option name = "nt" default = "timestamp" />
+                    <option name = "a"  default = "" />           
+                </phase>
+            
+
+                <phase 
+                    name =  "Map"
+                    script_builder = "XilinxISE"
+                    result_handler = "ProcessISEreports"
+                    next = "Par">
+                
+                    <option name = "w" default = "" />
+                    <option name = "logic_opt" default = "off" />
+                    <option name = "ol" default = "high" />
+                    <option name = "t" default = "1" />
+                    <option name = "xt" default = "0" />
+                    <option name = "register_duplication" default = "off" />
+                    <option name = "r" default = "4" />
+                    <option name = "global_opt" default = "off" />
+                    <option name = "mt" default = "off" />
+                    <option name = "ir" default = "off" />
+                    <option name = "pr" default = "off" />
+                    <option name = "lc" default = "off" />
+                    <option name = "power" default = "off" />           
+                </phase>    
+            
+            
+                <phase 
+                    name =  "Par"
+                    script_builder = "XilinxISE"
+                    result_handler = "ProcessISEreports"
+                    next = "Trace">
+                
+                    <option name = "ol" default = "high" />
+                    <option name = "mt" default = "off" />
+                    <option name = "power" default = "off" />           
+                </phase>     
+            
+            
+                <phase 
+                    name =  "Trace"
+                    script_builder = "XilinxISE"
+                    result_handler = "ProcessISEreports"
+                    next = "BuildNetlist">
+
+                    <Constraint
+                        template_file = "./mc8051_core.ucf"
+                        placeholder = "#ClkVal"
+                        eval_property = "ClockPeriod"
+                        goal = "min"
+                        start_value = "15.0"
+                        adjust_step = "0.5"
+                        return_to_phase = "Translate"/>
+                </phase>    
+
+                
+                <phase 
+                    name =  "BuildNetlist"
+                    script_builder = "XilinxISE"
+                    result_handler = "ProcessISEreports"
+                    next = "SimCompile">
+                          
+                </phase>    
+
+                
+                <phase 
+                    name =  "SimCompile"
+                    script_builder = "XilinxISE"
+                    result_handler = "ProcessISEreports"
+                    next = "SimulationRun">
+                  
+                </phase>       
+
+                
+                <phase 
+                    name =  "SimulationRun"
+                    script_builder = "XilinxISE"
+                    result_handler = "ProcessISEreports"
+                    next = "PowerAnalysis">
+                          
+                </phase>          
+
+                
+                <phase 
+                    name =  "PowerAnalysis"
+                    script_builder = "XilinxISE"
+                    result_handler = "ProcessISEreports"
+                    next = "">
+                          
+                </phase>     
+            </ImplementationFlow>
+            
+
+            
+            <factorial_design table_of_factors = "fract_design_31_24_mini.csv" >
+                <!-- Synthesis Options -->
+                <factor name = "X01" option = "opt_mode" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "Speed" />
+                    <setting factor_value = "1" option_value = "Area" />			
+                </factor>
+
+                <factor name = "X02" option = "opt_level" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "1" />
+                    <setting factor_value = "1" option_value = "2" />			
+                </factor>
+
+                <factor name = "X03" option = "power" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "NO" />
+                    <setting factor_value = "1" option_value = "YES" />			
+                </factor>
+
+                <factor name = "X04" option = "keep_hierarchy" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "No" />
+                    <setting factor_value = "1" option_value = "Yes" />			
+                </factor>
+                
+                <factor name = "X05" option = "glob_opt" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "AllClockNets" />
+                    <setting factor_value = "1" option_value = "Max_Delay" />			
+                </factor>
+
+                <factor name = "X06" option = "cross_clock_analysis" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "NO" />
+                    <setting factor_value = "1" option_value = "YES" />			
+                </factor>
+
+                <factor name = "X07" option = "bram_utilization_ratio" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "0%" />
+                    <setting factor_value = "1" option_value = "100%" />			
+                </factor>
+
+                <factor name = "X08" option = "dsp_utilization_ratio" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "0%" />
+                    <setting factor_value = "1" option_value = "100%" />			
+                </factor>
+                
+                <factor name = "X09" option = "fsm_extract" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "NO" />
+                    <setting factor_value = "1" option_value = "YES" />			
+                </factor>
+
+                <factor name = "X10" option = "fsm_encoding" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "Auto" />
+                    <setting factor_value = "1" option_value = "Compact" />			
+                </factor>
+
+                <factor name = "X11" option = "safe_implementation" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "No" />
+                    <setting factor_value = "1" option_value = "Yes" />			
+                </factor>
+
+                <factor name = "X12" option = "fsm_style" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "LUT" />
+                    <setting factor_value = "1" option_value = "BRAM" />			
+                </factor>
+
+                <factor name = "X13" option = "ram_extract" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "No" />
+                    <setting factor_value = "1" option_value = "Yes" />			
+                </factor>
+
+                <factor name = "X14" option = "ram_style" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "Auto" />
+                    <setting factor_value = "1" option_value = "Distributed" />			
+                </factor>
+
+                <factor name = "X15" option = "rom_extract" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "No" />
+                    <setting factor_value = "1" option_value = "Yes" />			
+                </factor>
+
+                <factor name = "X16" option = "rom_style" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "Auto" />
+                    <setting factor_value = "1" option_value = "Distributed" />			
+                </factor>
+
+                <factor name = "X17" option = "auto_bram_packing" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "NO" />
+                    <setting factor_value = "1" option_value = "YES" />			
+                </factor>
+
+                <factor name = "X18" option = "shreg_extract" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "NO" />
+                    <setting factor_value = "1" option_value = "YES" />			
+                </factor>
+
+                <factor name = "X19" option = "shreg_min_size" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "2" />
+                    <setting factor_value = "1" option_value = "8" />			
+                </factor>
+
+                <factor name = "X20" option = "resource_sharing" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "NO" />
+                    <setting factor_value = "1" option_value = "YES" />			
+                </factor>
+
+                <factor name = "X21" option = "use_dsp48" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "Auto" />
+                    <setting factor_value = "1" option_value = "Automax" />			
+                </factor>
+
+                <factor name = "X23" option = "max_fanout" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "100" />
+                    <setting factor_value = "1" option_value = "100000" />			
+                </factor>
+
+                <factor name = "X24" option = "register_duplication" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "NO" />
+                    <setting factor_value = "1" option_value = "YES" />			
+                </factor>
+
+                <factor name = "X25" option = "equivalent_register_removal" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "NO" />
+                    <setting factor_value = "1" option_value = "YES" />			
+                </factor>
+
+                <factor name = "X27" option = "iob" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "False" />
+                    <setting factor_value = "1" option_value = "True" />			
+                </factor>
+
+                <factor name = "X28" option = "lc" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "Auto" />
+                    <setting factor_value = "1" option_value = "Area" />			
+                </factor>
+
+                <factor name = "X29" option = "reduce_control_sets" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "No" />
+                    <setting factor_value = "1" option_value = "Auto" />			
+                </factor>
+
+                <factor name = "X30" option = "use_clock_enable" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "No" />
+                    <setting factor_value = "1" option_value = "Auto" />			
+                </factor>
+
+                <factor name = "X31" option = "use_sync_set" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "No" />
+                    <setting factor_value = "1" option_value = "Auto" />			
+                </factor>
+
+                <factor name = "X32" option = "use_sync_reset" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "No" />
+                    <setting factor_value = "1" option_value = "Auto" />			
+                </factor>
+
+                <factor name = "X33" option = "optimize_primitives" phase = "Synthesis">
+                    <setting factor_value = "0" option_value = "NO" />
+                    <setting factor_value = "1" option_value = "YES" />			
+                </factor>
+                
+            </factorial_design>            
+        
+        </ExperimentalDesign>
+    
+    
+    
+        <!-- platform: Multicore / Grid / GridLight 
+            #RUNDIR - path from where SBFI tool is launched
+        -->
+        <FaultInjection
+            platform = "Multicore"
+            initializer_phase = "off"    
+            profiler_phase = "off"
+            injector_phase = "off"
+            reportbuilder_phase = "on"    
+            >
+              <!-- 
+                design_type: RTL / NETLIST
+                    if RTL: faults are injected into signals and variables
+                    if Netlist: faults are injected into primitives according to the library_specification
+                library_specification: leave it blank if design_type = RTL
+            -->
+            <Generic
+                design_type = "NETLIST"
+                library_specification = "Faultdict_Simprim.xml"
+                compile_script = "../par_compile.do"
+                run_script = "../par_run.do"	
+                std_clk_period = "8.5"
+                std_rst_delay = "500"
+                std_init_time =  "1940500"
+                std_workload_time = "35000"
+                finish_flag = ""
+            />
+            
+
+            <!-- 
+                observe_outputs =  no / yes / notrigger
+                    no: outputs are not included into observation list
+                    yes: outputs are observed, new sample is appended at any transition of any of output signals
+                    notrigger: outputs are included into observation list, but sampling is not triggered by their transitions
+            -->
+            
+            <Initializer
+                    virtual_register_reconstruction = "on"				
+                    observe_outputs = "notrigger"                
+                    build_injection_list   = "on"
+                    build_dump_init_script = "on"		
+                    match_pattern_file = ""			
+                >
+                
+                    
+            <!-- unit path: withing the design scope-->            
+            <InjectionScope node_prefix = "l3_cpu_0_u0_leon3x0_vhdl_p0_iu_" unit_path = "/testbench/d3/" />
+            <InjectionScope node_prefix = "l3_cpu_0_u0_leon3x0_vhdl_p0_mgen_" unit_path = "/testbench/d3/" />
+            
+
+            <ObservationScope node_prefix = "l3_cpu_0_u0_leon3x0_vhdl_p0_iu_" unit_path = "/testbench/d3/" label_prefix = "p0_iu_" sampling_options = "-notrigger"/>
+            <ObservationScope node_prefix = "l3_cpu_0_u0_leon3x0_vhdl_p0_mgen_" unit_path = "/testbench/d3/" label_prefix = "p0_mgen_" sampling_options = "-notrigger"/>
+
+            
+            <!-- location: INTERNALS / OUTPUTS -->            
+            <GenericObservationNodes>
+                <signal   		location = "INTERNALS" 	options = "" 			label = "proc_error"  	path= "/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_p0_iu_dbgo_error1_INV_0/O" comment="Error signalling flag" />	
+                <signal   		location = "INTERNALS" 	options = "" 			label = "enable_trap" 	path= "/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_et/O"  comment="Enable trap code" />				
+                <virtual_signal location = "INTERNALS" 	options = "" 			label = "trap_type" 	env = "/testbench/d3/" 			expression = "{ ((concat_range (7 downto 0))(l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_7/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_6/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_5/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_4/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_3/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_2/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_1/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_0/O ))}" comment="Concatenated trap type signal" />
+                <memarray 		location = "INTERNALS" 	options = "-notrigger" 	label = "regfile" 		path= "sim:/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_rf0_s1_rhu_s1_dp_x0_xc2v_x0_a6_x0_a9_x_0_r0_RAMB16/SDP/WWB36/X_RAMB18E1_SDP_inst/prcs_clk/mem" low_address = "0" high_address = "135" comment="Register File"/>
+                <memarray 		location = "INTERNALS" 	options = "-notrigger" 	label = "regfile_d" 	path= "sim:/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_rf0_s1_rhu_s1_dp_x1_xc2v_x0_a6_x0_a9_x_0_r0_RAMB16/SDP/WWB36/X_RAMB18E1_SDP_inst/prcs_clk/mem" low_address = "0" high_address = "135" comment="Register File"/>
+                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_0" 		path= "sim:/testbench/sbanks(0)/sram0(0)/sr0/MEM_TST" low_address = "0" high_address = "11" comment="RAM_0" />		
+                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_1" 		path= "sim:/testbench/sbanks(0)/sram0(1)/sr0/MEM_TST" low_address = "0" high_address = "11" comment="RAM_1" />		
+                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_2" 		path= "sim:/testbench/sbanks(0)/sram0(2)/sr0/MEM_TST" low_address = "0" high_address = "11" comment="RAM_2" />		
+                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_3" 		path= "sim:/testbench/sbanks(0)/sram0(3)/sr0/MEM_TST" low_address = "0" high_address = "11" comment="RAM_3" />				
+            </GenericObservationNodes>
+            </Initializer>
+
+
+
+            <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
+            <Injector
+                    checkpont_mode = "ColdRestore"
+                    maxproc = "8"
+                    workload_split_factor = "10"			
+                    campaign_label = "LEON3_IMPL"		
+                    cleanup_folders="off"
+                    compile_project = "off"
+                    create_scripts="off"
+                    create_checkpoints="off"
+                    create_precise_checkpoints = "off"
+                    create_injection_scripts = "off"
+                    run_faultinjection="off"
+                    remove_par_lib_after_checkpoint_stored = "on"
+                    cancel_pending_tasks = "off"
+                    
+                    sim_time_checkpoints = "16:00:00"
+                    sim_time_injections =  "20:00:00"
+                    work_label = "simpy_"
+                    wlf_remove_time = "500"	
+                    runtime_terminate = "off"
+                    run_cleanup = "on"
+                    monitoring_mode = "on"
+                >	
+
+
+                
+
+                
+
+                <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
+                <fault_model
+                    model = "bit_flip"
+                    target_logic = "X_FF, X_SFF, X_FDD"
+                    faults_per_target = "1"
+                    time_mode = "Relative"
+                    injection_time_start = "0.0"            
+                    injection_time_end = "1.0"
+                    increment_time_step = "0.0" 
+                    experiments_per_target = "1"
+                    sample_size = "38500"
+                    rand_seed	= "2"					
+                />	
+        
+            </Injector>
+                
+
+            <Analyzer
+                report_dir = "../../../Projects/Processors/grlib-gpl-1.4.1-b4156/designs/"
+                unpack_from_dir = ""        
+                detect_failures_at_finish_time = "on"
+                error_flag_signal = "proc_error"
+                error_flag_active_value = "0"
+                trap_type_signal = "trap_type"                         
+                neg_timegap = "0"
+                pos_timegap = "1000"
+                check_duration_factor = "0"           
+                threads = "4"
+                >		    
+            
+                <join_groups>
+                <group label = "SOLUTION[0]">
+                    <item label = "SRAM_0(0)" />
+                    <item label = "SRAM_1(0)" />
+                    <item label = "SRAM_2(0)" />
+                    <item label = "SRAM_3(0)" />			
+                </group>
+                <group label = "SOLUTION[1]">
+                    <item label = "SRAM_0(1)" />
+                    <item label = "SRAM_1(1)" />
+                    <item label = "SRAM_2(1)" />
+                    <item label = "SRAM_3(1)" />			
+                </group>
+                <group label = "SOLUTION[2]">
+                    <item label = "SRAM_0(2)" />
+                    <item label = "SRAM_1(2)" />
+                    <item label = "SRAM_2(2)" />
+                    <item label = "SRAM_3(2)" />			
+                </group>
+                <group label = "SOLUTION[3]">
+                    <item label = "SRAM_0(3)" />
+                    <item label = "SRAM_1(3)" />
+                    <item label = "SRAM_2(3)" />
+                    <item label = "SRAM_3(3)" />			
+                </group>
+                <group label = "SOLUTION[4]">
+                    <item label = "SRAM_0(4)" />
+                    <item label = "SRAM_1(4)" />
+                    <item label = "SRAM_2(4)" />
+                    <item label = "SRAM_3(4)" />			
+                </group>
+                <group label = "SOLUTION[5]">
+                    <item label = "SRAM_0(5)" />
+                    <item label = "SRAM_1(5)" />
+                    <item label = "SRAM_2(5)" />
+                    <item label = "SRAM_3(5)" />			
+                </group>
+                <group label = "SOLUTION[6]">
+                    <item label = "SRAM_0(6)" />
+                    <item label = "SRAM_1(6)" />
+                    <item label = "SRAM_2(6)" />
+                    <item label = "SRAM_3(6)" />			
+                </group>
+                <group label = "SOLUTION[7]">
+                    <item label = "SRAM_0(7)" />
+                    <item label = "SRAM_1(7)" />
+                    <item label = "SRAM_2(7)" />
+                    <item label = "SRAM_3(7)" />			
+                </group>
+                <group label = "SOLUTION[8]">
+                    <item label = "SRAM_0(8)" />
+                    <item label = "SRAM_1(8)" />
+                    <item label = "SRAM_2(8)" />
+                    <item label = "SRAM_3(8)" />			
+                </group>
+                <group label = "SOLUTION[9]">
+                    <item label = "SRAM_0(9)" />
+                    <item label = "SRAM_1(9)" />
+                    <item label = "SRAM_2(9)" />
+                    <item label = "SRAM_3(9)" />			
+                </group>
+                <group label = "SOLUTION[10]">
+                    <item label = "SRAM_0(10)" />
+                    <item label = "SRAM_1(10)" />
+                    <item label = "SRAM_2(10)" />
+                    <item label = "SRAM_3(10)" />			
+                </group>
+                <group label = "SOLUTION[11]">
+                    <item label = "SRAM_0(11)" />
+                    <item label = "SRAM_1(11)" />
+                    <item label = "SRAM_2(11)" />
+                    <item label = "SRAM_3(11)" />			
+                </group>
+            
+
+                
+                </join_groups>
+                
+                <rename_list>
+                    
+                </rename_list>	
+                
+            </Analyzer>	
+                
+           <ReportBuilder                    
+                write_html_dumps = "off"
+                dynamic_linking = "on"
+                hierarchical_error_analysis = "off"
+                trap_types_description_file = "./testconfigs/sparc_v8_trap_types.xml"
+                split_by_time_intervals = "off"
+                split_by_activity_duration_interval = ""
+                split_by_effective_switches_intervals = ""		
+                normalize_by_workload_duration = "off"
+                split_by_logic_type = ""	
+                split_by_profiled_value = ""	
+                memory_saving_mode = "on"
+                default_logic_type = "X_FF" 
+             />       
+
+            
+            
+            <config
+                work_dir = "../../../Projects/Processors/grlib-gpl-1.4.1-b4156/designs/LEON3_ISE_000"
+                label = "LEON3_Virtex6"
+                compile_options = ""
+                run_options = ""
+                clk_period = "8.5"
+                start_from = ""
+                stop_at = ""
+            />
+
+        </FaultInjection>
+    
+    
+    <DecisionSupport>
+    
+        <DerivedMetrics>
+            <DerivedMetric
+                name = "MTTF_K_21"
+                handler = "DeriveMTTF"
+                custom_arg = "{'k': 21, 'fit.x_lut': 107E-15, 'fit.x_ff': 2E-15}"
+            />
+        </DerivedMetrics>
+        
+    </DecisionSupport>
+    
+    </DAVOS>
+    
+</data>

@@ -1,0 +1,130 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Summary</title>
+<link rel="stylesheet" type="text/css" href="./interface/markupstyle.css">
+    <script src="Chart.bundle.js"></script>
+    <style>
+    canvas {
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+    }
+    </style>
+</head>
+<body>
+
+#_summaryTable
+
+        <select id = "axX" > #_axX </select>
+        <select id = "axY" > #_axY </select>
+        <button class = "button button2" id="run" onclick="update_chart()">Update</button>
+    <div style="width:45%">
+        <canvas id="canvas" width="600px" height="350px"></canvas>
+    </div>
+
+    <div id = "debug"> </div>
+    
+<br>
+<hr><br>
+
+   <script>
+    
+var chartdata;
+var ctx = document.getElementById('canvas').getContext('2d');
+var myScatter ;
+
+
+    function CreateParetoChart(){
+        myScatter = new Chart(ctx, {
+                       type: 'line', 
+                        data: { 
+                            datasets: [
+                                {
+                                    type: 'line',
+                                    label: 'Pareto',
+                                    fill: false,
+                                    backgroundColor: "rgba(218,83,79, .7)",
+                                    borderColor: "rgba(218,83,79, .7)",
+                                    pointRadius: 10,
+                                    data: chartdata.paretopoints}, 
+                                {
+                                    type: 'bubble',
+                                    label: "All points",
+                                    borderColor: "#4286f4",
+                                    backgroundColor: "#FFF",
+                                    data: chartdata.allpoints}]
+                            },
+            options: {
+                            title: {
+                                display: true,
+                                text: 'Pareto: ' + chartdata.axesY.label  + ' vs ' + chartdata.axesX.label
+                            },
+                tooltips: {
+                        enabled: true,
+                        mode: 'single',
+                        callbacks: {
+                            label: function(tooltipItems, data) { 
+                                return chartdata.configs[tooltipItems.index];
+                            }
+                        }
+                    },                    
+                scales: {
+                      xAxes: [{
+                        type: 'linear',
+                        position: 'bottom',
+                        scaleLabel: {
+                        display: true,
+                        labelString: chartdata.axesX.label
+                      }
+                     }],
+                  yAxes: [{
+                    type: 'linear',
+                            ticks: {
+                                callback: function(label, index, labels) {
+                                    return label.toExponential();
+                                }
+                            },
+                    scaleLabel: {
+                        display: true,
+                        labelString: chartdata.axesY.label
+                    }
+                    }],    
+                }
+                              
+                        }
+            });     
+     }
+
+
+
+            
+       function UpdateParetoChart(){
+            var http = new XMLHttpRequest();
+            var url = "query.py";
+            var params = "action=Pareto&x=" + document.getElementById("axX").value + "&y=" + document.getElementById("axY").value
+            http.open("POST", url+"?cache="+(Math.random()*1000000), true);
+            http.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+                       
+            http.onreadystatechange = function() {
+                if(this.readyState == 4 && this.status == 200){
+                    chartdata = JSON.parse(this.responseText);  
+                    if(myScatter == null){ CreateParetoChart(); };
+                    myScatter.update();
+                    }
+                }
+            http.send(params); 
+        };            
+    
+
+
+        window.onload = function() {
+            UpdateParetoChart();
+        };
+
+
+    </script>
+
+</body>
+</html>

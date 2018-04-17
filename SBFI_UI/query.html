@@ -1,0 +1,825 @@
+﻿<!-- 
+    Interactive querying interface
+    lauch format: webserver_root/Label_Of_Your_Injection_Campaign/query.html
+    Placeholders are resolved by report builder module    
+    Refer to documentation for detailed description
+    Author: Ilya Tuzov, Universitat Politecnica de Valencia
+-->
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+
+div.tab {
+    overflow: hidden;
+    border: 1px solid #ccc;
+    background-color: #fff;
+}
+
+/* Style the buttons inside the tab */
+div.tab button {
+    background-color: inherit;
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 8px 8px;
+    transition: 0.3s;
+    font-weight: bold;
+    font-size: 10pt;    
+    border: 1px solid #ccc;    
+}
+
+div.tab button:hover {
+    background-color: #4586ef;
+}
+
+div.tab button.active {
+    background-color:  #88a2cc;
+}
+
+.tabcontent {
+    display: none;
+    padding: 6px 12px;
+    border: 1px solid #ccc;
+    border-top: none;
+}
+
+.node circle {
+  fill: #fff;
+  stroke: #0eba3f;
+  stroke-width: 3px;
+}
+
+.node text {
+  font: 12px arial;
+}
+
+.link {
+  fill: none;
+  stroke: #545896;
+  stroke-width: 2px;
+}
+
+/* Center the loader */
+#loader {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  width: 150px;
+  height: 150px;
+  margin: -75px 0 0 -75px;
+  border: 30px solid #f0f0f0;
+  border-radius: 50%;
+  border-top: 30px solid #ff003b;
+  width: 120px;
+  height: 120px;
+  -webkit-animation: spin 2s linear infinite;
+  animation: spin 2s linear infinite;
+}
+
+@-webkit-keyframes spin {
+  0% { -webkit-transform: rotate(0deg); }
+  100% { -webkit-transform: rotate(360deg); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+</style>
+
+<title>You own query to results DB</title>
+<script type="text/javascript" src="./libs/jquery.min.js"></script>
+<script type="text/javascript" src="./libs/Chart.js"></script>
+<script type="text/javascript" src="./libs/d3.min.js"></script>
+<script type="text/javascript" src="./libs/chartpiecelabel.js"></script>
+<script src="./libs/tree.jquery.js"></script>
+<link   rel="stylesheet" href="./libs/jqtree.css">
+<link rel="stylesheet" type="text/css" href="markupstyle.css">
+</head>
+
+<body>
+<div id="loader"></div>
+<table>
+    <tr>
+   <td><div align="center">
+    Search Query Filters <br><br>
+    <table cellspacing="0" cellpadding="0" style = "border: none;">
+    <tr>
+        <td> <select id = "qmodel">_#qmodel</select> </td>
+        <td>HDL Model</td>           
+    </tr>
+    
+    <tr>
+        <td> <select id = "qfaultmodel">_#qfaultmodel</select> </td>
+        <td>Fault model</td>    
+    </tr>  
+    
+    <tr>    
+        <td> <select id = "qfailuremode">_#qfailuremode</select> </td>
+        <td>Failure Mode</td>           
+    </tr>  
+    
+    <tr>
+        <td> <select id = "qinstancetype">_#qinstancetype</select> </td>
+        <td>Instance type</td>        
+    </tr>
+
+    <tr>
+        <td> <select id="qinjectioncase">_#qinjectioncase</select> </td>
+        <td>Injection case</td>
+    </tr>
+    
+    <tr>
+        <td> <input type = "text" id = "qtarget"/> </td>
+        <td>Target path</td>        
+    </tr> 
+    
+    <tr>
+        <td> <select id="qforcedvalue">_#qforcedvalue</select> </td>
+        <td>Forced value</td>        
+    </tr>  
+    
+    <tr>
+        <td> <input type = "text" id = "qobservationtime" /> </td>
+        <td>Observation Time</td>        
+    </tr>     
+    
+    <tr>
+        <td> <input type = "text" id = "qeind" /> </td>
+        <td>Experiment Index: _#qeind</td>        
+    </tr> 
+    
+    <tr>
+        <td> <input type = "text" id = "qinjectiontime" /> </td>
+        <td>Injection Time</td>        
+    </tr>
+    
+    <tr>
+        <td> <input type = "text" id = "qinjectionduration" /> </td>
+        <td>Injection Duration</td>        
+    </tr> 
+    
+    <tr>
+        <td> <input type = "text" id = "qprofiledvalue" /> </td>
+        <td>Profiled value</td>        
+    </tr>
+    
+    <tr>
+        <td> <input id = "qerrorcount" /></td>
+        <td>Number of errors</td>        
+    </tr> 
+    
+    <tr>    
+        <td> <input id = "qtrapcode" /></td>
+        <td>Trap code</td>        
+    </tr> 
+    
+    <tr>    
+        <td> <input id = "qlatencyfaultfailure" /></td>
+        <td>Latency fault to failure</td>        
+    </tr> 
+
+    
+    <tr>    
+        <td> </td>
+        <td><input id="samplingmode_chbox" type="checkbox" onclick="change_sampling_mode()" checked >Sampling mode</td>        
+    </tr>     
+    <tr>
+        <td> <input id="qrandomamount" /></td>
+        <td>Sample size (max _#qmaxitems items)</td>
+    </tr> 
+    <tr>
+        <td> <input id="randseed" /></td>
+        <td>Rand seed</td>
+    </tr> 
+    
+    
+    <tr> 
+    <td colspan = "2" align="center">
+    <button class = "button button2" id="run" onclick="MQuery()">Update</button>
+    <div id = "Status" style="max-width: 300px; color: red; ">Ready  </div>
+    </tr>    
+</table></div></td>
+<td>
+  <div align="center">
+  Distribution of failure modes (root) <br><br>
+    <canvas id="GlobalFMChart" width="400px" height="250px"></canvas>
+  </div>
+</td>
+<td>
+  <div align="center">
+  Distribution of failure modes (nested units - one level depth) <br>
+    <canvas id="TreeFMChart" width="700px" height="230"></canvas>
+    <br>
+    <input type = "text" id = "TreeNodeSelect" list = "TreeNodeOptions" size = "150" onchange="updateTreeChart()" >
+    <datalist id = "TreeNodeOptions">       
+    </datalist>
+  </div>
+      <input id="percentageSelected" type="checkbox" onclick = "updateTreeChart()"> Show Percentage
+</td>
+</tr>
+<tr><td colspan = "3">
+    <div class="tab" >
+      <button class="tablinks" onclick="openTreeView(event, 'TreeGraphView')">Graph View</button>
+      <button class="tablinks" onclick="openTreeView(event, 'TreeTableView')">Table View</button>
+      <button class="tablinks" onclick="openTreeView(event, 'TreeExpandableListView')">Expandable List View</button>
+      
+        &nbsp; &nbsp; 
+    Failure modes with respect to injection target (design unit): &nbsp; 
+        <select id = "treeviewoption" onchange="if (this.selectedIndex)  UpdateTreeView();">
+            <option value="c">Silent_Data_Corruption</option>
+            <option value="m">Masked_Fault</option>
+            <option value="l">Latent_Fault</option>
+            <option value="s">Signalled_Failure</option>
+            <option value="">ALL</option>
+        </select> <input id="TreePercentageSelected" type="checkbox" onclick = "UpdateTreeView()" checked ="true" > Show Percentage
+    </div>    
+
+
+    <br>
+    <div id = "TreeGraphView" class="tabcontent"> </div>
+    <div id = "TreeTableView" class="tabcontent"> </div>
+    <div id = "TreeExpandableListView" class="tabcontent"> </div>
+</td></tr>
+</table>
+
+Query Results (click on index to observe full trace):
+<span id = "result"> </span>
+ 
+<script>
+var ResHeaders  = ['Index', 'Target', 'InsType/Macrocell', 'Fault Model', 'Forced Value', 'Inj. Time',      'Inj. Duration',     'Observ. Time',      'Failure Mode', 'Errors',     'Trap code',  'Latency Fault to Failure']
+var XmlAttribs  = ['eind',  'target', 'instancetype',      'faultmodel',  'forcedvalue',  'injectiontime',  'injectionduration', 'observationtime',   'failuremode',  'errorcount', 'trapcode', 'latencyfaultfailure']
+var qres_tblbody;
+var Results = [];
+var SummaryTag;
+var AllNodeList = [];
+var AllFmodeList = [];
+var UniqueNodeList = []
+var maskedRateList = [];
+var latentRateList = [];
+var failureRateList = [];
+var silentRateList = [];
+var BarChartNodes = []; 
+
+var StatusBar = document.getElementById('Status');
+var loadbar = document.getElementById("loader");
+var samplechbox = document.getElementById('samplingmode_chbox');
+
+var options = $('#qfailuremode option');
+var fmodes_lbl = $.map(options ,function(option) {
+    return option.value;
+    });
+fmodes_lbl.shift();
+var fmodes_data = [25, 25, 25, 25];
+var fmodes_clr = [];
+for(i=0;i<fmodes_lbl.length;i++){
+    if(fmodes_lbl[i].toLowerCase().indexOf('masked') != -1){fmodes_clr.push("#42f453"); }
+    else if (fmodes_lbl[i].toLowerCase().indexOf('latent') != -1){fmodes_clr.push("#4286f4"); }
+    else if (fmodes_lbl[i].toLowerCase().indexOf('failure') != -1){fmodes_clr.push("#d559ff"); }
+    else if (fmodes_lbl[i].toLowerCase().indexOf('silent') != -1){fmodes_clr.push("#ef155a"); }
+    else {fmodes_clr.push('#'+Math.floor(Math.random()*16777215).toString(16)); };
+};
+var ctx = document.getElementById('GlobalFMChart').getContext('2d');
+
+        var GlobalFMChart = new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels: fmodes_lbl,
+            datasets: [{
+              label: 'apples',
+              data: fmodes_data,
+              backgroundColor: fmodes_clr,
+            }]
+          },
+            options: {
+    pieceLabel: {
+      render: 'value',
+      precision: 0,
+      showZero: false,
+      fontSize: 12,
+      fontColor: '#000',
+      fontStyle: 'bold',
+      fontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
+      arc: false,
+      position: 'border',
+      overlap: true
+    }
+  }  
+        });
+
+
+  var numberWithCommas = function(x) {
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };        
+  
+       
+
+var i = 0,
+    duration = 750,
+    root;
+var treeData;
+
+var margin = {top: 20, right: 90, bottom: 30, left: 90},
+    width = 1500 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+var svg = d3.select("#TreeGraphView").append("svg")
+    .attr("width", width + margin.right + margin.left)
+    .attr("height", height + margin.top + margin.bottom)
+     .call(d3.zoom().on("zoom", function () {
+    svg.attr("transform", d3.event.transform)
+ }))
+  .append("g")
+    .attr("transform", "translate("
+          + margin.left + "," + margin.top + ")");
+
+var treemap = d3.tree().size([height, width]);
+  
+        var bar_ctx = document.getElementById('TreeFMChart');
+        var bar_chart = new Chart(bar_ctx, {
+            type: 'bar',
+            data: {
+                labels: BarChartNodes,
+                datasets: [
+                {
+                    label: fmodes_lbl[0],
+                    data: maskedRateList,
+                                backgroundColor: fmodes_clr[0],
+                                hoverBackgroundColor: fmodes_clr[0],
+                                hoverBorderWidth: 2,
+                                hoverBorderColor: 'lightgrey'
+                },
+                {
+                    label: fmodes_lbl[1],
+                    data: latentRateList,
+                                backgroundColor: fmodes_clr[1],
+                                hoverBackgroundColor: fmodes_clr[1],
+                                hoverBorderWidth: 2,
+                                hoverBorderColor: 'lightgrey'
+                },
+                {
+                    label: fmodes_lbl[2],
+                    data: failureRateList,
+                                backgroundColor: fmodes_clr[2],
+                                hoverBackgroundColor: fmodes_clr[2],
+                                hoverBorderWidth: 2,
+                                hoverBorderColor: 'lightgrey'
+                },
+                {
+                    label: fmodes_lbl[3],
+                    data: silentRateList,
+                                backgroundColor: fmodes_clr[3],
+                                hoverBackgroundColor: fmodes_clr[3],
+                                hoverBorderWidth: 2,
+                                hoverBorderColor: 'lightgrey'
+                },                
+                ]
+            },
+            options: {
+                    animation: {
+                    duration: 10,
+                },
+                tooltips: {
+                            mode: 'label',
+                  callbacks: {
+                  label: function(tooltipItem, data) { 
+                    return data.datasets[tooltipItem.datasetIndex].label + ": " + numberWithCommas(tooltipItem.yLabel);
+                  }
+                  }
+                 },
+                scales: {
+                  xAxes: [{ 
+                    stacked: true, 
+                    gridLines: { display: false },
+                    }],
+                  yAxes: [{ 
+                    stacked: true, 
+                    ticks: {
+                            callback: function(value) { return numberWithCommas(value); },
+                            }, 
+                    }],
+                }, 
+                legend: {display: true}
+            } 
+           }
+        );        
+        
+        
+
+        
+        
+        function TreeToList(currentnode, currentpath){
+            if(currentnode != null){
+                currentpath += "/"+currentnode.name;
+                UniqueNodeList.push(currentpath);
+                if(currentnode.hasOwnProperty('children')){
+                    for(var i in currentnode.children){
+                        TreeToList(currentnode.children[i], currentpath);
+                    }
+                }
+            }            
+        }
+        
+        
+        function updateNodeTree(jsonNodes){
+            UniqueNodeList = [];
+            TreeToList(jsonNodes, "");            
+            var SelectList = $('#TreeNodeOptions');                     
+            $.each(UniqueNodeList, function(key, value){
+                SelectList.append($("<option></option>").attr("value", value).text(value));
+            });   
+        }        
+        
+        function updateTreeChart(){       
+            BarChartNodes.length = 0;
+            maskedRateList.length = 0;
+            latentRateList.length = 0;
+            failureRateList.length = 0;
+            silentRateList.length = 0;
+            sel_node = (document.getElementById("TreeNodeSelect").value).split('/');
+            if(sel_node[0]=="")sel_node.shift();
+            sel_node.shift();
+            item = treeData;
+            while(sel_node.length > 0){
+                t = sel_node.shift();
+                for(var i in item.children){
+                    if(t==item.children[i].name){
+                        item = item.children[i];
+                        break;
+                    }
+                }
+            }
+            if(item.hasOwnProperty('children')){
+                for(var i in item.children){
+                    BarChartNodes.push(item.children[i].name);
+                    if(document.getElementById('percentageSelected').checked == true){
+                        maskedRateList.push(item.children[i].m_p);
+                        latentRateList.push(item.children[i].l_p);
+                        failureRateList.push(item.children[i].s_p);
+                        silentRateList.push(item.children[i].c_p);                        
+                    }
+                    else{
+                        maskedRateList.push(item.children[i].m);
+                        latentRateList.push(item.children[i].l);
+                        failureRateList.push(item.children[i].s);
+                        silentRateList.push(item.children[i].c);                          
+                    }
+                }
+            }
+            bar_chart.update();            
+        }            
+        
+        
+        
+        
+
+        function getRandom(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+		function CreateTable(Headers, Id, Container){
+			var ctable = document.createElement('table');
+			tblbody = document.createElement("tbody");
+			tblbody.setAttribute("id", Id);
+			ctable.appendChild(tblbody);
+			tblheader = ctable.createTHead();
+            var headrow = tblheader.insertRow(0);
+			for (i=0; i<Headers.length; i++){
+				var newCell = document.createElement('th');
+                headrow.append(newCell);
+				newCell.innerHTML = Headers[i];
+			};
+			Container.appendChild(ctable);
+            Container.appendChild(document.createElement('hr'));
+            return(tblbody);
+		}
+
+      
+
+        function MQuery(){
+            var http = new XMLHttpRequest();
+            var url = "query.py";
+            var params = "action=search&model=" + document.getElementById("qmodel").value + "&eind=" + document.getElementById("qeind").value + "&target=" + document.getElementById("qtarget").value + "&instancetype=" + document.getElementById("qinstancetype").value + "&injectioncase=" + document.getElementById("qinjectioncase").value + "&faultmodel=" + document.getElementById("qfaultmodel").value + "&forcedvalue=" + document.getElementById("qforcedvalue").value.replace("+","%2B") + "&injectiontime=" + document.getElementById("qinjectiontime").value + "&injectionduration=" + document.getElementById("qinjectionduration").value + "&observationtime=" + document.getElementById("qobservationtime").value + "&profiledvalue=" + document.getElementById("qprofiledvalue").value + "&failuremode=" + document.getElementById("qfailuremode").value + "&errorcount=" + document.getElementById("qerrorcount").value + "&trapcode=" + document.getElementById("qtrapcode").value + "&latencyfaultfailure=" + document.getElementById("qlatencyfaultfailure").value + "&samplesize=" + document.getElementById("qrandomamount").value + "&randseed=" + document.getElementById("randseed").value
+            StatusBar.innerHTML = "Retrieving data from server...";
+            http.open("POST", url+"?cache="+(Math.random()*1000000), true);
+            http.setRequestHeader("Content-type","application/x-www-form-urlencoded");            
+            http.onreadystatechange = function(){
+                if(this.readyState == 4 && this.status == 200){
+                    ShowResult(this); 
+                    loadbar.style.display = "none";                    
+                    rebuild_tree();                   
+                }
+            }
+            http.send(params); 
+            loadbar.style.display = "block";
+        }
+
+
+		function ShowResult(xmlhttp) {
+            StatusBar.innerHTML = "Processing responce data...";
+            container = document.getElementById("result")
+            container.innerHTML = "";            
+            qres_tblbody = CreateTable(ResHeaders, "GlobalStatistics", container);
+            var parser = new DOMParser();
+            var xmlDoc = parser.parseFromString(xmlhttp.responseText, "application/xml");            
+            Results = xmlDoc.getElementsByTagName("QRItem");
+            SummaryTag = xmlDoc.getElementsByTagName("Summary")[0];
+
+            var msg = SummaryTag.getAttribute('message');
+            StatusBar.innerHTML = "Server message: " + msg;
+            BuildQRestable(Results, qres_tblbody, ResHeaders, XmlAttribs);     
+
+            
+            fmodes_data.length = 0;
+            for (j=0;j<fmodes_lbl.length;j++) { fmodes_data.push(0); };
+                 for (j=0;j<fmodes_lbl.length;j++){
+                    if(SummaryTag.hasAttribute(fmodes_lbl[j])){
+                        fmodes_data[j] = parseFloat(SummaryTag.getAttribute(fmodes_lbl[j]));                    
+                    }
+                    else{
+                        fmodes_data[j] = 0.0;
+                    }
+                 };
+                 
+                 
+            GlobalFMChart.update();                             
+            StatusBar.innerHTML = "Server message: " + msg;
+
+        }
+
+        function update_status_bar(msg = null){
+            if(msg == null){
+                if(SummaryTag != null){
+                    var msg = SummaryTag.getAttribute('message');
+                    if(msg == ""){
+                        StatusBar.innerHTML = "Ready, Last Update: " + (Results.length).toString() + " items retrived";
+                    }
+                    else{
+                        StatusBar.innerHTML = "Server message: " + msg;
+                    }
+                }
+            }
+        }
+        
+		function BuildQRestable(xmlNodes, tableNode, Headers, Attribs) {
+            var newRow, i, j;
+            for (i=0; i<xmlNodes.length; i++) {
+                newRow = tableNode.insertRow(-1);
+                for(j=0;j<Attribs.length;j++){
+                    newCell = newRow.insertCell(newRow.cells.length);
+                    if(j==0){
+                        fmode = xmlNodes[i].getAttribute("failuremode");
+                        cl = (fmode == "S" || fmode == "C") ? "fail" : "pass";
+                        link = '<a target="_blank" href=\"dumptrace.py?config='+xmlNodes[i].getAttribute("model")+ '&dump='+xmlNodes[i].getAttribute("dumpfile")+'\">' +xmlNodes[i].getAttribute("eind")+"</a>";
+                        newCell.innerHTML= '<div class = "' + cl +'"><pre>' + link + '</pre></div>';
+                    }
+                    else{
+                        newCell.innerHTML = MarkupCell(xmlNodes[i].getAttribute(Attribs[j]))                    
+                    }
+                };
+            };
+        }            
+            
+        function MarkupCell(content){
+            var dt = content.split('$');
+            var cl = '';
+            if(dt.length > 1){
+                cl = dt[1];
+            };
+            return('<div class = "' + cl +'"><pre>' + dt[0] +'</pre></div>');
+        }          
+
+        
+		window.addEventListener("load", function() {                
+            MQuery();
+		});           
+
+        
+        function change_sampling_mode(){
+            var a = document.getElementById('qrandomamount');
+            var b = document.getElementById('randseed');            
+            if(samplechbox.checked == true){
+                a.disabled = false;
+                b.disabled = false;
+            }
+            else{
+                a.value = ""
+                b.value = ""
+                a.disabled = true;
+                b.disabled = true;                
+            }
+        }
+        
+//------------------------------------------------------------
+
+        var $expandtree = $('#TreeExpandableListView');
+        function rebuild_tree(){
+            $expandtree.tree('destroy');
+            var http = new XMLHttpRequest();
+            //client.open('GET', 'data.json?cache="+(Math.random()*1000000)');
+            var url = "query.py";
+            var params = "action=gedistreeJSON&model=" + document.getElementById("qmodel").value + "&eind=" + document.getElementById("qeind").value + "&target=" + document.getElementById("qtarget").value + "&instancetype=" + document.getElementById("qinstancetype").value + "&injectioncase=" + document.getElementById("qinjectioncase").value + "&faultmodel=" + document.getElementById("qfaultmodel").value + "&forcedvalue=" + document.getElementById("qforcedvalue").value.replace("+","%2B") + "&injectiontime=" + document.getElementById("qinjectiontime").value + "&injectionduration=" + document.getElementById("qinjectionduration").value + "&observationtime=" + document.getElementById("qobservationtime").value + "&profiledvalue=" + document.getElementById("qprofiledvalue").value + "&failuremode=" + document.getElementById("qfailuremode").value + "&errorcount=" + document.getElementById("qerrorcount").value + "&trapcode=" + document.getElementById("qtrapcode").value + "&latencyfaultfailure=" + document.getElementById("qlatencyfaultfailure").value+ "&samplesize=" + document.getElementById("qrandomamount").value + "&randseed=" + document.getElementById("randseed").value
+            //StatusBar.innerHTML = "Retrieving data from server...";
+            http.open("POST", url+"?cache="+(Math.random()*1000000), true);
+            http.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+                       
+            http.onreadystatechange = function() {
+            if(this.readyState == 4 && this.status == 200){
+                    var m = JSON.parse(this.responseText);
+                    treeData= m[0];  
+                    
+                    root = d3.hierarchy(treeData, function(d) { return d.children; });
+                    root.x0 = height / 2;
+                    root.y0 = 0;
+                    root.children.forEach(collapse);
+                    UpdateTreeView(root);                                                        
+                    openTreeView(null, 'TreeGraphView');
+                    var smode = document.getElementById('treeviewoption').value;   
+                    
+                        $expandtree.tree({
+                            data: m,
+                              autoOpen: 1,
+                                onCreateLi: function(node, $li) {
+                                    $li.find('.jqtree-element').append(
+                                       '<span style = \"color: blue; font-size: 10pt;\">' + '&nbsp;&nbsp;&nbsp;' + 'M: ' + node.m_p + '%,' + '&nbsp;' + 'L: ' + node.l_p + '%,'+ '&nbsp;' + 'S: ' + node.s_p + '%,' + '&nbsp;' + 'C: ' + node.c_p + '%,'  + '</span>'                                       
+                                    );
+                                }                            
+                        });
+                    
+                    var http = new XMLHttpRequest();
+                    var url = "query.py";
+                    var params = "action=gedistreeHTML&model=" + document.getElementById("qmodel").value + "&eind=" + document.getElementById("qeind").value + "&target=" + document.getElementById("qtarget").value + "&instancetype=" + document.getElementById("qinstancetype").value + "&injectioncase=" + document.getElementById("qinjectioncase").value + "&faultmodel=" + document.getElementById("qfaultmodel").value + "&forcedvalue=" + document.getElementById("qforcedvalue").value.replace("+","%2B") + "&injectiontime=" + document.getElementById("qinjectiontime").value + "&injectionduration=" + document.getElementById("qinjectionduration").value + "&observationtime=" + document.getElementById("qobservationtime").value + "&profiledvalue=" + document.getElementById("qprofiledvalue").value + "&failuremode=" + document.getElementById("qfailuremode").value + "&errorcount=" + document.getElementById("qerrorcount").value + "&trapcode=" + document.getElementById("qtrapcode").value + "&latencyfaultfailure=" + document.getElementById("qlatencyfaultfailure").value  + "&samplesize=" + document.getElementById("qrandomamount").value + "&randseed=" + document.getElementById("randseed").value
+                    http.open("POST", url+"?cache="+(Math.random()*1000000), true);
+                    http.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+                    http.onreadystatechange = function() {
+                        if(this.readyState == 4 && this.status == 200){
+                            document.getElementById('TreeTableView').innerHTML = this.responseText;                           
+                            update_status_bar();     
+                        };                                         
+                    };
+                   http.send(params); 
+                   
+                   updateNodeTree(treeData);
+                   updateTreeChart();
+                };
+            };
+            http.send(params);
+        }    
+
+
+function collapse(d) {
+  if(d.children) {
+    d._children = d.children
+    d._children.forEach(collapse)
+    d.children = null
+  }
+}
+
+function UpdateTreeView(source) {
+    var smode = document.getElementById('treeviewoption').value;   
+    var percentageview = document.getElementById('TreePercentageSelected').checked;
+    
+  var treeData = treemap(root);
+  var nodes = treeData.descendants(),
+      links = treeData.descendants().slice(1);
+  nodes.forEach(function(d){ d.y = d.depth * 180});
+
+  var node = svg.selectAll('g.node')
+      .data(nodes, function(d) {return d.id || (d.id = ++i); });
+
+  var nodeEnter = node.enter().append('g')
+      .attr('class', 'node')
+      .attr("transform", function(d) {
+        return "translate(" + source.y0 + "," + source.x0 + ")";
+    })
+    .on('click', click);
+
+  nodeEnter.append('circle')
+      .attr('class', 'node')
+      .attr('r', 1e-6)
+      .style("fill", function(d) {
+          return d._children ? "#f76d40" : "#fff";
+      });
+
+  nodeEnter.append('text')
+      .attr("dy", "-1.1em")
+      .attr("x", function(d) {
+          return d.children || d._children ? 50 : 20;
+      })
+      .attr("text-anchor", function(d) {
+          return d.children || d._children ? "end" : "start";
+      })
+      .text(function(d) {
+            if(smode == 'm'){return(d.data.name + ': ' + (percentageview ? d.data.m_p + '%': d.data.m)); }
+            else if(smode == 'l'){return(d.data.name + ': ' + (percentageview ? d.data.l_p + '%': d.data.l)); }
+            else if(smode == 's'){return(d.data.name + ': ' + (percentageview ? d.data.s_p + '%': d.data.s)); }
+            else if(smode == 'c'){return(d.data.name + ': ' + (percentageview ? d.data.c_p + '%': d.data.c)); }
+            else {return(d.data.name + ': ' + (percentageview ? (d.data.m_p + "%_" + d.data.l_p + "%_"+ d.data.s_p + "%_"+ d.data.c_p+"%") : (d.data.m + "_" + d.data.l + "_"+ d.data.s + "_"+ d.data.c))); };
+            });
+
+  var nodeUpdate = nodeEnter.merge(node);
+
+  nodeUpdate.transition()
+    .duration(duration)
+    .attr("transform", function(d) { 
+        return "translate(" + d.y + "," + d.x + ")";
+     });
+
+  nodeUpdate.select('circle.node')
+    .attr('r', 10)
+    .style("fill", function(d) {
+        return d._children ? "#f76d40" : "#fff";
+    })
+    .attr('cursor', 'pointer');
+
+
+  var nodeExit = node.exit().transition()
+      .duration(duration)
+      .attr("transform", function(d) {
+          return "translate(" + source.y + "," + source.x + ")";
+      })
+      .remove();
+
+  nodeExit.select('circle')
+    .attr('r', 1e-6);
+
+  nodeExit.select('text')
+    .style('fill-opacity', 1e-6);
+
+  var link = svg.selectAll('path.link')
+      .data(links, function(d) { return d.id; });
+
+  var linkEnter = link.enter().insert('path', "g")
+      .attr("class", "link")
+      .attr('d', function(d){
+        var o = {x: source.x0, y: source.y0}
+        return diagonal(o, o)
+      });
+
+  var linkUpdate = linkEnter.merge(link);
+
+  linkUpdate.transition()
+      .duration(duration)
+      .attr('d', function(d){ return diagonal(d, d.parent) });
+
+  var linkExit = link.exit().transition()
+      .duration(duration)
+      .attr('d', function(d) {
+        var o = {x: source.x, y: source.y}
+        return diagonal(o, o)
+      })
+      .remove();
+
+  nodes.forEach(function(d){
+    d.x0 = d.x;
+    d.y0 = d.y;
+  });
+
+  
+  function diagonal(s, d) {
+    path = `M ${s.y} ${s.x}
+            C ${(s.y + d.y) / 2} ${s.x},
+              ${(s.y + d.y) / 2} ${d.x},
+              ${d.y} ${d.x}`
+    return path
+  }
+
+  function click(d) {
+    if (d.children) {
+        d._children = d.children;
+        d.children = null;
+      } else {
+        d.children = d._children;
+        d._children = null;
+      }
+    UpdateTreeView(d);
+  }
+}        
+        
+        
+function openTreeView(evt, TreeView) {
+    var i, tabcontent, tablinks;
+    tabcontent = document.getElementsByClassName("tabcontent");
+    for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+    }
+    tablinks = document.getElementsByClassName("tablinks");
+    for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+    }
+    document.getElementById(TreeView).style.display = "block";
+    document.getElementById(TreeView).style.heigth  = "500px";
+    if(evt != null){ evt.currentTarget.className += " active";}
+    else{ Status = document.getElementById('TreeTableView').className += " active";};
+}           
+        
+</script> 
+
+</body>
+</html>

@@ -1,0 +1,424 @@
+<!-- 
+    Dictionary of fault models for Xilinx simprim macrocell library
+    Author: Ilya Tuzov, Universitat Politecnica de Valencia
+-->
+<?xml version="1.0"?>
+
+<data>
+
+	<observation_spec>
+		<macrocell name = "X_FF"  >
+			<port name = "O" />
+		</macrocell>
+		<macrocell name = "X_SFF"  >
+			<port name = "O" />
+		</macrocell>
+		<macrocell name = "X_FFD"  >
+			<port name = "O" />
+		</macrocell>
+		<macrocell name = "SIGNAL"  >
+			
+		</macrocell>        
+	</observation_spec>
+	
+	
+
+	<register_reconstruction>
+		<macrocell name = "X_FF"  outport = "O"/>
+		<macrocell name = "X_SFF" outport = "O"/>
+		<macrocell name = "X_FFD" outport = "O"/>	
+		<macrocell name = "SIGNAL" outport = ""/>	
+        
+	</register_reconstruction>
+
+	
+	
+<fdesc 	model = "stuck_at" 
+		macrocells = "SIGNAL" >
+	<injection_rule
+		code_pattern = "force -freeze #PATH #FORCEDVALUE 0" >
+
+        <injectioncase label = "" nodes = "" />        
+	</injection_rule>
+</fdesc>	
+
+
+<fdesc 	model = "bit_flip" 
+		macrocells = "SIGNAL" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH]#;
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -deposit #PATH $nv 0#;" >
+        
+        <injectioncase label = "" nodes = "" />
+	</injection_rule>
+</fdesc>	   
+	   
+
+<fdesc 	model = "pulse" 
+		macrocells = "SIGNAL" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -freeze #PATH $nv 0 -cancel #DURATION#;" >
+
+            <injectioncase label = "" nodes = "" />            
+	</injection_rule>
+</fdesc>	
+	
+	
+
+<fdesc 	model = "pulse" 
+		macrocells = "X_LUT5, X_LUT6" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH/#NODE_1]#;
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -freeze #PATH/#NODE_1 $nv 0 -cancel #DURATION#; " >
+			
+		<injectioncase label = "O" nodes = "#NODE_1=O"/>			
+	</injection_rule>
+</fdesc>	
+	
+	
+<fdesc 	model = "bit_flip" 
+		macrocells = "X_FF, X_SFF, X_FDD" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH/#NODE_1]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -deposit #PATH/#NODE_1 $nv 0#;
+			change #PATH/#NODE_2 $nv#;
+			change #PATH/#NODE_3 $nv#;">
+			
+		<injectioncase label = "O" 
+			  nodes = "#NODE_1=O, #NODE_2=VITALBehavior/O_zd, #NODE_3=VITALBehavior/O_GlitchData.LastValue"/>
+	</injection_rule>
+</fdesc>	   
+
+
+
+<fdesc 	model = "bit_flip" 
+		macrocells = "X_RAMB18E1" 
+		configuration = "RAM_MODE:SDP" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH/#NODE_1]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			change #PATH/#NODE_1 $nv 0#;">
+			
+		<injectioncase label = "SDP/WWB36/X_RAMB18E1_SDP_inst/prcs_clk/mem" 
+			  dimensions = "0-31, 0-135" 
+			  nodes = "#NODE_1=SDP/WWB36/X_RAMB18E1_SDP_inst/prcs_clk/mem#DIM"/>
+	</injection_rule>
+</fdesc>
+
+
+<fdesc 	model = "upset_cmem" 
+		macrocells = "X_LUT5" >
+
+	<instrumentation_rule>
+		<redefine_node	name = "INIT_reg"  modifier_to = "signal" 	basetype_to = ""	inline_to = "" />
+		<extend_sensitivity_list	process_name = "X_LUT5P"	nodes = "INIT_reg"	 />
+	</instrumentation_rule>
+	
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH/#NODE_1]#;
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			change #PATH/#NODE_1 $nv 0#;">
+
+		<injectioncase 
+			label = "INIT_reg" 
+			dimensions = "0-31" 
+			nodes = "#NODE_1=INIT_reg#DIM">	  	
+		</injectioncase>
+	</injection_rule>
+</fdesc>
+
+
+<fdesc 	model = "upset_cmem" 
+		macrocells = "X_LUT6" >
+
+	<instrumentation_rule>
+		<redefine_node  name = "INIT_reg"  modifier_to = "signal" 	basetype_to = ""	inline_to = "" />
+		<extend_sensitivity_list	process_name = "X_LUT6P"	nodes = "INIT_reg"	 />
+	</instrumentation_rule>
+		
+		
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH/#NODE_1]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			change #PATH/#NODE_1 $nv 0#;">
+			
+		<injectioncase 
+			label = "INIT_reg" 
+			dimensions = "0-63" 
+			nodes = "#NODE_1=INIT_reg#DIM">			
+		</injectioncase>	  
+	</injection_rule>
+</fdesc>
+
+
+<fdesc 	model = "stuck_at" 
+			macrocells = "X_FF, X_SFF, X_FDD, X_LUT2, X_LUT3, X_LUT4, X_LUT5, X_LUT6, X_LUT7, X_LUT8, X_ZERO, X_ONE, X_MUX2" >
+	<injection_rule
+		code_pattern = "force -freeze #PATH/#NODE_1 #FORCEDVALUE 0#;">
+		
+		<injectioncase label = "O" 
+			  nodes = "#NODE_1=O" />		  
+	</injection_rule>  
+</fdesc>
+
+
+<fdesc 	model = "stuck_at" 
+		macrocells = "X_CARRY4" >
+	<injection_rule
+		code_pattern = "force -freeze #PATH/#NODE_1 #FORCEDVALUE 0#;">
+		<injectioncase label = "O" 
+			  dimensions = "0-3" 
+			  nodes = "#NODE_1=O#DIM" />		  
+		<injectioncase label = "CO" 
+			  dimensions = "0-3" 
+			  nodes = "#NODE_1=CO#DIM" />		  	  
+	</injection_rule>  		
+</fdesc>
+
+
+
+<fdesc 	model = "stuck_at" 
+		macrocells = "X_DSP48E1" >
+	<injection_rule
+		code_pattern = "force -freeze #PATH/#NODE_1 #FORCEDVALUE 0#;">
+		<injectioncase label = "ACOUT"  dimensions = "0-29" nodes = "#NODE_1=ACOUT#DIM" />		  
+		<injectioncase label = "BCOUT"  dimensions = "0-17" nodes = "#NODE_1=BCOUT#DIM" />		  	  
+		<injectioncase label = "CARRYCASCOUT" nodes = "#NODE_1=CARRYCASCOUT" />		  
+		<injectioncase label = "CARRYOUT"  dimensions = "0-3" nodes = "#NODE_1=CARRYOUT#DIM" />		  	  
+		
+	</injection_rule>  		
+</fdesc>
+
+
+
+
+<!-- 
+	block_name - block or routine/function call
+-->
+<fdesc 	model = "delay" 
+		macrocells = "X_LUT5" >
+		
+	<instrumentation_rule>
+		<injectable_generic 	src = "tpd_ADR0_O" dst = "v_tpd_ADR0_O" />
+		<injectable_generic 	src = "tpd_ADR1_O" dst = "v_tpd_ADR1_O" />
+		<injectable_generic 	src = "tpd_ADR2_O" dst = "v_tpd_ADR2_O" />
+		<injectable_generic 	src = "tpd_ADR3_O" dst = "v_tpd_ADR3_O" />
+		<injectable_generic 	src = "tpd_ADR4_O" dst = "v_tpd_ADR4_O" />
+		<injectable_generic 	src = "tipd_ADR0" dst = "v_tipd_ADR0" />
+		<injectable_generic 	src = "tipd_ADR1" dst = "v_tipd_ADR1" />
+		<injectable_generic 	src = "tipd_ADR2" dst = "v_tipd_ADR2" />
+		<injectable_generic 	src = "tipd_ADR3" dst = "v_tipd_ADR3" />
+		<injectable_generic 	src = "tipd_ADR4" dst = "v_tipd_ADR4" />		
+		<enclose_inprocess 		block_name = "VitalWireDelay" process_name = "" />
+	</instrumentation_rule>		
+		
+	<injection_rule
+		code_pattern = "
+			set x [split [string trim [examine #PATH/#NODE_1] &quot;{}&quot; ] ]#;
+			force -freeze #PATH/#NODE_1 [join [list [expr [lindex $x 0]#FORCEDVALUE] &quot; &quot; [lindex $x 1] ] &quot;&quot;]#; 
+			set x [split [string trim [examine #PATH/#NODE_2] &quot;{}&quot; ] ]#;
+			force -freeze #PATH/#NODE_2 [join [list [expr [lindex $x 0]#FORCEDVALUE] &quot; &quot; [lindex $x 1] ] &quot;&quot;]#;">
+			
+		<injectioncase label = "ADR0_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_ADR0_O(tr01), #NODE_2=v_tpd_ADR0_O(tr10)" />		  
+		<injectioncase label = "ADR1_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_ADR1_O(tr01), #NODE_2=v_tpd_ADR1_O(tr10)" />		  
+		<injectioncase label = "ADR2_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_ADR2_O(tr01), #NODE_2=v_tpd_ADR2_O(tr10)" />	 
+		<injectioncase label = "ADR3_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_ADR3_O(tr01), #NODE_2=v_tpd_ADR3_O(tr10)" />
+		<injectioncase label = "ADR4_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_ADR4_O(tr01), #NODE_2=v_tpd_ADR4_O(tr10)" />
+		<injectioncase label = "ADR0" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_ADR0(tr01), #NODE_2=v_tipd_ADR0(tr10)" />
+		<injectioncase label = "ADR1" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_ADR1(tr01), #NODE_2=v_tipd_ADR1(tr10)" />			  
+		<injectioncase label = "ADR2" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_ADR2(tr01), #NODE_2=v_tipd_ADR2(tr10)" />			  
+		<injectioncase label = "ADR3" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_ADR3(tr01), #NODE_2=v_tipd_ADR3(tr10)" />
+		<injectioncase label = "ADR4" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_ADR4(tr01), #NODE_2=v_tipd_ADR4(tr10)" />			  
+	</injection_rule>  		
+</fdesc>
+
+<fdesc 	model = "delay" 
+		macrocells = "X_LUT6" >
+		
+	<instrumentation_rule>
+		<injectable_generic 	src = "tpd_ADR0_O" dst = "v_tpd_ADR0_O" />
+		<injectable_generic 	src = "tpd_ADR1_O" dst = "v_tpd_ADR1_O" />
+		<injectable_generic 	src = "tpd_ADR2_O" dst = "v_tpd_ADR2_O" />
+		<injectable_generic 	src = "tpd_ADR3_O" dst = "v_tpd_ADR3_O" />
+		<injectable_generic 	src = "tpd_ADR4_O" dst = "v_tpd_ADR4_O" />
+		<injectable_generic 	src = "tpd_ADR5_O" dst = "v_tpd_ADR4_O" />		
+		<injectable_generic 	src = "tipd_ADR0" dst = "v_tipd_ADR0" />
+		<injectable_generic 	src = "tipd_ADR1" dst = "v_tipd_ADR1" />
+		<injectable_generic 	src = "tipd_ADR2" dst = "v_tipd_ADR2" />
+		<injectable_generic 	src = "tipd_ADR3" dst = "v_tipd_ADR3" />
+		<injectable_generic 	src = "tipd_ADR4" dst = "v_tipd_ADR4" />		
+		<injectable_generic 	src = "tipd_ADR5" dst = "v_tipd_ADR4" />				
+		<enclose_inprocess 		block_name = "VitalWireDelay" process_name = "" />
+	</instrumentation_rule>		
+				
+	<injection_rule
+		code_pattern = "
+			set x [split [string trim [examine #PATH/#NODE_1] &quot;{}&quot; ] ]#;
+			force -freeze #PATH/#NODE_1 [join [list [expr [lindex $x 0]#FORCEDVALUE] &quot; &quot; [lindex $x 1] ] &quot;&quot;]#; 
+			set x [split [string trim [examine #PATH/#NODE_2] &quot;{}&quot; ] ]#;
+			force -freeze #PATH/#NODE_2 [join [list [expr [lindex $x 0]#FORCEDVALUE] &quot; &quot; [lindex $x 1] ] &quot;&quot;]#;">
+			
+		<injectioncase label = "ADR0_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_ADR0_O(tr01), #NODE_2=v_tpd_ADR0_O(tr10)" />		  
+		<injectioncase label = "ADR1_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_ADR1_O(tr01), #NODE_2=v_tpd_ADR1_O(tr10)" />		  
+		<injectioncase label = "ADR2_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_ADR2_O(tr01), #NODE_2=v_tpd_ADR2_O(tr10)" />	 
+		<injectioncase label = "ADR3_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_ADR3_O(tr01), #NODE_2=v_tpd_ADR3_O(tr10)" />
+		<injectioncase label = "ADR4_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_ADR4_O(tr01), #NODE_2=v_tpd_ADR4_O(tr10)" />
+		<injectioncase label = "ADR5_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_ADR5_O(tr01), #NODE_2=v_tpd_ADR5_O(tr10)" />	
+			  
+		<injectioncase label = "ADR0" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_ADR0(tr01), #NODE_2=v_tipd_ADR0(tr10)" />
+		<injectioncase label = "ADR1" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_ADR1(tr01), #NODE_2=v_tipd_ADR1(tr10)" />			  
+		<injectioncase label = "ADR2" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_ADR2(tr01), #NODE_2=v_tipd_ADR2(tr10)" />			  
+		<injectioncase label = "ADR3" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_ADR3(tr01), #NODE_2=v_tipd_ADR3(tr10)" />
+		<injectioncase label = "ADR4" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_ADR4(tr01), #NODE_2=v_tipd_ADR4(tr10)" />		
+		<injectioncase label = "ADR5" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_ADR5(tr01), #NODE_2=v_tipd_ADR5(tr10)" />			  
+	</injection_rule>  		
+</fdesc>
+
+<fdesc 	model = "delay" 
+		macrocells = "X_FF" >
+		
+	<instrumentation_rule>
+		<injectable_generic 	src = "v_tpd_CLK_O" dst = "tpd_CLK_O" />
+		<injectable_generic 	src = "v_tpd_RST_O" dst = "tpd_RST_O" />
+		<injectable_generic 	src = "v_tpd_SET_O" dst = "tpd_SET_O" />
+		<injectable_generic 	src = "v_tipd_CE" dst = "tipd_CE" />
+		<injectable_generic 	src = "v_tipd_CLK" dst = "tipd_CLK" />
+		<injectable_generic 	src = "v_tipd_I" dst = "tipd_I" />		
+		<injectable_generic 	src = "v_tipd_RST" dst = "tipd_RST" />
+		<injectable_generic 	src = "v_tipd_SET" dst = "tipd_SET" />
+		<enclose_inprocess 		block_name = "VitalWireDelay" process_name = "" />
+	</instrumentation_rule>			
+		
+	<injection_rule
+		code_pattern = "
+			set x [split [string trim [examine #PATH/#NODE_1] &quot;{}&quot; ] ]#;
+			force -freeze #PATH/#NODE_1 [join [list [expr [lindex $x 0]#FORCEDVALUE] &quot; &quot; [lindex $x 1] ] &quot;&quot;]#; 
+			set x [split [string trim [examine #PATH/#NODE_2] &quot;{}&quot; ] ]#;
+			force -freeze #PATH/#NODE_2 [join [list [expr [lindex $x 0]#FORCEDVALUE] &quot; &quot; [lindex $x 1] ] &quot;&quot;]#;">
+			
+		<injectioncase label = "CLK_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_CLK_O(tr01), #NODE_2=v_tpd_CLK_O(tr10)" />		  
+		<injectioncase label = "RST_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_RST_O(tr01), #NODE_2=v_tpd_RST_O(tr10)" />		  
+		<injectioncase label = "SET_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_SET_O(tr01), #NODE_2=v_tpd_SET_O(tr10)" />	 
+			  
+		<injectioncase label = "CE" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_CE(tr01), #NODE_2=v_tipd_CE(tr10)" />
+		<injectioncase label = "CLK" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_CLK(tr01), #NODE_2=v_tipd_CLK(tr10)" />
+		<injectioncase label = "I" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_I(tr01), #NODE_2=v_tipd_I(tr10)" />			  
+		<injectioncase label = "RST" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_RST(tr01), #NODE_2=v_tipd_RST(tr10)" />
+		<injectioncase label = "SET" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_SET(tr01), #NODE_2=v_tipd_SET(tr10)" />			  	  
+	</injection_rule>  		
+</fdesc>
+
+
+<fdesc 	model = "delay" 
+		macrocells = "X_SFF" >
+		
+	<instrumentation_rule>
+		<injectable_generic 	src = "v_tpd_CLK_O" dst = "tpd_CLK_O" />
+		<injectable_generic 	src = "v_tpd_RST_O" dst = "tpd_RST_O" />
+		<injectable_generic 	src = "v_tpd_SET_O" dst = "tpd_SET_O" />
+		<injectable_generic 	src = "v_tipd_CE" dst = "tipd_CE" />
+		<injectable_generic 	src = "v_tipd_CLK" dst = "tipd_CLK" />
+		<injectable_generic 	src = "v_tipd_I" dst = "tipd_I" />		
+		<injectable_generic 	src = "v_tipd_RST" dst = "tipd_RST" />
+		<injectable_generic 	src = "v_tipd_SET" dst = "tipd_SET" />
+		<injectable_generic 	src = "v_tipd_SRST" dst = "tipd_SRST" />
+		<injectable_generic 	src = "v_tipd_SSET" dst = "tipd_SRST" />
+		<enclose_inprocess 		block_name = "VitalWireDelay" process_name = "" />
+	</instrumentation_rule>			
+		
+	<injection_rule
+		code_pattern = "
+			set x [split [string trim [examine #PATH/#NODE_1] &quot;{}&quot; ] ]#;
+			force -freeze #PATH/#NODE_1 [join [list [expr [lindex $x 0]#FORCEDVALUE] &quot; &quot; [lindex $x 1] ] &quot;&quot;]#; 
+			set x [split [string trim [examine #PATH/#NODE_2] &quot;{}&quot; ] ]#;
+			force -freeze #PATH/#NODE_2 [join [list [expr [lindex $x 0]#FORCEDVALUE] &quot; &quot; [lindex $x 1] ] &quot;&quot;]#;">
+			
+		<injectioncase label = "CLK_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_CLK_O(tr01), #NODE_2=v_tpd_CLK_O(tr10)" />		  
+		<injectioncase label = "RST_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_RST_O(tr01), #NODE_2=v_tpd_RST_O(tr10)" />		  
+		<injectioncase label = "SET_O" condition = "path=True"
+			  nodes = "#NODE_1=v_tpd_SET_O(tr01), #NODE_2=v_tpd_SET_O(tr10)" />	 
+			  
+		<injectioncase label = "CE" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_CE(tr01), #NODE_2=v_tipd_CE(tr10)" />
+		<injectioncase label = "CLK" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_CLK(tr01), #NODE_2=v_tipd_CLK(tr10)" />
+		<injectioncase label = "I" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_I(tr01), #NODE_2=v_tipd_I(tr10)" />			  
+		<injectioncase label = "RST" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_RST(tr01), #NODE_2=v_tipd_RST(tr10)" />
+		<injectioncase label = "SET" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_SET(tr01), #NODE_2=v_tipd_SET(tr10)" />	
+		<injectioncase label = "SRST" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_SRST(tr01), #NODE_2=v_tipd_SRST(tr10)" />	
+		<injectioncase label = "SSET" condition = "interconnect=True"
+			  nodes = "#NODE_1=v_tipd_SSET(tr01), #NODE_2=v_tipd_SSET(tr10)" />			  	  
+	</injection_rule>  		
+</fdesc>
+
+
+
+<profiling_rule macrocells = "X_LUT5"
+                case = "INIT_reg"
+                NodeBuilder = "#PATH/INIT_reg#INDEX_1">
+    <index label = "#INDEX_1" dimension = "0-31"/>
+    <Actime index = "#INDEX_1" expression = "#PATH/{ ((concat_range (4 downto 0))(ADR4 &amp; ADR3 &amp; ADR2 &amp; ADR1 &amp; ADR0))}"/>
+</profiling_rule>
+
+
+<profiling_rule macrocells = "MEMORY_D2"
+                case = "*"
+                NodeBuilder = "#PATH#INDEX_1#INDEX_2">
+    <index label = "#INDEX_1" dimension = "0-EXT_1"/>
+    <index label = "#INDEX_2" dimension = "0-EXT_2"/>
+    
+    <Actime index = "#INDEX_1" expression = "#EXT_3"/>
+    
+    
+
+</profiling_rule>
+
+</data>

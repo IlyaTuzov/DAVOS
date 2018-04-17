@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{47bcee03-0500-4221-8cef-36997cfb0a85}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>DecisionSupport.py</StartupFile>
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <InterpreterVersion />
+    <CommandLineArguments>./testconfig/DAVOS_LEON3.xml</CommandLineArguments>
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
+    <IsWindowsApplication>False</IsWindowsApplication>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Analyzer_Iso_Grid.py" />
+    <Compile Include="Datamanager.py" />
+    <Compile Include="DecisionSupport.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="SBFI_Analyzer.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="SBFI_FaultloadGenerator.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Davos_Generic.py" />
+    <Compile Include="SBFI_Initializer.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="SBFI_Injector.py" />
+    <Compile Include="SBFI_Profiling.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="SBFI_reportbuilder.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="SBFI_Tool.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="SBFI_UI\dumptrace.py" />
+    <Compile Include="SBFI_UI\query.py" />
+    <Compile Include="SBFI_UI\sqlq.py" />
+    <Compile Include="SupportScripts\DerivedMetrics.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="SBFI_UI\" />
+    <Folder Include="SBFI_UI\libs\" />
+    <Folder Include="SupportScripts\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="SBFI_UI\libs\Chart.bundle.js" />
+    <Content Include="SBFI_UI\libs\Chart.js" />
+    <Content Include="SBFI_UI\libs\chartpiecelabel.js" />
+    <Content Include="SBFI_UI\libs\d3.min.js" />
+    <Content Include="SBFI_UI\libs\jqtree.css" />
+    <Content Include="SBFI_UI\libs\jquery.min.js" />
+    <Content Include="SBFI_UI\libs\tree.jquery.js" />
+    <Content Include="SBFI_UI\markupstyle.css" />
+    <Content Include="SBFI_UI\query.html" />
+    <Content Include="SBFI_UI\xscript.js" />
+    <Content Include="SupportScripts\factorial.m" />
+    <Content Include="SupportScripts\modelsim_rtl_nodes.do" />
+  </ItemGroup>
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+</Project>

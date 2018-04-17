@@ -1,0 +1,19 @@
+<data>	
+    <ToolOptions
+		script_dir = "./iscripts"
+		checkpoint_dir = "./icheckpoints"
+		result_dir = "./iresults"			
+		log_dir = "./ilogs"	
+        dataset_dir = "./idatasets"
+		code_dir = "./code"
+		injnode_list = "./code/SimNodes.xml"
+		list_init_file = "./code/simInitModel.do"
+		par_lib_path = "./work"					
+		reference_file = "reference.lst"		
+		std_start_checkpoint = "startpoint.sim"
+		archive_tool_script = "zip -r"
+        rtl_parse_script = "modelsim_rtl_nodes.do"
+        finish_flag = "Sampling/FinishFlag"
+        exp_desc_file = "_summary.csv"
+	/>	
+</data>    

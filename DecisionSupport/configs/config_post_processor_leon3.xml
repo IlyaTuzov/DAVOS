@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<data>
+	<generic 
+		impl_goals_config_file = "../../../Models_Interactions/implementation_goals.xml"
+		matlab_summary_filename = "MatlabSummary.xml"
+		mcdm_summary_filename = "MCDM_summary.xml"
+		report_dir = "../../../webdocs/LEON3_Interactions/"
+	/>
+	
+	<config label = "LEON3" path = "../../../LEON3_Interactions/LEON3_csv/"/>
+
+
+</data>
