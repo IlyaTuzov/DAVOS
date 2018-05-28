@@ -6,11 +6,11 @@
         FaultInjection = "on"
         DecisionSupport = "on"
         report_dir = "#RUNDIR/../../../HTWEB/Test"        
-        dbfile = "LEON3_ISE.db"  >
+        dbfile = "MC8051_ISE.db"  >
         
 
         <ExperimentalDesign
-            max_proc = "4"
+            max_proc = "2"
             retry_attempts = "2"            
             overwrite_existing = "on"            
             build_factorial_design = "on"
@@ -25,34 +25,36 @@
             
             <generic            
                 custom_parameters = "{
-                    'ise_path' : 'C:/Xilinx/14.7/ISE_DS',
-                    'device': 'xc6vcx240t-ff784-2',
-                    'speed_grade': '2',
-                    'intstyle': 'ise',
-                    'ifn': 'leon3.prj',
-                    'top_design_unit': 'leon3mp',
-                    'rpw_tpw': '-rpw 100 -tpw 0',
-                    'basic_netgen_options': '-mhf -fn -ar Structure -w -ofmt vhdl',
-                    'waveform_file' : 'xpower_wave.wcfg',
-                    'isim_gui': 'off' }"
+                    &apos;ise_path&apos;:&apos;C:/Xilinx/14.7/ISE_DS&apos;,
+                    &apos;device&apos;:&apos;xc6vcx240t-ff784-2&apos;,
+                    &apos;speed_grade&apos;:&apos;2&apos;,
+                    &apos;intstyle&apos;:&apos;ise&apos;,
+                    &apos;ifn&apos;:&apos;mc8051_core.prj&apos;,
+                    &apos;top_design_unit&apos;:&apos;mc8051_core&apos;,
+                    &apos;rpw_tpw&apos;:&apos;-rpw 100 -tpw 0&apos;,
+                    &apos;basic_netgen_options&apos;:&apos;-mhf -fn -ar Structure -w -ofmt vhdl&apos;,
+                    &apos;waveform_file&apos;:&apos;xpower_wave.wcfg&apos;,
+                    &apos;isim_gui&apos;:&apos;off&apos; }"
                                               
-                design_label = "LEON3_ISE_"
-                design_dir = "../../../Projects/Processors/grlib-gpl-1.4.1-b4156/designs"
-                template_dir = "./LEON3_TEMPLATE"
+                design_label = "MC8051_ISE_"
+                design_dir = "../../../Projects/Controllers/MC8051_Test"
+                template_dir = "./ISE_Template"
                 log_dir = "./netgen/log"
                 netlist_dir = "./netgen"
+                constraint_file = "./constraints.ucf"                
+                
                 
                 clk_net = "clk"
                 rst_net = ""		                        
                 testbench_template_file = ""
                 sim_project_file = "testbench_par.prj"
                 testbench_file = "testbench.vhd"
-                testbench_top_unit = "testbench"
+                testbench_top_unit = "tb_mc8051_top"
                 clk_constant = "clkperiod"
-                uut_root = "d3"
-                std_start_time 	= "1940500"
-                std_observation_time 	= "35000"
-                std_clock_period = "8.5"
+                uut_root = "i_mc8051_top/i_mc8051_core"
+                std_start_time 	= "0"
+                std_observation_time 	= "9000"
+                std_clock_period = "19.0"
                 
             />        
 
@@ -62,6 +64,7 @@
                     name =  "Synthesis"
                     script_builder = "XilinxIseBuildScript"
                     result_handler = "XilinxIseRetrieveResults"
+                    postcondition_handler = "XilinxCheckPostcondition"
                     next = "Translate">
                 
                     <!-- Default Synthesis Options -->
@@ -116,6 +119,7 @@
                     name =  "Translate"
                     script_builder = "XilinxIseBuildScript"
                     result_handler = "XilinxIseRetrieveResults"
+                    postcondition_handler = "XilinxCheckPostcondition"
                     next = "Map">
                 
                     <option name = "dd" default = "_ngo" />
@@ -130,6 +134,7 @@
                     name =  "Map"
                     script_builder = "XilinxIseBuildScript"
                     result_handler = "XilinxIseRetrieveResults"
+                    postcondition_handler = "XilinxCheckPostcondition"
                     next = "Par">
                 
                     <option name = "w" default = "" />
@@ -152,6 +157,7 @@
                     name =  "Par"
                     script_builder = "XilinxIseBuildScript"
                     result_handler = "XilinxIseRetrieveResults"
+                    postcondition_handler = "XilinxCheckPostcondition"
                     next = "Trace">
                 
                     <option name = "ol" default = "high" />
@@ -164,22 +170,23 @@
                     name =  "Trace"
                     script_builder = "XilinxIseBuildScript"
                     result_handler = "XilinxIseRetrieveResults"
+                    postcondition_handler = "XilinxCheckPostcondition"
                     next = "PowerAnalysisDefault">
 
                     <Constraint
-                        template_file = "./mc8051_core.ucf"
                         placeholder = "#ClkVal"
-                        eval_property = "ClockPeriod"
                         goal = "min"
                         start_value = "15.0"
-                        adjust_step = "0.5"
-                        return_to_phase = "Translate"/>
+                        adjust_step = "1.0"
+                        return_to_phase = "Translate"
+                        check_handler = "XilinxCheckTimingSatisfied" />
                 </phase>    
 
                 <phase 
                     name =  "PowerAnalysisDefault"
                     script_builder = "XilinxIseBuildScript"
                     result_handler = "XilinxIseRetrieveResults"
+                    postcondition_handler = "XilinxCheckPostcondition"
                     next = "BuildNetlist">                         
                 </phase>                  
                 
@@ -187,6 +194,7 @@
                     name =  "BuildNetlist"
                     script_builder = "XilinxIseBuildScript"
                     result_handler = "XilinxIseRetrieveResults"
+                    postcondition_handler = "XilinxCheckPostcondition"
                     next = "SimCompile">
                           
                 </phase>    
@@ -196,6 +204,7 @@
                     name =  "SimCompile"
                     script_builder = "XilinxIseBuildScript"
                     result_handler = "XilinxIseRetrieveResults"
+                    postcondition_handler = "XilinxCheckPostcondition"
                     next = "SimulateSwitchingActivity">
                   
                 </phase>       
@@ -205,6 +214,7 @@
                     name =  "SimulateSwitchingActivity"
                     script_builder = "XilinxIseBuildScript"
                     result_handler = "XilinxIseRetrieveResults"
+                    postcondition_handler = "XilinxCheckPostcondition"
                     next = "PowerAnalysisSimulated">
                           
                 </phase>          
@@ -214,6 +224,7 @@
                     name =  "PowerAnalysisSimulated"
                     script_builder = "XilinxIseBuildScript"
                     result_handler = "XilinxIseRetrieveResults"
+                    postcondition_handler = "XilinxCheckPostcondition"
                     next = "">                         
                 </phase>     
                 
@@ -405,10 +416,10 @@
                 library_specification = "./FaultDictionaries/Xilinx_Simprim_VHDL.xml"
                 compile_script = "../par_compile.do"
                 run_script = "../par_run.do"	
-                std_clk_period = "8.5"
-                std_rst_delay = "500"
-                std_init_time =  "1940500"
-                std_workload_time = "35000"
+                std_clk_period = "19.0"
+                std_rst_delay = "0"
+                std_init_time =  "0"
+                std_workload_time = "9000"
                 finish_flag = ""
             />
             
@@ -430,26 +441,17 @@
                 
                     
             <!-- unit path: withing the design scope-->            
-            <InjectionScope node_prefix = "l3_cpu_0_u0_leon3x0_vhdl_p0_iu_" unit_path = "/testbench/d3/" />
-            <InjectionScope node_prefix = "l3_cpu_0_u0_leon3x0_vhdl_p0_mgen_" unit_path = "/testbench/d3/" />
-            
+                <InjectionScope node_prefix = ""   unit_path = "/tb_mc8051_top/i_mc8051_top/i_mc8051_core/" />
 
-            <ObservationScope node_prefix = "l3_cpu_0_u0_leon3x0_vhdl_p0_iu_" unit_path = "/testbench/d3/" label_prefix = "p0_iu_" sampling_options = "-notrigger"/>
-            <ObservationScope node_prefix = "l3_cpu_0_u0_leon3x0_vhdl_p0_mgen_" unit_path = "/testbench/d3/" label_prefix = "p0_mgen_" sampling_options = "-notrigger"/>
+                <ObservationScope node_prefix = "" unit_path = "/tb_mc8051_top/i_mc8051_top/i_mc8051_core/" label_prefix = "core_" sampling_options = "-notrigger"/>
 
-            
-            <!-- location: INTERNALS / OUTPUTS -->            
-            <GenericObservationNodes>
-                <signal   		location = "INTERNALS" 	options = "" 			label = "proc_error"  	path= "/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_p0_iu_dbgo_error1_INV_0/O" comment="Error signalling flag" />	
-                <signal   		location = "INTERNALS" 	options = "" 			label = "enable_trap" 	path= "/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_et/O"  comment="Enable trap code" />				
-                <virtual_signal location = "INTERNALS" 	options = "" 			label = "trap_type" 	env = "/testbench/d3/" 			expression = "{ ((concat_range (7 downto 0))(l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_7/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_6/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_5/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_4/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_3/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_2/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_1/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_0/O ))}" comment="Concatenated trap type signal" />
-                <memarray 		location = "INTERNALS" 	options = "-notrigger" 	label = "regfile" 		path= "sim:/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_rf0_s1_rhu_s1_dp_x0_xc2v_x0_a6_x0_a9_x_0_r0_RAMB16/SDP/WWB36/X_RAMB18E1_SDP_inst/prcs_clk/mem" low_address = "0" high_address = "135" comment="Register File"/>
-                <memarray 		location = "INTERNALS" 	options = "-notrigger" 	label = "regfile_d" 	path= "sim:/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_rf0_s1_rhu_s1_dp_x1_xc2v_x0_a6_x0_a9_x_0_r0_RAMB16/SDP/WWB36/X_RAMB18E1_SDP_inst/prcs_clk/mem" low_address = "0" high_address = "135" comment="Register File"/>
-                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_0" 		path= "sim:/testbench/sbanks(0)/sram0(0)/sr0/MEM_TST" low_address = "0" high_address = "11" comment="RAM_0" />		
-                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_1" 		path= "sim:/testbench/sbanks(0)/sram0(1)/sr0/MEM_TST" low_address = "0" high_address = "11" comment="RAM_1" />		
-                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_2" 		path= "sim:/testbench/sbanks(0)/sram0(2)/sr0/MEM_TST" low_address = "0" high_address = "11" comment="RAM_2" />		
-                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_3" 		path= "sim:/testbench/sbanks(0)/sram0(3)/sr0/MEM_TST" low_address = "0" high_address = "11" comment="RAM_3" />				
-            </GenericObservationNodes>
+                    
+                    <!-- location: INTERNALS / OUTPUTS -->            
+                <GenericObservationNodes>
+                   <memarray 	location = "INTERNALS" 	options = "" 		label = "RAM" 		path= "sim:/i_mc8051_top/i_mc8051_ram/gpram"  low_address = "0" high_address = "127" comment="Onchip Memory" />					
+                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "XRAM" 		path= "sim:/i_mc8051_top/i_mc8051_ramx/gpram" low_address = "0" high_address = "11" comment="External Memory" />		
+                   <signal 	    location = "OUTPUTS" 	options = "" 		label = "PORT_A" 	path= "sim:/tb_mc8051_top/i_mc8051_top/p1_o"  comment="PORT_A" />						
+                </GenericObservationNodes>
             </Initializer>
 
 
@@ -459,7 +461,7 @@
                     checkpont_mode = "ColdRestore"
                     maxproc = "8"
                     workload_split_factor = "10"			
-                    campaign_label = "LEON3_IMPL"		
+                    campaign_label = "MC8051_IMPL"		
                     cleanup_folders="off"
                     compile_project = "off"
                     create_scripts="off"
@@ -502,12 +504,12 @@
                 
 
             <Analyzer
-                report_dir = "../../../Projects/Processors/grlib-gpl-1.4.1-b4156/designs/"
+                report_dir = "#RUNDIR/../../../HTWEB/Test"
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
-                error_flag_signal = "proc_error"
-                error_flag_active_value = "0"
-                trap_type_signal = "trap_type"                         
+                error_flag_signal = ""
+                error_flag_active_value = ""
+                trap_type_signal = ""                         
                 neg_timegap = "0"
                 pos_timegap = "1000"
                 check_duration_factor = "0"           
@@ -515,80 +517,6 @@
                 >		    
             
                 <join_groups>
-                <group label = "SOLUTION[0]">
-                    <item label = "SRAM_0(0)" />
-                    <item label = "SRAM_1(0)" />
-                    <item label = "SRAM_2(0)" />
-                    <item label = "SRAM_3(0)" />			
-                </group>
-                <group label = "SOLUTION[1]">
-                    <item label = "SRAM_0(1)" />
-                    <item label = "SRAM_1(1)" />
-                    <item label = "SRAM_2(1)" />
-                    <item label = "SRAM_3(1)" />			
-                </group>
-                <group label = "SOLUTION[2]">
-                    <item label = "SRAM_0(2)" />
-                    <item label = "SRAM_1(2)" />
-                    <item label = "SRAM_2(2)" />
-                    <item label = "SRAM_3(2)" />			
-                </group>
-                <group label = "SOLUTION[3]">
-                    <item label = "SRAM_0(3)" />
-                    <item label = "SRAM_1(3)" />
-                    <item label = "SRAM_2(3)" />
-                    <item label = "SRAM_3(3)" />			
-                </group>
-                <group label = "SOLUTION[4]">
-                    <item label = "SRAM_0(4)" />
-                    <item label = "SRAM_1(4)" />
-                    <item label = "SRAM_2(4)" />
-                    <item label = "SRAM_3(4)" />			
-                </group>
-                <group label = "SOLUTION[5]">
-                    <item label = "SRAM_0(5)" />
-                    <item label = "SRAM_1(5)" />
-                    <item label = "SRAM_2(5)" />
-                    <item label = "SRAM_3(5)" />			
-                </group>
-                <group label = "SOLUTION[6]">
-                    <item label = "SRAM_0(6)" />
-                    <item label = "SRAM_1(6)" />
-                    <item label = "SRAM_2(6)" />
-                    <item label = "SRAM_3(6)" />			
-                </group>
-                <group label = "SOLUTION[7]">
-                    <item label = "SRAM_0(7)" />
-                    <item label = "SRAM_1(7)" />
-                    <item label = "SRAM_2(7)" />
-                    <item label = "SRAM_3(7)" />			
-                </group>
-                <group label = "SOLUTION[8]">
-                    <item label = "SRAM_0(8)" />
-                    <item label = "SRAM_1(8)" />
-                    <item label = "SRAM_2(8)" />
-                    <item label = "SRAM_3(8)" />			
-                </group>
-                <group label = "SOLUTION[9]">
-                    <item label = "SRAM_0(9)" />
-                    <item label = "SRAM_1(9)" />
-                    <item label = "SRAM_2(9)" />
-                    <item label = "SRAM_3(9)" />			
-                </group>
-                <group label = "SOLUTION[10]">
-                    <item label = "SRAM_0(10)" />
-                    <item label = "SRAM_1(10)" />
-                    <item label = "SRAM_2(10)" />
-                    <item label = "SRAM_3(10)" />			
-                </group>
-                <group label = "SOLUTION[11]">
-                    <item label = "SRAM_0(11)" />
-                    <item label = "SRAM_1(11)" />
-                    <item label = "SRAM_2(11)" />
-                    <item label = "SRAM_3(11)" />			
-                </group>
-            
-
                 
                 </join_groups>
                 
@@ -602,7 +530,7 @@
                 write_html_dumps = "off"
                 dynamic_linking = "on"
                 hierarchical_error_analysis = "off"
-                trap_types_description_file = "./testconfigs/sparc_v8_trap_types.xml"
+                trap_types_description_file = ""
                 split_by_time_intervals = "off"
                 split_by_activity_duration_interval = ""
                 split_by_effective_switches_intervals = ""		
@@ -616,11 +544,11 @@
             
             
             <config
-                work_dir = "../../../Projects/Processors/grlib-gpl-1.4.1-b4156/designs/LEON3_ISE_000"
-                label = "LEON3_Virtex6"
+                work_dir = "../../../Projects/Controllers/MC8051_Factorial/MC8051_ISE_000"
+                label = "MC8051_ISE_000"
                 compile_options = ""
                 run_options = ""
-                clk_period = "8.5"
+                clk_period = "16.0"
                 start_from = ""
                 stop_at = ""
             />

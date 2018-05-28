@@ -278,15 +278,15 @@ class IFactorialConfiguration:
     def get_netgen_script(self, phase):
         res = "netgen -intstyle " + self.genconf.intstyle + " " + self.genconf.basic_netgen_options
         if(phase == "synthesis"):
-#            res += "-dir " + self.genconf.netlist_dir + "/synthesis " + "-sim " + self.genconf.top_design_unit + ".ngc " + "_synthesis.vhd > " + self.synthesis_netlist_log
-            res += "-dir " + self.genconf.netlist_dir + "/synthesis " + "-sim " + self.genconf.top_design_unit + ".ngc " + "_synthesis.v > " + self.synthesis_netlist_log
+            res += "-dir " + self.genconf.netlist_dir + "/synthesis " + "-sim " + self.genconf.top_design_unit + ".ngc " + "_synthesis.vhd > " + self.synthesis_netlist_log
+#            res += "-dir " + self.genconf.netlist_dir + "/synthesis " + "-sim " + self.genconf.top_design_unit + ".ngc " + "_synthesis.v > " + self.synthesis_netlist_log
 
         elif(phase == "map"):
-#            res += "-dir " + self.genconf.netlist_dir + "/map " + "-pcf " + self.genconf.top_design_unit + ".pcf " + "-sim " + self.genconf.top_design_unit + "_map.ncd " + "_map.vhd > " + self.map_netlist_log
-            res += "-dir " + self.genconf.netlist_dir + "/map " + "-pcf " + self.genconf.top_design_unit + ".pcf " + "-sim " + self.genconf.top_design_unit + "_map.ncd " + "_map.v > " + self.map_netlist_log
+            res += "-dir " + self.genconf.netlist_dir + "/map " + "-pcf " + self.genconf.top_design_unit + ".pcf " + "-sim " + self.genconf.top_design_unit + "_map.ncd " + "_map.vhd > " + self.map_netlist_log
+#            res += "-dir " + self.genconf.netlist_dir + "/map " + "-pcf " + self.genconf.top_design_unit + ".pcf " + "-sim " + self.genconf.top_design_unit + "_map.ncd " + "_map.v > " + self.map_netlist_log
         elif(phase == "par"):
-#            res += "-dir " + self.genconf.netlist_dir + "/par " + "-pcf " + self.genconf.top_design_unit + ".pcf" + " -tb" + " -insert_pp_buffers true " + "-sim " + self.genconf.top_design_unit + ".ncd " + "_timesim.vhd > " + self.par_netlist_log
-            res += "-dir " + self.genconf.netlist_dir + "/par " + "-pcf " + self.genconf.top_design_unit + ".pcf" + " -tb" + " -insert_pp_buffers true " + "-sim " + self.genconf.top_design_unit + ".ncd " + "_timesim.v > " + self.par_netlist_log
+            res += "-dir " + self.genconf.netlist_dir + "/par " + "-pcf " + self.genconf.top_design_unit + ".pcf" + " -tb" + " -insert_pp_buffers true " + "-sim " + self.genconf.top_design_unit + ".ncd " + "_timesim.vhd > " + self.par_netlist_log
+#            res += "-dir " + self.genconf.netlist_dir + "/par " + "-pcf " + self.genconf.top_design_unit + ".pcf" + " -tb" + " -insert_pp_buffers true " + "-sim " + self.genconf.top_design_unit + ".ncd " + "_timesim.v > " + self.par_netlist_log
         else:
             print "get_netgen_script: undefined phase " + phase
         return(res)
@@ -586,11 +586,13 @@ def implement_configuration(config, target_dir, retry_attempts, overwrite_flag, 
     log = open(os.path.join(config.genconf.tool_log_dir, config.label+".log"), 'w')
     log.write("\n\t\tImplementing: " + config.label+"\n")
     
-    #create directories
-    os.chdir(target_dir)
-    if(not os.path.exists(config.label)):
-        shutil.copytree(config.genconf.template_dir, config.label)
-    elif not overwrite_flag: return
+    #create directories    
+    if os.path.exists(config.label):
+        if not overwrite_flag: return
+        else:
+            shutil.rmtree(config.label)
+    shutil.copytree(config.genconf.template_dir, config.label)
+    
     os.chdir(os.path.join(target_dir, config.label))
     print "Process [" + config.label + "], working dir: " + os.getcwd()
     if(not os.path.exists(config.genconf.log_dir)):
@@ -889,15 +891,15 @@ def simulate_estimate_consumption(config, target_dir, retry_attempts, only_updat
         content = f.read()
         f.close()
     sim_prj_file = "par_sim.prj"
-#    netlist_files = glob.glob(config.genconf.netlist_dir + "/par/" + "*.vhd")
-    netlist_files = glob.glob(config.genconf.netlist_dir + "/par/" + "*.v")
+    netlist_files = glob.glob(config.genconf.netlist_dir + "/par/" + "*.vhd")
+#    netlist_files = glob.glob(config.genconf.netlist_dir + "/par/" + "*.v")
 
     for c in netlist_files:
-#        content = "vhdl work \"" + c + "\"\n" + content
-        content = "verilog work \"" + c + "\"\n" + content
+        content = "vhdl work \"" + c + "\"\n" + content
+#        content = "verilog work \"" + c + "\"\n" + content
 
-#    content += "vhdl work \"" + config.genconf.testbench_file + "\"\n"
-    content += "verilog work \"" + config.genconf.testbench_file + "\"\n"
+    content += "vhdl work \"" + config.genconf.testbench_file + "\"\n"
+#    content += "verilog work \"" + config.genconf.testbench_file + "\"\n"
     f = open(sim_prj_file, 'w')
     f.write(content)
     f.close()
@@ -908,8 +910,8 @@ def simulate_estimate_consumption(config, target_dir, retry_attempts, only_updat
         ndesc = open(c,'r')
         ncontent = ndesc.read()
         ndesc.close()
-#        sdf = c.replace(".vhd", ".sdf")
-        sdf = c.replace(".v", ".sdf")
+        sdf = c.replace(".vhd", ".sdf")
+#        sdf = c.replace(".v", ".sdf")
         if(os.path.exists(sdf)):
             sdf_desc = open(sdf,'r')
             sdf_content = sdf_desc.read()
@@ -948,8 +950,8 @@ def simulate_estimate_consumption(config, target_dir, retry_attempts, only_updat
     stat.update('Fuse_Compile', 'In progress$wait')
     print "Fuse Compiling: " + config.label
     sim_exec = "testbench_isim_par.exe"
-#    fuse_script = "fuse -intstyle ise -mt off -incremental -lib simprims_ver -lib unisims_ver -lib unimacro_ver -lib xilinxcorelib_ver -lib secureip -o ./" + sim_exec + " -prj ./" +  sim_prj_file + " work." + config.genconf.testbench_top_unit + " > " + config.fuse_log
-    fuse_script = "fuse -intstyle ise -mt off -incremental -lib simprims_ver -lib unisims_ver -lib unimacro_ver -lib xilinxcorelib_ver -lib secureip -o ./" + sim_exec + " -prj ./" +  sim_prj_file + " work." + config.genconf.testbench_top_unit + " work.glbl > " + config.fuse_log
+    fuse_script = "fuse -intstyle ise -mt off -incremental -lib simprims_ver -lib unisims_ver -lib unimacro_ver -lib xilinxcorelib_ver -lib secureip -o ./" + sim_exec + " -prj ./" +  sim_prj_file + " work." + config.genconf.testbench_top_unit + " > " + config.fuse_log
+#    fuse_script = "fuse -intstyle ise -mt off -incremental -lib simprims_ver -lib unisims_ver -lib unimacro_ver -lib xilinxcorelib_ver -lib secureip -o ./" + sim_exec + " -prj ./" +  sim_prj_file + " work." + config.genconf.testbench_top_unit + " work.glbl > " + config.fuse_log
 
     (status, timetaken) = execute_impl_script(fuse_script, config.fuse_log , retry_attempts, "FUSE compile", log, sim_exec)
     if(status < 0): 

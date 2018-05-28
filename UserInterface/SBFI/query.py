@@ -19,12 +19,25 @@ import sqlite3
 import subprocess
 import random
 from ast import literal_eval as make_tuple
-
+import math
 
 MAX_RESPONCE_ITEMS = int(10000)
 MODE = "fast"   #fast / robust
 
+T_Table = {0.95:1.96, 0.99:2.576, 0.999:3.291}
 
+def get_sample_size(error_margin, confidence_level, N, P = 0.5):
+    t = T_Table[confidence_level]
+    return N / ( 1 + error_margin*error_margin*(N-1) / ( t*t * P * (1-P) )  )
+
+def get_error_margin(sample_size, confidence_level, P = 0.5, N=None):
+    t = T_Table[confidence_level]
+    if N != None:
+        return t * math.sqrt( P*(1-P)*(N-sample_size)/(sample_size * (N-1)) )
+    else:
+        return t * math.sqrt( P*(1-P) / sample_size)
+
+        
 def get_selector(f, k_httpt, k_selector_alias, enquote = False):
     v = f.getvalue(k_httpt,'')
     if v == '': return('')
@@ -275,6 +288,7 @@ try:
         for k, v  in fmodes.items():
             if k in failuremodes_alias:
                 statistic_content += '\n\t' + failuremodes_alias[k] + '_abs=\"' + str(v) + '\"'                
+                statistic_content += '\n\t' + failuremodes_alias[k] + '_err=\"' + str( '%.2f' % (100*get_error_margin(total, 0.95, v*1.0/total)) ) + '\"'
                 statistic_content += '\n\t' + failuremodes_alias[k] + '=\"' + str('%.2f' % (v*100.0/total)) + '\"'
         statistic_content += ' />'
         

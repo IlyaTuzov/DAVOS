@@ -6,7 +6,7 @@
         FaultInjection = "on"
         DecisionSupport = "on"
         report_dir = "#RUNDIR/../../../HTWEB/Test"        
-        dbfile = "LEON3_InjectionResult.db"  >
+        dbfile = "LEON3_ISE.db"  >
         
 
         <ExperimentalDesign
@@ -25,6 +25,7 @@
             
             <generic            
                 custom_parameters = "{
+                    &apos;ise_path&apos;:&apos;C:/Xilinx/14.7/ISE_DS&apos;,
                     &apos;device&apos;:&apos;xc6vcx240t-ff784-2&apos;,
                     &apos;speed_grade&apos;:&apos;2&apos;,
                     &apos;intstyle&apos;:&apos;ise&apos;,
@@ -44,7 +45,7 @@
                 clk_net = "clk"
                 rst_net = ""		                        
                 testbench_template_file = ""
-                sim_project_file = "../testbench_par.prj"
+                sim_project_file = "testbench_par.prj"
                 testbench_file = "testbench.vhd"
                 testbench_top_unit = "testbench"
                 clk_constant = "clkperiod"
@@ -55,9 +56,8 @@
                 
             />        
 
-            <ImplementationFlow name = "XilinxISE" EntryPhase = "Synthesis" >
-
             
+            <ImplementationFlow name = "XilinxISE" EntryPhase = "Synthesis" >            
                 <phase 
                     name =  "Synthesis"
                     script_builder = "XilinxISE"
@@ -164,7 +164,7 @@
                     name =  "Trace"
                     script_builder = "XilinxISE"
                     result_handler = "ProcessISEreports"
-                    next = "BuildNetlist">
+                    next = "PowerAnalysisDefault">
 
                     <Constraint
                         template_file = "./mc8051_core.ucf"
@@ -176,6 +176,12 @@
                         return_to_phase = "Translate"/>
                 </phase>    
 
+                <phase 
+                    name =  "PowerAnalysisDefault"
+                    script_builder = "XilinxISE"
+                    result_handler = "ProcessISEreports"
+                    next = "BuildNetlist">                         
+                </phase>                  
                 
                 <phase 
                     name =  "BuildNetlist"
@@ -190,32 +196,32 @@
                     name =  "SimCompile"
                     script_builder = "XilinxISE"
                     result_handler = "ProcessISEreports"
-                    next = "SimulationRun">
+                    next = "SimulateSwitchingActivity">
                   
                 </phase>       
 
                 
                 <phase 
-                    name =  "SimulationRun"
+                    name =  "SimulateSwitchingActivity"
                     script_builder = "XilinxISE"
                     result_handler = "ProcessISEreports"
-                    next = "PowerAnalysis">
+                    next = "PowerAnalysisSimulated">
                           
                 </phase>          
 
                 
                 <phase 
-                    name =  "PowerAnalysis"
+                    name =  "PowerAnalysisSimulated"
                     script_builder = "XilinxISE"
                     result_handler = "ProcessISEreports"
-                    next = "">
-                          
+                    next = "">                         
                 </phase>     
+                
             </ImplementationFlow>
             
 
             
-            <factorial_design table_of_factors = "fract_design_31_24_mini.csv" >
+            <factorial_design table_of_factors = "" resolution = "4" >
                 <!-- Synthesis Options -->
                 <factor name = "X01" option = "opt_mode" phase = "Synthesis">
                     <setting factor_value = "0" option_value = "Speed" />
@@ -623,6 +629,7 @@
     
     
     <DecisionSupport>
+    
         <DerivedMetrics>
             <DerivedMetric
                 name = "MTTF_K_21"
@@ -630,6 +637,7 @@
                 custom_arg = "{'k': 21, 'fit.x_lut': 107E-15, 'fit.x_ff': 2E-15}"
             />
         </DerivedMetrics>
+        
     </DecisionSupport>
     
     </DAVOS>

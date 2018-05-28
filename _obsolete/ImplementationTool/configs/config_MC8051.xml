@@ -62,7 +62,7 @@
 		ifn = "mc8051_core.prj"		
 		design_label = "MC8051_ISE_"
 		relative_path = "on"
-		design_dir = "../../../Projects/Controllers/Test_MC8051"
+		design_dir = "../../../Projects/Controllers/MC8051_Factorial"
 		template_dir = "./ISE_Template"
 		log_dir = "./netgen/log"
 		netlist_dir = "./netgen"
@@ -176,7 +176,7 @@
 	<!-- 
 		phase: synthesis, translate, map, par
 	-->
-	<factorial_design table_of_factors = "fract_design_31_24_mini.csv" >
+	<factorial_design table_of_factors = "Genetic_test.csv" >
 		<!-- Synthesis Options -->
 		<factor name = "X01" option = "opt_mode" phase = "synthesis">
 			<setting factor_value = "0" option_value = "Speed" />

@@ -13,7 +13,7 @@
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterId />
     <InterpreterVersion />
-    <CommandLineArguments>./testconfig/DAVOS_LEON3.xml</CommandLineArguments>
+    <CommandLineArguments>./testconfig/DAVOS_MC8051.xml</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
     <IsWindowsApplication>False</IsWindowsApplication>
   </PropertyGroup>
@@ -25,8 +25,15 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Analyzer_Iso_Grid.py" />
+    <Compile Include="ConfigParser.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Datamanager.py" />
     <Compile Include="DecisionSupport.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="DesignBuilder.py" />
+    <Compile Include="ImplementationTool.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="SBFI_Analyzer.py">
@@ -49,29 +56,65 @@
     <Compile Include="SBFI_Tool.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="SBFI_UI\dumptrace.py" />
-    <Compile Include="SBFI_UI\query.py" />
-    <Compile Include="SBFI_UI\sqlq.py" />
+    <Compile Include="RegressionModel_Manager.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="SimDumpModel.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="SupportScripts\DerivedMetrics.py" />
+    <Compile Include="SupportScripts\HDLSpecific.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="SupportScripts\VendorSpecific.py" />
+    <Compile Include="testconfig\obsolete\qtest.py" />
+    <Compile Include="UserInterface\SBFI\dumptrace.py" />
+    <Compile Include="UserInterface\SBFI\query.py" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="SBFI_UI\" />
-    <Folder Include="SBFI_UI\libs\" />
+    <Folder Include="FaultDictionaries\" />
     <Folder Include="SupportScripts\" />
+    <Folder Include="testconfig\" />
+    <Folder Include="testconfig\obsolete\" />
+    <Folder Include="UserInterface\" />
+    <Folder Include="UserInterface\IMPL\" />
+    <Folder Include="UserInterface\libs\" />
+    <Folder Include="UserInterface\SBFI\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="SBFI_UI\libs\Chart.bundle.js" />
-    <Content Include="SBFI_UI\libs\Chart.js" />
-    <Content Include="SBFI_UI\libs\chartpiecelabel.js" />
-    <Content Include="SBFI_UI\libs\d3.min.js" />
-    <Content Include="SBFI_UI\libs\jqtree.css" />
-    <Content Include="SBFI_UI\libs\jquery.min.js" />
-    <Content Include="SBFI_UI\libs\tree.jquery.js" />
-    <Content Include="SBFI_UI\markupstyle.css" />
-    <Content Include="SBFI_UI\query.html" />
-    <Content Include="SBFI_UI\xscript.js" />
+    <Content Include="FaultDictionaries\Xilinx_Simprim_VHDL.xml" />
     <Content Include="SupportScripts\factorial.m" />
     <Content Include="SupportScripts\modelsim_rtl_nodes.do" />
+    <Content Include="testconfig\DAVOS_LEON3.xml" />
+    <Content Include="testconfig\DAVOS_LEON3_normalized.xml" />
+    <Content Include="testconfig\DAVOS_MC8051.xml" />
+    <Content Include="testconfig\DAVOS_MC8051_normalized.xml" />
+    <Content Include="testconfig\fract_design_31_24.csv" />
+    <Content Include="testconfig\obsolete\factorial_MC8051.xml" />
+    <Content Include="testconfig\obsolete\LEON3_IMPL.xml" />
+    <Content Include="testconfig\obsolete\LEON3_NEW.xml" />
+    <Content Include="testconfig\obsolete\LEON3_NEW_normalized.xml" />
+    <Content Include="testconfig\obsolete\LEON3_RTL.xml" />
+    <Content Include="testconfig\obsolete\LibSpec_simprim.xml" />
+    <Content Include="testconfig\obsolete\MC8051_ALL.xml" />
+    <Content Include="testconfig\obsolete\MC8051_IMPL.xml" />
+    <Content Include="testconfig\obsolete\MC8051_RTL.xml" />
+    <Content Include="testconfig\obsolete\PIC_IMPL.xml" />
+    <Content Include="testconfig\obsolete\PIC_JOIN.xml" />
+    <Content Include="testconfig\obsolete\PIC_RTL.xml" />
+    <Content Include="UserInterface\IMPL\markupstyle.css" />
+    <Content Include="UserInterface\IMPL\Monitoring.html" />
+    <Content Include="UserInterface\IMPL\Monitoring.js" />
+    <Content Include="UserInterface\libs\Chart.bundle.js" />
+    <Content Include="UserInterface\libs\Chart.js" />
+    <Content Include="UserInterface\libs\chartpiecelabel.js" />
+    <Content Include="UserInterface\libs\d3.min.js" />
+    <Content Include="UserInterface\libs\jqtree.css" />
+    <Content Include="UserInterface\libs\jquery.min.js" />
+    <Content Include="UserInterface\libs\tree.jquery.js" />
+    <Content Include="UserInterface\SBFI\markupstyle.css" />
+    <Content Include="UserInterface\SBFI\query.html" />
+    <Content Include="UserInterface\SBFI\xscript.js" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />

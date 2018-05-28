@@ -277,6 +277,7 @@ var fmodes_lbl = $.map(options ,function(option) {
     });
 fmodes_lbl.shift();
 var fmodes_data = [25, 25, 25, 25];
+var errors = [0.1, 0.1, 0.1, 0.1];
 var fmodes_clr = [];
 for(i=0;i<fmodes_lbl.length;i++){
     if(fmodes_lbl[i].toLowerCase().indexOf('masked') != -1){fmodes_clr.push("#42f453"); }
@@ -287,31 +288,53 @@ for(i=0;i<fmodes_lbl.length;i++){
 };
 var ctx = document.getElementById('GlobalFMChart').getContext('2d');
 
-        var GlobalFMChart = new Chart(ctx, {
-          type: 'pie',
-          data: {
-            labels: fmodes_lbl,
-            datasets: [{
-              label: 'apples',
-              data: fmodes_data,
-              backgroundColor: fmodes_clr,
-            }]
-          },
-            options: {
-    pieceLabel: {
-      render: 'value',
-      precision: 0,
-      showZero: false,
-      fontSize: 12,
-      fontColor: '#000',
-      fontStyle: 'bold',
-      fontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
-      arc: false,
-      position: 'border',
-      overlap: true
-    }
-  }  
-        });
+var GlobalFMChart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+        labels: fmodes_lbl,
+        datasets: [{
+            label: 'failure_modes',
+            data: fmodes_data,
+            backgroundColor: fmodes_clr,
+        }]
+    },
+    options: {
+      
+        pieceLabel: {
+            render: function (args) { return '' + args.value + '\±'  + errors[args.index]; },
+            precision: 0,
+            showZero: false,
+            fontSize: 12,
+            fontColor: '#000',
+            fontStyle: 'bold',
+            fontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
+            arc: false,
+            position: 'border',
+            overlap: true
+        },
+      
+        tooltips: {
+            callbacks: {
+                title: function(tooltipItem, data) {
+                    return data['labels'][tooltipItem[0]['index']];
+                },
+                label: function(tooltipItem, data) {
+                    return data['datasets'][0]['data'][tooltipItem['index']] + '%';
+                },
+                afterLabel: function(tooltipItem, data) {
+                    return '±' + errors[tooltipItem['index']] + '%';
+                }
+            },
+            backgroundColor: '#FFF',
+            titleFontSize: 12,
+            titleFontColor: '#0066ff',
+            bodyFontColor: '#000',
+            bodyFontSize: 12,
+            displayColors: false
+        }
+    } 
+});
+
 
 
   var numberWithCommas = function(x) {
@@ -540,7 +563,8 @@ var treemap = d3.tree().size([height, width]);
             for (j=0;j<fmodes_lbl.length;j++) { fmodes_data.push(0); };
                  for (j=0;j<fmodes_lbl.length;j++){
                     if(SummaryTag.hasAttribute(fmodes_lbl[j])){
-                        fmodes_data[j] = parseFloat(SummaryTag.getAttribute(fmodes_lbl[j]));                    
+                        fmodes_data[j] = parseFloat(SummaryTag.getAttribute(fmodes_lbl[j]));    
+                        errors[j] = parseFloat(SummaryTag.getAttribute(fmodes_lbl[j] + '_err'));
                     }
                     else{
                         fmodes_data[j] = 0.0;

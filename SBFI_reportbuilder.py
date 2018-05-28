@@ -30,7 +30,8 @@ def build_report(config, toolconf, datamodel):
         datamodel.RestoreEntity(DataDescriptors.InjTarget)
     if not os.path.exists(config.report_dir):
         os.makedirs(config.report_dir)
-    copy_all_files(os.path.join(config.call_dir,'SBFI_UI'), config.report_dir)
+    copy_all_files(os.path.join(config.call_dir,'UserInterface/SBFI'), config.report_dir)
+    copy_all_files(os.path.join(config.call_dir,'UserInterface/libs'), os.path.join(config.report_dir, 'libs'))
     shutil.copy(os.path.join(config.call_dir, config.file), os.path.join(config.report_dir, 'config.xml'))
     build_querypage(config, toolconf, datamodel)
     compute_stat(config, toolconf, datamodel)

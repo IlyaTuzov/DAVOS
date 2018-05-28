@@ -26,7 +26,7 @@ from ast import literal_eval as make_tuple
 
 def DeriveMTTF(injectionstat, implprop, custom_arg):
     if injectionstat == None or implprop == None:
-        return(0)
+        return(None)
     sdc = dict()    
     for cell, cell_stat in injectionstat.iteritems():
         sdc[cell]= float(0)
@@ -46,7 +46,7 @@ def DeriveMTTF(injectionstat, implprop, custom_arg):
 
 def DeriveSdcIndex(injectionstat, implprop, custom_arg):
     if injectionstat == None or implprop == None:
-        return(0)
+        return(None)
     sdc = dict()    
     for cell, cell_stat in injectionstat.iteritems():
         sdc[cell]= float(0)

@@ -8,7 +8,7 @@ Ntrials = 3;
 while 1 == 1
     try
         disp(['Trying ', num2str(Ntrials), ' items for resolution ', num2str(Resolution)]);
-        generators = fracfactgen(factors, Ntrials, 3);
+        generators = fracfactgen(factors, Ntrials, Resolution);
         break;
     catch Err
         Ntrials = Ntrials + 1;

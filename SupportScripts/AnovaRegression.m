@@ -3,13 +3,13 @@ set(0,'DefaultFigureVisible','off');
 %specify the type of generalized model: linear, interactions, quadratic, etc.
 model_type = 'interactions';
 %specify input data tables and output folder
-inpfile = 'C:/HTWEB/Test/DecisionSupport/LEON3_31_24_IV.csv';
-resfolder = 'C:/HTWEB/Test/RegressionModels/';
+inpfile = #INPFILE;
+resfolder = #RESFOLDER;
 %adjust the set of factors and responce variables (in accordance with csv)
-FullFactorSet = {'X01','X02','X03','X04','X05','X06','X07','X08','X09','X10','X11','X12','X13','X14','X15','X16','X17','X18','X19','X20','X21','X23','X24','X25','X27','X28','X29','X30','X31','X32','X33'};
-ResponseVariableArray={'MAX_FREQUENCY','POWER_DYNAMIC','UTIL_FF','UTIL_LUT','UTIL_SLICE','UTIL_RAMB','UTIL_DSP'};
+FullFactorSet = #FACTORLABELS;
+ResponseVariableArray= #RESPONSEVARIABLELABELS;
 %define distribution type for each variable: continuous or discrete
-ResponceVarType = {'continuous','continuous','discrete','discrete','discrete','discrete','discrete'};
+ResponceVarType = #RESPONSEVARIABLETYPES;
 DistributionContinuous = {'normal', 'gamma', 'inverse gaussian'};
 DistributionDiscrete = {'poisson'};
 %significance theshold for ANOVA
@@ -62,12 +62,13 @@ rsquared_treshold = double(0.9);
     %            if(Models{x}.Rsquared.Adjusted < rsquared_treshold)
     %                Models{x} = stepwiseglm(z_data,'interactions','ResponseVar',ResponseVariableArray{x},'CategoricalVars',Factors,'Distribution',DistributionContinuous{ds});                
     %            end
-                ident = strcat(ResponseVariableArray{x},'_',DistributionContinuous{ds});
-                fname = strcat('RegressionModel=(',ResponseVariableArray{x},')(',DistributionContinuous{ds},').csv');
+                dist_lbl = strrep(DistributionContinuous{ds}, ' ', '');
+                ident = strcat(ResponseVariableArray{x},'_',dist_lbl);
+                fname = strcat('RegressionModel=(',ResponseVariableArray{x},')(',dist_lbl,').csv');
                 resfile = strcat(resfolder,fname);
                 writetable(Models{x}.Coefficients,resfile,'WriteRowNames',true);
-                data_desc = strcat(data_desc, '\n\t\t<responce_variable name = "', ident,'"\t\tdistribution="',DistributionContinuous{ds},'"\t\tfile="',resfile,'"\t\tvalue_treshold = "0.00000001" />' ); 
-                summary = strcat(summary, '\n\n\t<Model \n\t\tVariable="', Models{x}.ResponseName,'"\n\t\tDistribution="', DistributionContinuous{ds},'"\n\t\tSignificant_Factors="');
+                data_desc = strcat(data_desc, '\n\t\t<responce_variable name = "', ident,'"\t\tdistribution="',dist_lbl,'"\t\tfile="',resfile,'"\t\tvalue_treshold = "0.00000001" />' ); 
+                summary = strcat(summary, '\n\n\t<Model \n\t\tVariable="', Models{x}.ResponseName,'"\n\t\tDistribution="', dist_lbl,'"\n\t\tSignificant_Factors="');
                 for j=1:FactNum
                     summary = [summary, Factors{j},' '];
                 end

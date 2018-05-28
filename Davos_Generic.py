@@ -151,6 +151,23 @@ def resolve_path(root_path, dest_path):
     res = os.path.normpath(os.path.join(root_path, dest_path)) if dest_path.find(':') < 0 else os.path.normpath(dest_path)
     return(res)
 
+
+def get_relative_path(src, dst):
+    dif = os.path.commonprefix([src,dst])
+    res = dst
+    if dif != '':
+        if dst.startswith(dif):
+            res = dst[len(dif):]
+    return(res)
+
+
+def cleanup_path(path):
+    res = path.replace('\\','/')
+    res = re.sub('^[\\\\/]*','',res)
+    return(res)
+
+
+
 def zip_folder(root_path, folder_name):
     os.chdir(root_path)
     print 'Entering folder: ' + root_path
@@ -184,6 +201,8 @@ def remove_delimiters(iline, delimiters=('_','.','/','(',')',':','','[',']')):
 
 def copy_all_files(src, dst):
     src_path = os.listdir(src)
+    if not os.path.exists(dst):
+        os.makedirs(dst)
     for path in src_path:
          full_src_name = os.path.join(src, path)
          if (os.path.isfile(full_src_name)):
@@ -399,34 +418,42 @@ class Table:
             print("Table: "+self.name + " : put data: " + str(data) + " : Column index " + str(col) + " not defined")
         return("")    
     
+    def getByLabel(self, lbl, row):
+        for l_i in range(len(self.labels)):
+            if self.labels[l_i] == lbl:
+                return(self.get(row, l_i))
+        return(None)
     
-    def to_csv(self):
-        res = "sep=;\n"
-        for l in self.labels:
-            res += l+";"
+    def to_csv(self, sep=';', exportheader=True):
+        res = ''
+        if exportheader: res += "sep={0}\n".format(sep)
+        res += sep.join([l for l in self.labels])
         nc = len(self.columns)
         nr = len(self.columns[0])
         for r in range(0, nr, 1):
-            res+="\n"
-            for c in range(0, nc, 1):
-                res+=str(self.get(r,c))+";"
+            res+="\n{0}".format(sep.join([str(self.get(r,c)) for c in range(0, nc, 1)]))
         return(res)
     
     def snormalize(self, ist):
-        if(ist[-1]=="\r" or ist[-1]=="\n"):
+        if(ist[-1]=="\r" or ist[-1]=="\n" or ist[-1]==""):
             del ist[-1]
         return ist
     
     def build_from_csv(self, fname):
-        fdesc = open(fname, 'r')
-        content = fdesc.read()
-        fdesc.close()
-        lines = string.split(content,'\n')
-        itemsep = re.findall("sep\s*?=\s*?([;,]+)", lines[0])[0]
-        labels = self.snormalize(lines[1].split(itemsep))
+        with open(fname, 'r') as fdesc:
+            content = fdesc.read()
+        lines = content.split('\n')
+        t = re.findall("sep\s*?=\s*?([;,]+)", lines[0])
+        if len(t) == 0:
+            itemsep = ','
+            firstlineindex = 0
+        else:
+            itemsep = t[0]
+            firstlineindex = 1
+        labels = self.snormalize(lines[firstlineindex].split(itemsep))
         for l in labels:
             self.add_column(l)
-        for i in range(2, len(lines), 1):
+        for i in range(firstlineindex+1, len(lines), 1):
             c = self.snormalize(lines[i].split(itemsep))
             self.add_row(c)
     
@@ -1278,3 +1305,106 @@ class TrapDescriptionTable:
 
 
 
+
+            
+    
+#Data structure to interact with nested process and to export the statistics to external user interface
+class ProcStatus(object):
+    def __init__(self, tag = 'Noname'):
+        self.data = dict()
+        self.tag = tag
+        self.changed = True
+
+    def copy(self, src):
+        for key, value in list(src.data.items()):
+             self.data[key] = value
+        self.tag = src.tag
+        self.changed = src.changed
+
+    def update(self, key, message, descriptor):
+        self.data[key] = (message, descriptor)
+        self.changed = True
+
+    def get(self, key):
+        if key in self.data:
+            return(self.data[key])
+        return(None)        
+
+    def get_message_dict_by_descriptor(self, descriptor):
+        res = dict()
+        for key, value in self.data.iteritems():
+            if len(value) > 1:
+                if value[1] == descriptor:
+                    res[key] = value[0]
+        return(res)
+
+    def set_mark(self, inmark):
+        self.changed = inmark
+
+    def get_mark(self):
+        return(self.changed)
+
+    def clear(self, keylist, message='-', descriptor=''):
+        for key in keylist:
+            self.update(key, message, descriptor)
+                
+    def to_str(self):
+        res = ""
+        for key, value in list(self.data.items()):
+            res += str(key) + ' : ' + str(value) + ', '
+        return(res)
+    
+    def to_xml(self):
+        res = '<' + self.tag + ' '
+        for key, value in list(self.data.items()):
+            res += '\n\t' +str(key) + ' = \"'
+            if len(value) > 1: 
+                res += '{0}${1}'.format(str(value[0]),str(value[1])) + '\" '
+            else:
+                res += '{0}'.format(str(value[0])) + '\" '
+        res += ' >'
+        res += '\n</' + self.tag + '>'
+        return(res)
+    
+    def from_xml(self, xmlroot, tag, key, val):
+        for i in xmlroot.findall(tag):
+            if i.get(key, '').split('$')[0] == val:
+                for aname, avalue in i.attrib.items():
+                    c = avalue.split('$')
+                    if len(c) > 1: 
+                        self.data[aname] = (c[0], c[1])
+                    else:
+                        self.data[aname] = (c[0], '')
+                self.tag = tag
+                break
+
+
+
+def save_statistics(statlist, statfile):
+    res = '<?xml version=\"1.0\"?>\n<data>'
+    for i in statlist:
+        res += '\n\n' + i.to_xml()
+    res += '\n</data>'
+    with open(statfile, 'w') as f:
+        f.write(res)
+    #minimized stat file - export only changed items
+    res = '<?xml version=\"1.0\"?>\n<data>'
+    for i in statlist:
+        if i.get_mark():
+            res += '\n\n' + i.to_xml()
+            i.set_mark(False)
+    res += '\n</data>'
+    with open(statfile.replace('.xml','_min.xml'), 'w') as f:
+        f.write(res)
+
+
+def typed(istring):
+    if istring.isdigit():
+        return(int(istring))
+    try: 
+        return(float(istring))
+    except ValueError:
+        return(str(istring))
+
+def unixstyle_path(path):
+    return(path.replace('\\','/'))
