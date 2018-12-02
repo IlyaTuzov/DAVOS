@@ -14,6 +14,7 @@ while 1 == 1
         Ntrials = Ntrials + 1;
     end  
 end
+generators = fracfactgen(factors, Ntrials+1, Resolution);
 [dff, confounding] = fracfact(generators);
 writetable(cell2table(num2cell(dff), 'VariableNames', aliases), filename, 'WriteRowNames', true);
 fullsize = size(aliases);

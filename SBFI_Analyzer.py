@@ -21,6 +21,8 @@ from Davos_Generic import *
 from Datamanager import *
 
 
+
+
 def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseindex):
     #model = datamodel.HdlModel_dict[conf.label]
     model = datamodel.GetHdlModel(conf.label)
@@ -162,7 +164,8 @@ def process_dumps(config, toolconf, conf, datamodel):
     datamodel.SaveTargets()
     datamodel.SaveInjections()
 
-    arc_script = toolconf.archive_tool_script + " RESPACK_" + conf.label + " " + "irespack"   +  " " + toolconf.list_init_file  + " > ziplog.log"
+    dumppack = "RESPACK_{0}.zip".format(conf.label)
+    arc_script = toolconf.archive_tool_script + " " + dumppack + " " + "irespack"   +  " " + toolconf.list_init_file  + " > ziplog.log"
     os.chdir(conf.work_dir)
     print "Compressing results: " + arc_script
     proc = subprocess.Popen(arc_script, shell=True)
@@ -173,6 +176,8 @@ def process_dumps(config, toolconf, conf, datamodel):
         time.sleep(5)
         ziptime += 5
     shutil.rmtree(packdir)
-    
+    if os.path.exists(os.path.join(conf.work_dir, dumppack)):
+        shutil.move(os.path.join(conf.work_dir, dumppack), os.path.join(config.report_dir, dumppack))
+        
     datamodel.LaunchedInjExp_dict.clear()    
     print('\n\nAnalysys completed, time taken: ' + str(time_to_seconds(datetime.datetime.now().replace(microsecond=0) - timestart)))

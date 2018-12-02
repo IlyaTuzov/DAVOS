@@ -24,6 +24,7 @@ def execute_injection_scripts(config, toolconf, conf):
         execute_injection_scripts_Multicore(config, toolconf, conf)
 
 
+
 def execute_injection_scripts_SGE(config, toolconf, conf):
     task_run_at = 0
     time_start = datetime.datetime.now().replace(microsecond=0)
@@ -260,8 +261,8 @@ def execute_injection_scripts_Multicore(config, toolconf, conf):
     proclist = []        
     time_start = datetime.datetime.now().replace(microsecond=0)    
     
+    TME_Start = time.time()
     if config.injector.checkpont_mode == CheckpointModes.ColdRestore:        
-        TME_Start = time.time()
         for ind in range(conf.start_from, tasksize, 1):
             print '\nRemaining time: {0:.2f} minutes'.format(((float(time.time()) - float(TME_Start))*(float(tasksize-ind)/float(ind+1))/float(60)))
             checkpoint = re.findall("checkpoint_[0-9]+", checked_list[ind])[0] + ".sim"
@@ -329,11 +330,15 @@ def execute_injection_scripts_Multicore(config, toolconf, conf):
             proclist.append(proc)
             print 'Runned: ' + script_file                                     
     while get_active_proc_number(proclist) > 0:
-        print "active proc: " + str(get_active_proc_indexes(proclist))
+        tracenum = len(os.listdir(os.path.join(conf.work_dir, toolconf.result_dir)))-2
+        console_message("Running Processes: {0}, Traces stored: {1}/{2}, Remaining time: {3:.2f} minutes\r".format(len(get_active_proc_indexes(proclist)), tracenum, tasksize, (float(time.time()) - float(TME_Start))*(float(tasksize-tracenum)/float(tracenum+1))/float(60)), ConsoleColors.Green, True)
         time.sleep(5)   
     time_stop = datetime.datetime.now().replace(microsecond=0)
     time_taken = time_stop - time_start
-    print "\tTIME TAKEN: " + str(time_taken)
+    print "\n\tTIME TAKEN: " + str(time_taken)
     os.chdir(conf.work_dir)
     for w in glob.glob('wlft*'):
-        os.remove(w)
+        try:
+            os.remove(w)
+        except:
+            pass

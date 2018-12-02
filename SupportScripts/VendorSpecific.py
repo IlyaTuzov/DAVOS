@@ -23,7 +23,12 @@ def get_option_setting(phase, factorial_setting):
         for f in factorial_setting:
             if phase.name == f.Phase and c.name == f.OptionName:
                 res[f.OptionName] = f.OptionVal
-    return(res)
+    res_min = []
+    for f in factorial_setting:
+        if phase.name == f.Phase:
+            res_min.append([f.OptionName, f.OptionVal, f.FactorName])
+
+    return(res, res_min)
 
 
 def option_to_str(key, val):
@@ -80,7 +85,14 @@ def XilinxIseBuildScript(phase, config, model):
     elif phase.name == 'Map':
         phase.resultfiles.append('{0}_map.ncd'.format(customparam['top_design_unit']))
         phase.reportfile = '{0}_map.mrp'.format(customparam['top_design_unit'])
-        res = "map -intstyle {0} {1} -o {2}_map.ncd {3}.ngd {4}.pcf > {5}".format(
+        if not 'ise_path' in customparam:
+            tool = 'map'
+        else:
+            if platform == 'linux' or platform == 'linux2':
+                tool = os.path.join(customparam['ise_path'], 'ISE/bin/lin64/map')
+            elif platform == 'win32' or platform == 'win64' or platform =='cygwin':
+                tool = os.path.join(customparam['ise_path'], 'ISE/bin/nt64/map.exe')
+        res = tool + " -intstyle {0} {1} -o {2}_map.ncd {3}.ngd {4}.pcf > {5}".format(
             customparam['intstyle'], 
             ' '.join([option_to_str(k,v) for k,v in setting.iteritems()]), 
             customparam['top_design_unit'], 
@@ -91,8 +103,15 @@ def XilinxIseBuildScript(phase, config, model):
     elif phase.name == 'Par':
         phase.resultfiles.append('{0}.ncd'.format(customparam['top_design_unit']))
         phase.reportfile = '{0}.par'.format(customparam['top_design_unit'])
+        if not 'ise_path' in customparam:
+            tool = 'par'
+        else:
+            if platform == 'linux' or platform == 'linux2':
+                tool = os.path.join(customparam['ise_path'], 'ISE/bin/lin64/par')
+            elif platform == 'win32' or platform == 'win64' or platform =='cygwin':
+                tool = os.path.join(customparam['ise_path'], 'ISE/bin/nt64/par.exe')
         res = "{0} -intstyle {1} {2} {3}_map.ncd {4}.ncd {5}.pcf > {6}".format( 
-            ('par' if not 'ise_path' in customparam else os.path.join(customparam['ise_path'], 'ISE/bin/nt64/par.exe' )) + ' -w ', 
+            tool + ' -w ', 
             customparam['intstyle'], 
             ' '.join([option_to_str(k,v) for k,v in setting.iteritems()]), 
             customparam['top_design_unit'], 
@@ -122,7 +141,10 @@ def XilinxIseBuildScript(phase, config, model):
     elif phase.name == 'SimCompile':
         HDLSpecific.configure_testbench_vhdl(config, model)
         #Compile simulation file
-        customparam['simexecutable'] = '{0}.exe'.format(customparam['top_design_unit'])
+        if platform == 'linux' or platform == 'linux2':
+            customparam['simexecutable'] = '{0}_simexec'.format(customparam['top_design_unit'])
+        elif platform == 'win32' or platform == 'win64' or platform =='cygwin':
+            customparam['simexecutable'] = '{0}.exe'.format(customparam['top_design_unit'])
         res = "fuse -intstyle {0}  -mt off -incremental -lib simprims_ver -lib unisims_ver -lib unimacro_ver -lib xilinxcorelib_ver -lib secureip -o ./{1}  -prj ./{2}  work.{3} > {4}".format(
             customparam['intstyle'], 
             customparam['simexecutable'], 
@@ -152,8 +174,8 @@ def XilinxIseBuildScript(phase, config, model):
             res += " -gui"
             if config.design_genconf.custom_parameters['waveform_file'] != "":
                 res += " -view " + config.design_genconf.custom_parameters['waveform_file']
-        res += " -tclbatch ./" + customparam['simcmd']
-        res += " -wdb ./testbench_isim_par.wdb"
+        res += " -tclbatch ./" + customparam['simcmd']        
+        res += " -wdb {0}.wdb".format(model.Label)
         res += " > " +  config.design_genconf.log_dir+'/'+phase.logfile
 
     elif phase.name == 'PowerAnalysisSimulated':
@@ -186,6 +208,8 @@ def XilinxCheckPostcondition(phase, config, model):
                     err_num = int(match[0])
                     if err_num > 0:
                         return(False)
+        else:
+            return(False)
     #check the log file for errors (ERROR: keyword)
     if os.path.isfile(os.path.abspath(os.path.join(config.design_genconf.log_dir, phase.logfile))):
         with open(os.path.abspath(os.path.join(config.design_genconf.log_dir, phase.logfile)), 'r') as f:
@@ -201,12 +225,30 @@ def XilinxCheckPostcondition(phase, config, model):
 def XilinxCheckTimingSatisfied(phase, config, model):
     for p in config.flow.get_phase_chain():
         if p.name.lower() == 'trace':
-            with open(phase.reportfile, 'r') as f:
-                content = f.read()
-            if content.find("All constraints were met") >= 0:
-                return(True)
+            if os.path.isfile(phase.reportfile):
+                with open(phase.reportfile, 'r') as f:
+                    content = f.read()
+                if content.find("All constraints were met") >= 0:
+                    return(True)
+                else:
+                    return(False)
             else:
                 return(False)
+
+
+def VivadoCheckTimingSatisfied(phase, config, model):
+    for p in config.flow.get_phase_chain():
+        if p.name == 'Implementation':
+            if os.path.isfile(phase.reportfile):
+                with open(phase.reportfile, 'r') as f:
+                    content = f.read()
+                if content.find("All user specified timing constraints are met") >= 0:
+                    return(True)
+                else:
+                    return(False)
+            else:
+                return(False)
+
 
 
 def GetClockPeriod(config, model):
@@ -268,3 +310,73 @@ def XilinxIseRetrieveResults(phase, config, model):
             return(res)
     return(res)
 
+
+
+
+
+def VivadoBuildScript(phase, config, model):
+    customparam = config.design_genconf.custom_parameters
+    setting, setting_min = get_option_setting(phase, model.Factors)
+
+    if phase.name == 'Synthesis':
+        with open(os.path.join(config.design_genconf.design_dir, config.design_genconf.template_dir, config.design_genconf.custom_parameters['SynthesisScriptTemplate']), 'r') as f:
+            script = f.read()
+        script = script.replace(phase.constraints_to_export[0].placeholder, str(phase.constraints_to_export[0].current_value))
+        options = []
+        #for i in sorted(setting.keys()):
+        #    options.append("set_property -name \"{0}\" -value \"{1}\" -objects $obj".format(str(i), str(setting[i])))
+        for i in setting_min:
+            options.append("catch {{set_property -name \"{0}\" -value \"{1}\" -objects $obj}} err".format(str(i[0]), str(i[1])))
+        script = script.replace('#SETTING', '\n'.join(options))
+        with open(config.design_genconf.custom_parameters['SynthesisScriptTemplate'], 'w') as f: 
+            f.write(script)
+        res = 'vivado -mode batch -source {0} > {1}'.format(config.design_genconf.custom_parameters['SynthesisScriptTemplate'], config.design_genconf.log_dir+'/'+phase.logfile)
+
+    if phase.name == 'Implementation':
+        phase.resultfiles.append('timing.log')
+        phase.resultfiles.append('utilization.log')
+        phase.reportfile = phase.resultfiles[0]
+        with open(os.path.join(config.design_genconf.design_dir, config.design_genconf.template_dir, config.design_genconf.custom_parameters['ImplementationScriptTemplate']), 'r') as f:
+            script = f.read()
+        options = []
+        #for i in sorted(setting.keys()):
+        #    options.append("set_property -name \"{0}\" -value \"{1}\" -objects $obj".format(str(i), str(setting[i])))
+        for i in setting_min:
+            options.append("catch {{set_property -name \"{0}\" -value \"{1}\" -objects $obj}} err".format(str(i[0]), str(i[1])))
+        script = script.replace('#SETTING', '\n'.join(options))
+        script += '\nreport_timing_summary -file {0}'.format(phase.resultfiles[0])
+        script += '\nreport_utilization -file {0}\n'.format(phase.resultfiles[1])
+        with open(config.design_genconf.custom_parameters['ImplementationScriptTemplate'], 'w') as f: 
+            f.write(script)
+        res = 'vivado -mode batch -source {0} > {1}'.format(config.design_genconf.custom_parameters['ImplementationScriptTemplate'], config.design_genconf.log_dir+'/'+phase.logfile)
+
+    if phase.name == 'GenBitstream':
+        res = 'vivado -mode batch -source {0} > {1}'.format(config.design_genconf.custom_parameters['GenBitstreamScriptTemplate'], config.design_genconf.log_dir+'/'+phase.logfile)
+
+
+    return(res)
+
+
+
+def VivadoRetrieveResults(phase, config, model):
+    res = dict()
+    try:
+        if phase.name == 'Implementation':
+            if phase.resultfiles[0] != '' and os.path.isfile(phase.resultfiles[0]):
+                with open(phase.resultfiles[0], 'r') as f:
+                    content = f.read()
+                    match = re.findall('Clock\s*Summary.*?{.*}\s*([0-9]+.?[0-9]*)\s*?([0-9]+.?[0-9]*)', content, re.DOTALL)[0]
+                    res['CLK_PERIOD'] = float(match[0])
+                    res['FREQUENCY'] = float(match[1])
+
+            if phase.resultfiles[1] != '' and os.path.isfile(phase.resultfiles[1]):
+                with open(phase.resultfiles[1], 'r') as f:
+                    content = f.read()
+                    res['UTIL_LUT'] = int(re.findall("Slice LUTs.*?([0-9]+)", content)[0])
+                    res['UTIL_FF'] = int(re.findall("Slice Registers.*?([0-9]+)", content)[0])
+                    res['UTIL_BRAM'] = float(re.findall("Block RAM Tile.*?([0-9]+\.?[0-9]*)", content)[0])
+                    res['UTIL_DSP'] = float(re.findall("DSPs.*?([0-9]+)", content)[0])
+    except:
+        print 'VivadoRetrieveResults error: ' + str(sys.exc_info())
+        return(res)
+    return(res)

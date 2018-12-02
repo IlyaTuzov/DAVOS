@@ -47,11 +47,11 @@ def create_factorial_configurations(datamodel, config):
             matlabscript = matlabscript.replace('#RESOLUTION', str(config.factorial_config.resolution))
             generated_table_of_factors = os.path.normpath(os.path.join(config.call_dir, config.design_genconf.design_dir, 'FactorConfig_{0}.csv'.format(config.design_genconf.design_label)))
             matlabscript = matlabscript.replace('#FILENAME', '\''+generated_table_of_factors+'\'')
-            script_fname = os.path.normpath(os.path.join(config.call_dir, config.design_genconf.design_dir, 'ParConfGen.m'))            
+            script_fname = os.path.abspath(os.path.join(config.design_genconf.design_dir, 'ParConfGen.m'))            
             with open(script_fname, 'w') as file:
                 file.write(matlabscript)            
             shellcmd = 'matlab.exe -nosplash -nodesktop -minimize -r \"cd {0}; run (\'{1}\'); quit\"'.format( os.path.normpath(os.path.join(config.call_dir, config.design_genconf.design_dir)), 'ParConfGen.m' )
-            os.remove(generated_table_of_factors)
+            if os.path.exists(generated_table_of_factors): os.remove(generated_table_of_factors)
             proc = subprocess.Popen(shellcmd, shell=True)
             proc.wait()
             while not os.path.exists(generated_table_of_factors):
@@ -96,12 +96,6 @@ def create_factorial_configurations(datamodel, config):
 
 
 
-
-
-
-
-
-
 #Entry point for the parent process
 if __name__ == '__main__':           
     call_dir = os.getcwd()
@@ -111,18 +105,20 @@ if __name__ == '__main__':
     tree = xml_conf.getroot()
     davosconf = DavosConfiguration(tree.findall('DAVOS')[0])
     config = davosconf.ExperimentalDesignConfig
+    config.ConfigFile = normconfig
     datamodel = DataModel()
     datamodel.ConnectDatabase( davosconf.get_DBfilepath(False), davosconf.get_DBfilepath(True) )
     datamodel.RestoreHDLModels(None)
 
     #1. Build or Read factorial configurations
     existing_models, new_models  = create_factorial_configurations(datamodel, config)
+    console_message('Already implemented (from database): {0}, To be implemented (new): {1}'.format(len(existing_models), len(new_models)), ConsoleColors.Green)
+    if davosconf.platform == Platforms.Multicore:
+        ImplementationTool.implement_models_multicore(config, new_models)
+    else:
+        ImplementationTool.implement_models_Grid(config, new_models)
 
-    #
-    ImplementationTool.implement_models_multicore(config, new_models)
-
-
-
-
+    with open(os.path.join(config.design_genconf.tool_log_dir, 'SUMMARY.xml'), 'w') as f: 
+        f.write('<?xml version="1.0"?>\n<data>\n{0}\n</data>'.format('\n\n'.join([m.log_xml() for m in (existing_models + new_models) ])))
 
     datamodel.SaveHdlModels()

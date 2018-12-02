@@ -449,6 +449,7 @@ class SBFIConfiguration:
     def __init__(self, xnode):
         self.call_dir = os.getcwd()
         self.file = ''
+        self.ConfigFile = ''
         self.platform = Platforms.Multicore
         self.report_dir = ''
         self.dbfile = ''
@@ -480,10 +481,6 @@ class SBFIConfiguration:
 
 
     def build_from_xml(self, xnode):
-        v = xnode.get('platform', 'multicore').lower()
-        if v == 'multicore': self.platform = Platforms.Multicore
-        elif v == 'grid': self.platform = Platforms.Grid
-        elif v == 'gridlight': self.platform = Platforms.GridLight
         self.initializer_phase = True if xnode.get('initializer_phase', '') == 'on' else False
         self.profiler_phase = True if xnode.get('profiler_phase', '') == 'on' else False
         self.injector_phase = True if xnode.get('injector_phase', '') == 'on' else False
@@ -506,6 +503,8 @@ class SBFIConfiguration:
 class ExperiementalDesignConfiguration:
     def __init__(self, xnode):
         self.call_dir = os.getcwd()
+        self.platform = Platforms.Multicore
+        self.ConfigFile = ''
         self.max_proc = int(1)
         self.retry_attempts = int(2)
         self.overwrite_existing = True
@@ -560,9 +559,9 @@ class ExperimentalDesignGenerics:
         self.testbench_top_unit = xnode.get('testbench_top_unit','')
         self.clk_constant = xnode.get('clk_constant','')
         self.uut_root = xnode.get('uut_root','')
-        self.std_start_time = float(xnode.get('std_start_time',''))
-        self.std_observation_time = float(xnode.get('std_observation_time',''))
-        self.std_clock_period = float(xnode.get('std_clock_period',''))
+        self.std_start_time = float(xnode.get('std_start_time','0'))
+        self.std_observation_time = float(xnode.get('std_observation_time','0'))
+        self.std_clock_period = float(xnode.get('std_clock_period','0'))
         self.constraint_file = xnode.get('constraint_file','')
         cp = xnode.get('custom_parameters','')
         if cp != '':
@@ -583,7 +582,7 @@ class FactorialDesignConfig:
 
     def build_from_xml(self, xnode):
         self.table_of_factors = xnode.get('table_of_factors','')
-        self.resolution = int(xnode.get('resolution','0'))
+        self.resolution = 0 if xnode.get('resolution')=='' else int(xnode.get('resolution'))
         for i in xnode.findall('factor'):
             self.factors.append(IFactor(i))
 
@@ -611,7 +610,7 @@ class IFactor:
             self.option_name = tag.get('option', '')
             self.phase_name = tag.get('phase', '')
             for i in tag.findall('setting'):
-                self.setting[i.get('factor_value')] = i.get('option_value')
+                self.setting[int(i.get('factor_value'))] = i.get('option_value')
 
 
 
@@ -807,6 +806,7 @@ class DecisionSupportConfiguration:
 class DavosConfiguration:
     def __init__(self, xnode):
         self.call_dir = os.getcwd()
+        self.platform = Platforms.Multicore
         self.DesignBuilder = False
         self.FaultInjection = False
         self.DecisionSupport = False
@@ -819,8 +819,15 @@ class DavosConfiguration:
             self.build_from_xml(xnode)
         self.FaultInjectionConfig.report_dir = self.report_dir
         self.FaultInjectionConfig.dbfile = self.dbfile
+        self.FaultInjectionConfig.platform = self.platform
+        self.ExperimentalDesignConfig.platform = self.platform
+        self.ConfigFile = ''
 
     def build_from_xml(self, xnode):
+        v = xnode.get('platform', 'multicore').lower()
+        if v == 'multicore': self.platform = Platforms.Multicore
+        elif v == 'grid': self.platform = Platforms.Grid
+        elif v == 'gridlight': self.platform = Platforms.GridLight
         self.DesignBuilder = True if xnode.get('DesignBuilder', '') == 'on' else False
         self.FaultInjection = True if xnode.get('FaultInjection', '') == 'on' else False
         self.DecisionSupport = True if xnode.get('DecisionSupport', '') == 'on' else False

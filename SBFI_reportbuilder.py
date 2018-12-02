@@ -107,7 +107,10 @@ def compute_stat(config, toolconf, datamodel):
                             latency += float(val[0][1])
                 if len(fmodestat.keys()) > 0:
                     keys = fmodestat.keys()
-                    fmodestat['Latency'] = latency / (fmodestat['Abs_C'] + fmodestat['Abs_S'])
+                    abs_failures = 0
+                    if 'Abs_C' in fmodestat: abs_failures += fmodestat['Abs_C']
+                    if 'Abs_S' in fmodestat: abs_failures += fmodestat['Abs_S']
+                    fmodestat['Latency'] = 0 if abs_failures == 0 else (latency / abs_failures)
                     fmodestat['Latency_Rel'] = fmodestat['Latency'] / hm.Metrics['ClockPeriod']
                     for k in keys:                        
                         fmodestat[k.replace('Abs','Rate')]=100.0*fmodestat[k]/total
@@ -159,7 +162,10 @@ def build_summary_page(config, toolconf, datamodel):
                     latency += float(val[0][1])
             if len(injection_stat.keys()) > 0:
                 keys = injection_stat.keys()
-                injection_stat['Latency'] = latency / (injection_stat['Abs_C'] + injection_stat['Abs_S'])
+                abs_failures = 0
+                if 'Abs_C' in injection_stat: abs_failures += injection_stat['Abs_C']
+                if 'Abs_S' in injection_stat: abs_failures += injection_stat['Abs_S']
+                injection_stat['Latency'] = 0 if abs_failures == 0 else (latency / abs_failures)
                 injection_stat['Latency_Rel'] = injection_stat['Latency'] / hm.Metrics['ClockPeriod']
                 for k in keys:                        
                     injection_stat[k.replace('Abs','Rate')]=100.0*injection_stat[k]/total

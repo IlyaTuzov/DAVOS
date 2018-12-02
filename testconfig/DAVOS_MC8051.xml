@@ -5,7 +5,7 @@
         DesignBuilder = "off"
         FaultInjection = "on"
         DecisionSupport = "on"
-        report_dir = "#RUNDIR/../../../HTWEB/Test"        
+        report_dir = "#RUNDIR/../../HTWEB/DEMO"        
         dbfile = "MC8051_ISE.db"  >
         
 
@@ -400,7 +400,7 @@
         -->
         <FaultInjection
             platform = "Multicore"
-            initializer_phase = "off"    
+            initializer_phase = "on"    
             profiler_phase = "off"
             injector_phase = "off"
             reportbuilder_phase = "on"    
@@ -412,10 +412,10 @@
                 library_specification: leave it blank if design_type = RTL
             -->
             <Generic
-                design_type = "NETLIST"
+                design_type = "RTL"
                 library_specification = "./FaultDictionaries/Xilinx_Simprim_VHDL.xml"
-                compile_script = "../par_compile.do"
-                run_script = "../par_run.do"	
+                compile_script = "../rtl_compile.do"
+                run_script = "../rtl_run.do"	
                 std_clk_period = "19.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
@@ -458,10 +458,10 @@
 
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
-                    checkpont_mode = "ColdRestore"
+                    checkpont_mode = "WarmRestore"
                     maxproc = "8"
                     workload_split_factor = "10"			
-                    campaign_label = "MC8051_IMPL"		
+                    campaign_label = "MC8051_RTL"		
                     cleanup_folders="off"
                     compile_project = "off"
                     create_scripts="off"
@@ -489,14 +489,14 @@
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
                 <fault_model
                     model = "bit_flip"
-                    target_logic = "X_FF, X_SFF, X_FDD"
+                    target_logic = "SIGNAL"
                     faults_per_target = "1"
                     time_mode = "Relative"
                     injection_time_start = "0.0"            
                     injection_time_end = "1.0"
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
-                    sample_size = "38500"
+                    sample_size = "1000"
                     rand_seed	= "2"					
                 />	
         
@@ -504,7 +504,7 @@
                 
 
             <Analyzer
-                report_dir = "#RUNDIR/../../../HTWEB/Test"
+                report_dir = "#RUNDIR/../../HTWEB/DEMO"
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
                 error_flag_signal = ""
@@ -538,14 +538,14 @@
                 split_by_logic_type = ""	
                 split_by_profiled_value = ""	
                 memory_saving_mode = "on"
-                default_logic_type = "X_FF" 
+                default_logic_type = "SIGNAL" 
              />       
 
             
             
             <config
-                work_dir = "../../../Projects/Controllers/MC8051_Factorial/MC8051_ISE_000"
-                label = "MC8051_ISE_000"
+                work_dir = "../../Projects/Controllers/MC8051/MC8051_RTL"
+                label = "MC8051_RTL"
                 compile_options = ""
                 run_options = ""
                 clk_period = "16.0"

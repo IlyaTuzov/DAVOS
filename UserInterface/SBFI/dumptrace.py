@@ -1,9 +1,4 @@
-# A standalone script to trace the observation trace, launched from Web-based report 
-# Invocation format: dumptrace.py?config={model_label}&dump={dumpfile}
-# Returns an HTML-formatted table, where each cell is highlighted according to attached csv (error, failure, match, unexpected switch, etc.)
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
-
-#!/Python27/python
+#!python
 import sys
 import xml.etree.ElementTree as ET
 import re

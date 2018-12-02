@@ -1,10 +1,4 @@
-# Server-side logic of interactive querying interface
-# Parameters passed by Get/Post method 
-# Results returned in XML/JSON format 
-# Creates the cache of previosuly returned results
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
-
-#!/Python27/python
+#!python
 import sys
 import xml.etree.ElementTree as ET
 import re

@@ -1,16 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <data>
-
+    <!-- platform: Multicore / Grid / GridLight 
+         #RUNDIR - will be replaced with call directory 
+    -->        
     <DAVOS
-        DesignBuilder = "off"
-        FaultInjection = "on"
-        DecisionSupport = "on"
-        report_dir = "#RUNDIR/../../../HTWEB/Test"        
-        dbfile = "MC8051_ISE.db"  >
+        platform = "Multicore"
+        DesignBuilder = "on"
+        FaultInjection = "off"
+        DecisionSupport = "off"
+        report_dir = "#RUNDIR/../../HTWEB/TST"        
+        dbfile = "MC8051.db"  >
         
 
         <ExperimentalDesign
-            max_proc = "2"
+            max_proc = "8"
             retry_attempts = "2"            
             overwrite_existing = "on"            
             build_factorial_design = "on"
@@ -25,19 +28,19 @@
             
             <generic            
                 custom_parameters = "{
-                    &apos;ise_path&apos;:&apos;C:/Xilinx/14.7/ISE_DS&apos;,
-                    &apos;device&apos;:&apos;xc6vcx240t-ff784-2&apos;,
-                    &apos;speed_grade&apos;:&apos;2&apos;,
-                    &apos;intstyle&apos;:&apos;ise&apos;,
-                    &apos;ifn&apos;:&apos;mc8051_core.prj&apos;,
-                    &apos;top_design_unit&apos;:&apos;mc8051_core&apos;,
-                    &apos;rpw_tpw&apos;:&apos;-rpw 100 -tpw 0&apos;,
-                    &apos;basic_netgen_options&apos;:&apos;-mhf -fn -ar Structure -w -ofmt vhdl&apos;,
-                    &apos;waveform_file&apos;:&apos;xpower_wave.wcfg&apos;,
-                    &apos;isim_gui&apos;:&apos;off&apos; }"
+                    'ise_path' : 'C:/Xilinx/14.7/ISE_DS',
+                    'device': 'xc6vcx240t-ff784-2',
+                    'speed_grade': '2',
+                    'intstyle': 'ise',
+                    'ifn': 'mc8051_core.prj',
+                    'top_design_unit': 'mc8051_core',
+                    'rpw_tpw': '-rpw 100 -tpw 0',
+                    'basic_netgen_options': '-mhf -fn -ar Structure -w -ofmt vhdl',
+                    'waveform_file' : 'xpower_wave.wcfg',
+                    'isim_gui': 'off' }"
                                               
                 design_label = "MC8051_ISE_"
-                design_dir = "../../../Projects/Controllers/MC8051_Test"
+                design_dir = "../../Projects/Controllers/MC8051_Factorial"
                 template_dir = "./ISE_Template"
                 log_dir = "./netgen/log"
                 netlist_dir = "./netgen"
@@ -232,7 +235,7 @@
             
 
             
-            <factorial_design table_of_factors = "" resolution = "4" >
+            <factorial_design table_of_factors = "../../Projects/Controllers/MC8051_Factorial/Genetic_test.csv" resolution = "" >
                 <!-- Synthesis Options -->
                 <factor name = "X01" option = "opt_mode" phase = "Synthesis">
                     <setting factor_value = "0" option_value = "Speed" />
@@ -395,14 +398,11 @@
     
     
     
-        <!-- platform: Multicore / Grid / GridLight 
-            #RUNDIR - path from where SBFI tool is launched
-        -->
+
         <FaultInjection
-            platform = "Multicore"
-            initializer_phase = "off"    
+            initializer_phase = "on"    
             profiler_phase = "off"
-            injector_phase = "off"
+            injector_phase = "on"
             reportbuilder_phase = "on"    
             >
               <!-- 
@@ -418,8 +418,8 @@
                 run_script = "../par_run.do"	
                 std_clk_period = "19.0"
                 std_rst_delay = "0"
-                std_init_time =  "0"
-                std_workload_time = "9000"
+                std_init_time =  "100"
+                std_workload_time = "125000"
                 finish_flag = ""
             />
             
@@ -458,17 +458,17 @@
 
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
-                    checkpont_mode = "ColdRestore"
-                    maxproc = "8"
+                    checkpont_mode = "WarmRestore"
+                    maxproc = "6"
                     workload_split_factor = "10"			
                     campaign_label = "MC8051_IMPL"		
-                    cleanup_folders="off"
-                    compile_project = "off"
-                    create_scripts="off"
-                    create_checkpoints="off"
-                    create_precise_checkpoints = "off"
-                    create_injection_scripts = "off"
-                    run_faultinjection="off"
+                    cleanup_folders="on"
+                    compile_project = "on"
+                    create_scripts="on"
+                    create_checkpoints="on"
+                    create_precise_checkpoints = "on"
+                    create_injection_scripts = "on"
+                    run_faultinjection="on"
                     remove_par_lib_after_checkpoint_stored = "on"
                     cancel_pending_tasks = "off"
                     
@@ -489,14 +489,14 @@
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
                 <fault_model
                     model = "bit_flip"
-                    target_logic = "X_FF, X_SFF, X_FDD"
+                    target_logic = "X_FF, X_SFF, X_DFF"
                     faults_per_target = "1"
                     time_mode = "Relative"
                     injection_time_start = "0.0"            
                     injection_time_end = "1.0"
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
-                    sample_size = "38500"
+                    sample_size = "200"
                     rand_seed	= "2"					
                 />	
         
@@ -504,7 +504,7 @@
                 
 
             <Analyzer
-                report_dir = "#RUNDIR/../../../HTWEB/Test"
+                report_dir = "#RUNDIR/../../HTWEB/DEMO"
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
                 error_flag_signal = ""
@@ -538,17 +538,17 @@
                 split_by_logic_type = ""	
                 split_by_profiled_value = ""	
                 memory_saving_mode = "on"
-                default_logic_type = "X_FF" 
+                default_logic_type = "SIGNAL" 
              />       
 
             
             
             <config
-                work_dir = "../../../Projects/Controllers/MC8051_Factorial/MC8051_ISE_000"
-                label = "MC8051_ISE_000"
+                work_dir = "../../Projects/Controllers/MC8051/MC8051_IMPL"
+                label = "MC8051_IMPL"
                 compile_options = ""
                 run_options = ""
-                clk_period = "16.0"
+                clk_period = "19.0"
                 start_from = ""
                 stop_at = ""
             />

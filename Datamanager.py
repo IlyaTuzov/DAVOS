@@ -184,7 +184,7 @@ class FactorSetting:
     def serialize(self, format = SerializationFormats.XML, filename = None): 
         res = ''
         if format == SerializationFormats.PYTHON_DICT:
-            res = '({0},{1},{2},{3},{4})'.format(self.Phase,self.OptionName,self.OptionVal,self.FactorName,self.FactorVal)
+            res = '({0},{1},{2},{3},{4})'.format(self.Phase,self.OptionName,self.OptionVal,self.FactorName,str(self.FactorVal))
         elif format == SerializationFormats.XML:
             res = '<FactorSetting Phase="{0}" OptionName="{1}" OptionVal="{2}" FactorName="{3}" FactorVal="{4}" />'.format(self.Phase,self.OptionName,self.OptionVal,self.FactorName,self.FactorVal)
         if filename != None:
@@ -201,7 +201,7 @@ class FactorSetting:
             if len(buf) > 1: res.OptionName = str(buf[1])
             if len(buf) > 2: res.OptionVal = str(buf[2])
             if len(buf) > 3: res.FactorName = str(buf[3])
-            if len(buf) > 4: res.FactorVal = str(buf[4])
+            if len(buf) > 4: res.FactorVal = int(str(buf[4]))
         elif format == SerializationFormats.XML:
             res.Phase     =ipack.get('Phase', '')
             res.OptionName=ipack.get('OptionName', '')
@@ -249,8 +249,8 @@ class HDLModelDescriptor:
             tagname, 
             self.Label, 
             self.TabIndex, 
-            ' '.join([c.FactorVal for c in self.Factors]),
-            '' if not 'Implprop' in self.Metrics else (''.join(['\n\t{0}="{1}"'.format(k, v) for k, v in self.Metrics['Implprop'].iteritems()])) )
+            ' '.join([str(c.FactorVal) for c in self.Factors]),
+            '' if not 'Implprop' in self.Metrics else ('' if not isinstance(self.Metrics['Implprop'], dict) else (''.join(['\n\t{0}="{1}"'.format(k, v) for k, v in self.Metrics['Implprop'].iteritems()]))) )
         return(res)
 
     def serialize(self, format = SerializationFormats.XML, filename = None):
@@ -326,6 +326,11 @@ class HDLModelDescriptor:
                 return(i)
         return(None)
 
+    def get_setting_dict(self):
+        res = dict()
+        for i in self.Factors:
+            res[i.FactorName]=i.FactorVal
+        return(res)
 
 
 
@@ -495,6 +500,7 @@ class SqlHelper:
             for k, v in a.Metrics.items():
                 if v==None: a.Metrics[k] = 0
                 elif type(v) is float: a.Metrics[k] = v
+                elif v =='': a.Metrics[k] = ''
                 else: a.Metrics[k] = ast.literal_eval(str(v))
         return(model_lst)
 

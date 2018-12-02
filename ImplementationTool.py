@@ -1,3 +1,4 @@
+#!python
 # Produces the set of factorial implementations (defined by models argument) from input RT-level model
 # for given configuration of implementation flow (config.flow in the input configuration argument)
 # Author: Ilya Tuzov, Universitat Politecnica de Valencia
@@ -21,28 +22,31 @@ from Datamanager import *
 sys.path.insert(0, os.path.join(os.getcwd(), './SupportScripts'))
 import VendorSpecific
 
+TIMEOUT_IMPL_PHASE = 1000
 
 
-
-def implement_model(config, model, adjust_constraints = True, stat=None):
+def implement_model(config, model, adjust_constraints, stat):
     os.chdir(config.design_genconf.design_dir)    
+    if update_metrics(model) != None: return
+    if not os.path.exists(config.design_genconf.tool_log_dir):
+        os.makedirs(config.design_genconf.tool_log_dir)            
     log = open(os.path.join(config.design_genconf.tool_log_dir, model.Label+".log"), 'w')
     log.write("\nImplementing: " + model.Label + ', started: ' + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     if stat == None:
         stat = ProcStatus('Config')
 
     #If this configuration has not been implemented previously - implement it, retrieve the results, update statistics for monitoring interface
-    if os.path.exists(model.ModelPath):
-        try:
-            backup_script = 'zip -r {0}_BACKUP {1} > {2}/ziplog_{3}.log'.format(model.Label, cleanup_path(get_relative_path(os.getcwd(), model.ModelPath)), config.design_genconf.tool_log_dir, model.Label)
-            proc = subprocess.Popen(backup_script, shell=True)
-            print('Running backup of previous results: {0}'.format(backup_script))
-            proc.wait()
-            shutil.rmtree(model.ModelPath)
-        except e:
-            print(str(e))
+    #if os.path.exists(model.ModelPath):
+    #    try:
+    #        #backup_script = 'zip -r {0}_BACKUP {1} > {2}/ziplog_{3}.log'.format(model.Label, cleanup_path(get_relative_path(os.getcwd(), model.ModelPath)), config.design_genconf.tool_log_dir, model.Label)
+    #        #proc = subprocess.Popen(backup_script, shell=True)
+    #        #print('Running backup of previous results: {0}'.format(backup_script))
+    #        #proc.wait()
+    #        shutil.rmtree(model.ModelPath)
+    #    except e:
+    #        print(str(e))
     if not os.path.exists(model.ModelPath):
-        shutil.copytree(config.design_genconf.template_dir, model.ModelPath)
+        shutil.copytree(os.path.join(config.design_genconf.design_dir, config.design_genconf.template_dir), model.ModelPath)
     os.chdir(model.ModelPath)
     print("Started Process [" + model.Label + "], workdir: " + os.getcwd())
     if not os.path.exists(config.design_genconf.log_dir):
@@ -68,8 +72,9 @@ def implement_model(config, model, adjust_constraints = True, stat=None):
                 constraint_content = constraint_content.replace(ce.placeholder, str(ce.current_value))
                 stat.update('Iteration', ce.iteration, 'ok')
                 ce.iteration += 1
-            with open(config.design_genconf.constraint_file, 'w') as f:
-                f.write(constraint_content)
+            if os.path.exists(config.design_genconf.constraint_file):
+                with open(config.design_genconf.constraint_file, 'w') as f:
+                    f.write(constraint_content)
 
         completed = False
         attempt = 0
@@ -77,12 +82,21 @@ def implement_model(config, model, adjust_constraints = True, stat=None):
             attempt+=1
             script = getattr(VendorSpecific, phase.script_builder)(phase, config, model)
             timestart = datetime.datetime.now().replace(microsecond=0)
+            start_t = time.time()
             log.write('\n{0}\tStarting: {1}, attempt: {2}, script: {{{3}}}'.format(str(timestart), phase.name, attempt, script))
             log.flush()
             proc = subprocess.Popen(script, shell=True)
-            proc.wait()
+            time.sleep(1)
+            while (proc.poll() == None) and (time.time() - start_t < TIMEOUT_IMPL_PHASE):
+                time.sleep(1)
+            if proc.poll() == None:
+                log.write('\n{0}\tTimeout: {1}, attempt: {2}, script: {{{3}}}'.format(str(datetime.datetime.now().replace(microsecond=0)), phase.name, attempt, script))
+                log.flush()
+                proc.kill()
+                success = False             
+            else:
+                success = getattr(VendorSpecific, phase.postcondition_handler)(phase, config, model)
             timetaken = str(datetime.datetime.now().replace(microsecond=0) - timestart)
-            success = getattr(VendorSpecific, phase.postcondition_handler)(phase, config, model)
             if success:
                 stat.update(phase.name, '100%: '+ timetaken, 'ok')
                 completed = True
@@ -90,7 +104,7 @@ def implement_model(config, model, adjust_constraints = True, stat=None):
                 if attempt > config.retry_attempts:
                     #report an error and stop
                     stat.update(phase.name, 'Error', 'err')
-                    log.write("\nError reported {0}: , exiting".format(phase.name) )
+                    log.write("\nPostcondition/Timeout error at {0}: , exiting".format(phase.name) )
                     log.close()
                     return      
 
@@ -203,6 +217,9 @@ def update_metrics(m):
         res = HDLModelDescriptor.deserialize(SerializationFormats.XML, tag).Metrics
         for k, v in res.iteritems():
             m.Metrics[k] = v
+        return(m.Metrics)
+    else:
+        return(None)
 
 
 def export_results(models, dir):
@@ -210,6 +227,41 @@ def export_results(models, dir):
         f.write('<?xml version="1.0"?>\n<data>\n{0}\n</data>'.format('\n\n'.join([m.serialize(SerializationFormats.XML) for m in models])))
     with open(os.path.join(dir, 'IMPLEMENTATION_SUMMARY.xml'), 'w') as f: 
         f.write('<?xml version="1.0"?>\n<data>\n{0}\n</data>'.format('\n\n'.join([m.log_xml() for m in models])))
+
+
+def build_summary_page(models, fname):
+    spage = HtmlPage('Summary')
+    spage.css_file = 'markupstyle.css'
+    T = Table('Summary')
+    T.add_column('Label')
+    factors = []
+    for f in models[0].Factors: 
+        factors.append(f.FactorName)
+        T.add_column(f.FactorName)
+    for i in range(len(models)):
+        T.add_row()
+        T.put(i,0, str(models[i].Label))
+        for f in range(len(factors)):
+            T.put(i,1+f, str((models[i].get_factor_by_name(factors[f])).FactorVal))
+    implprop = set()
+    for m in models:
+        update_metrics(m)
+        if 'Implprop' in m.Metrics:
+            for k, v in m.Metrics['Implprop'].iteritems():
+                implprop.add(k)
+    implprop = list(implprop)
+    x = T.colnum()
+    for p in implprop: T.add_column(p)
+    for i in range(len(models)):
+        m = models[i]
+        for p in range(len(implprop)):
+            data = '-'
+            if 'Implprop' in m.Metrics:
+                if implprop[p] in m.Metrics['Implprop']:
+                    data = str(m.Metrics['Implprop'][implprop[p]])
+            T.put(i, x+p, data)          
+    spage.put_data(T.to_html_table('Factorial Design: Summary').to_string())
+    spage.write_to_file(fname)
 
 
 #For multicore systems (PC)
@@ -247,8 +299,7 @@ def implement_models_multicore(config, models, recover_state = True):
             models_to_implement.append(m)
     else:
         models_to_implement = models
-
-
+    
 
     if len(models_to_implement) > 0:
         timestart = datetime.datetime.now().replace(microsecond=0)
@@ -266,6 +317,7 @@ def implement_models_multicore(config, models, recover_state = True):
                 if active_proc_num < config.max_proc:
                     break
                 time.sleep(5)            
+            build_summary_page(models, 'summary.html')
             p = Process(target = implement_model, args = (config, m, True, stat))
             p.start()
             procdict[m.Label] = (p, m.Label, stat)
@@ -278,10 +330,149 @@ def implement_models_multicore(config, models, recover_state = True):
             if active_proc_num < 1:
                 break
             time.sleep(5)
-
+    build_summary_page(models, 'summary.html')
     for m in models:
         update_metrics(m)
     export_results(models, config.design_genconf.tool_log_dir)
 
 
-        
+
+
+def ImplementConfigurationsManaged(configlist, config, JM):
+    BaseManager.register('ProcStatus', ProcStatus)
+    manager = BaseManager()
+    manager.start()
+    globalstatdict = dict()
+    configstat = []
+    stat = ProcStatus('Global')
+    stat.update('Phase', 'Implementation','')
+    stat.update('Progress', '0%','')
+    stat.update('Report', 'wait','')
+    globalstatdict['Implementation'] = stat
+
+    for i in configlist:
+        stat = manager.ProcStatus('Config')   #shared proxy-object for process status monitoring
+        stat.update('Label', i.Label,'')
+        configstat.append(stat)
+        JM.queue_implement.put([i, stat, config])
+    impl_results = []
+    while(JM.queue_result.qsize() < len(configlist)):
+        with JM.console_lock: print 'Implementation_Queue = {0:d}, SeuInjection_Queue = {1:d}, Result_Queue = {2:d} / {3:d}\r'.format(JM.queue_implement.qsize(), JM.queue_faulteval.qsize(), JM.queue_result.qsize(),  len(configlist))
+        save_statistics( [val for key, val in sorted(globalstatdict.items())] + configstat, config.statfile )
+        time.sleep(1)
+    save_statistics( [val for key, val in sorted(globalstatdict.items())] + configstat, config.statfile )
+
+    for i in range(len(configlist)):
+        c = JM.queue_result.get()[0]
+        with JM.console_lock: print 'Appending Result: {0}:{1}'.format(str(c.Label), str(c.Metrics))
+        impl_results.append(c)
+    return(impl_results)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def check_modelst_completed(modelst):
+    for m in modelst:
+        if not os.path.exists(os.path.join(m.ModelPath, m.std_dumpfile_name)):
+            return False
+    return True
+
+
+#For SGE systems (Grid)
+def implement_models_Grid(config, models, recover_state = True):    
+    job_prefix = 'IMPL_'
+    timestart = datetime.datetime.now().replace(microsecond=0)
+    for m in models:
+        #serialize model to XML
+        j = os.path.join(config.design_genconf.design_dir, m.Label+'.XML')
+        m.serialize(SerializationFormats.XML, j)
+        #create grid job for serialized model
+        shell_script = 'python ImplementationTool.py {0} {1}'.format(config.ConfigFile, j)
+        run_qsub(job_prefix + m.Label, shell_script, config.call_dir, "20:00:00", "4g", os.path.join(config.call_dir, 'GridLogs'))
+    #monitoring        
+    joblst = get_queue_state_by_job_prefix(job_prefix)
+    print "\n\tRunning processes: " + ''.join(['\n\t{0}'.format(job.name) for job in joblst.running])
+    print "\n\tPending processes:"  + ''.join(['\n\t{0}'.format(job.name) for job in joblst.pending])
+    print "STARTED MONITORING"   
+    while joblst.total_len() > 0:
+        if check_modelst_completed(models):
+            print(commands.getoutput('qdel -u $USER'))
+            break
+        timetaken = str(datetime.datetime.now().replace(microsecond=0) - timestart)
+        console_complex_message(['{0} : Pending: {1} \tRunning: {2} \tFinished: {3} \tTime taken: {4}'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), len(joblst.pending), len(joblst.running), len(models)-len(joblst.pending)-len(joblst.running), timetaken)], [ConsoleColors.Green], True)
+        time.sleep(10)
+        joblst = get_queue_state_by_job_prefix(job_prefix)
+    #export results
+    for m in models:
+        update_metrics(m)
+    export_results(models, config.design_genconf.tool_log_dir)
+
+
+
+#Entry point for the parent process
+if __name__ == '__main__':           
+    call_dir = os.getcwd()
+    if sys.argv[1].find('_normalized.xml') > 0:
+        normconfig = (sys.argv[1])
+    else:
+        normconfig = (sys.argv[1]).replace('.xml','_normalized.xml')
+        normalize_xml(os.path.join(os.getcwd(), sys.argv[1]), os.path.join(os.getcwd(), normconfig))                
+    xml_conf = ET.parse(os.path.join(os.getcwd(), normconfig))
+    tree = xml_conf.getroot()
+
+    davosconf = DavosConfiguration(tree.findall('DAVOS')[0])
+    config = davosconf.ExperimentalDesignConfig
+    if len(sys.argv) > 2: #implement this given configuration
+        #deserialize model
+        model = HDLModelDescriptor.deserialize(SerializationFormats.XML, (ET.parse(sys.argv[2])).getroot())
+        if config.platform == Platforms.GridLight: #work with local storage on each node
+            itemstocopy = []
+            for i in os.listdir(config.design_genconf.design_dir):
+                if i.find(config.design_genconf.design_label) < 0:
+                    itemstocopy.append(i)
+            dst = os.path.join(os.environ['TMP'], 'DAVOS')
+            if os.path.exists(dst): 
+                shutil.rmtree(dst)
+            if not os.path.exists(dst): 
+                os.makedirs(dst)                
+            for i in itemstocopy:
+                a = os.path.join(config.design_genconf.design_dir, i)
+                if os.path.isdir(a):
+                    shutil.copytree(a, os.path.join(dst, i))
+                else:
+                    shutil.copyfile(a, os.path.join(dst, i))
+            src_path = model.ModelPath
+            model.ModelPath = os.path.join(dst, model.Label)           
+            try:
+                implement_model(config, model, True, None)
+            except:
+                print 'Something went wrong in implement_model'
+            #copy results back to main folder
+            if os.path.exists(src_path): shutil.rmtree(src_path)
+            if not os.path.exists(src_path): shutil.copytree(os.path.join(config.design_genconf.design_dir, config.design_genconf.template_dir), src_path)
+            try:
+                shutil.copytree(os.path.join(model.ModelPath, config.design_genconf.netlist_dir),    os.path.join(src_path, config.design_genconf.netlist_dir))
+                shutil.copyfile(os.path.join(model.ModelPath, config.design_genconf.testbench_file), os.path.join(src_path, config.design_genconf.testbench_file))
+                shutil.copyfile(os.path.join(model.ModelPath, model.std_dumpfile_name), os.path.join(src_path, model.std_dumpfile_name))
+            except:
+                print 'Some result files are missing'
+            os.chdir(src_path)
+            shutil.rmtree(model.ModelPath, ignore_errors=True)
+    else: #implement everything from database
+        pass

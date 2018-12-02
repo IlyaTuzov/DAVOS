@@ -21,17 +21,23 @@ import glob
 import errno
 import traceback
 import commands
+from sys import platform
 
 
 
 #-----------------------------------------------------
 #  Support Functions to interact with Sun Grid Engine
 #-----------------------------------------------------
-def run_qsub(itag, iscript, ipath, reqtime, reqmem, slots = 1):
+def run_qsub(itag, iscript, ipath, reqtime, reqmem, logdir = None, slots = 1):
     sh_script = "#!/bin/sh"
     sh_script += "\n#$ -N " + itag    
     sh_script += "\n#$ -l h_rt=" + reqtime + ",h_vmem=" + reqmem
     sh_script += "\n#$ -S /bin/sh"
+    if logdir != None:
+        if not os.path.exists(logdir):
+            os.makedirs(logdir)
+        sh_script += "\n#$ -o {0}/out_{1}.txt".format(logdir, itag)
+        sh_script += "\n#$ -e {0}/err_{1}.txt".format(logdir, itag)        
     sh_script += "\necho $PATH"    
     sh_script += "\ncd " + ipath
     sh_script += "\n" + iscript
@@ -40,9 +46,11 @@ def run_qsub(itag, iscript, ipath, reqtime, reqmem, slots = 1):
     robust_file_write(os.path.join(ipath, sh_fname), sh_script)
     val = commands.getoutput("chmod u+x " + sh_fname)
     qscript = "qsub -q " + "general"  + " -V -wd " + ipath + " " + sh_fname
-    res = commands.getoutput(qscript)
-    print res
-    time.sleep(0.1)
+    res = ''
+    while res.lower().find('submitted') < 0 or res.lower().find('error') >= 0:
+        res = commands.getoutput(qscript)
+        print res
+        time.sleep(0.1)
     os.remove(os.path.join(ipath, sh_fname))
     return res
 
@@ -451,10 +459,12 @@ class Table:
             itemsep = t[0]
             firstlineindex = 1
         labels = self.snormalize(lines[firstlineindex].split(itemsep))
+        for i in range(len(labels)): labels[i] = labels[i].replace('\r','')
         for l in labels:
             self.add_column(l)
         for i in range(firstlineindex+1, len(lines), 1):
             c = self.snormalize(lines[i].split(itemsep))
+            for v in range(len(c)): c[v] = c[v].replace('\r','')
             self.add_row(c)
     
     def to_html_table(self, tname):
@@ -1408,3 +1418,27 @@ def typed(istring):
 
 def unixstyle_path(path):
     return(path.replace('\\','/'))
+
+class ConsoleColors:
+    Green = '\x1b[6;30;42m'
+    Default = '\x1b[0m'
+
+def console_message(msgtxt, color = ConsoleColors.Default, clrflag = False):
+    if platform == 'linux' or platform == 'linux2' or platform == 'cygwin':
+        msg = color+ msgtxt + ConsoleColors.Default            
+    elif platform == 'win32' or  platform == 'win64':
+        msg = msgtxt    
+    if clrflag: msg += '\r'
+    sys.stdout.write(msg)
+    sys.stdout.flush()
+
+def console_complex_message(msgtxt_lst, color_lst = [], clrflag = False):
+    msg = ''
+    for i in range(len(msgtxt_lst)):
+        if i < len(color_lst) and (platform == 'linux' or platform == 'linux2' or platform == 'cygwin'):
+            msg += color_lst[i]+ msgtxt_lst[i] + ConsoleColors.Default
+        else:
+            msg += msgtxt    
+    if clrflag: msg += '\r'
+    sys.stdout.write(msg)
+    sys.stdout.flush()

@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<data>
+
+<Global 
+	Phase = "Implementation$" 
+	Progress = "0%$" 
+	Report = "wait$"  >
+</Global>
+
+<Config 
+	UTIL_DSP = "0.0$res" 
+	Implementation = "In progress$wait" 
+	UTIL_FF = "608$res" 
+	Iteration = "2$ok" 
+	UTIL_BRAM = "17.5$res" 
+	Label = "Zynq_MC8051_061$" 
+	UTIL_LUT = "2606$res" 
+	FREQUENCY = "27.778$res" 
+	Progress = "Implementation$wait" 
+	CLK_PERIOD = "36.0$res" 
+	Synthesis = "100%: 0:02:21$ok"  >
+</Config>
+
+<Config 
+	UTIL_DSP = "0.0$res" 
+	Implementation = "In progress$wait" 
+	UTIL_FF = "608$res" 
+	Iteration = "2$ok" 
+	UTIL_BRAM = "17.5$res" 
+	Label = "Zynq_MC8051_062$" 
+	UTIL_LUT = "2606$res" 
+	FREQUENCY = "27.778$res" 
+	Progress = "Implementation$wait" 
+	CLK_PERIOD = "36.0$res" 
+	Synthesis = "100%: 0:02:17$ok"  >
+</Config>
+
+<Config 
+	UTIL_DSP = "0.0$res" 
+	Implementation = "In progress$wait" 
+	UTIL_FF = "608$res" 
+	Iteration = "2$ok" 
+	UTIL_BRAM = "17.5$res" 
+	Label = "Zynq_MC8051_063$" 
+	UTIL_LUT = "2606$res" 
+	FREQUENCY = "27.778$res" 
+	Progress = "Implementation$wait" 
+	CLK_PERIOD = "36.0$res" 
+	Synthesis = "100%: 0:02:15$ok"  >
+</Config>
+</data>
