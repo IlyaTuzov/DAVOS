@@ -263,7 +263,7 @@ def GetClockPeriod(config, model):
 
 
 def GetResultLabels():
-    return(['FREQUENCY', 'CLK_PERIOD', 'POWER_DYNAMIC', 'POWER_STATIC', 'UTIL_SLICE', 'UTIL_FF', 'UTIL_LUT', 'UTIL_RAMB', 'UTIL_DSP'])
+    return(['FREQUENCY', 'CLK_PERIOD', 'POWER_DYNAMIC', 'POWER_PL', 'POWER_STATIC', 'UTIL_SLICE', 'UTIL_FF', 'UTIL_LUT', 'UTIL_RAMB', 'UTIL_DSP'])
 
 #After completion of all phases this function should update at least two properties of the model:
 #model.Metrics['Implprop'] --> ['ClockPeriod'], ['Frequency']
@@ -335,6 +335,7 @@ def VivadoBuildScript(phase, config, model):
     if phase.name == 'Implementation':
         phase.resultfiles.append('timing.log')
         phase.resultfiles.append('utilization.log')
+        phase.resultfiles.append('powerconsumption.pwr')
         phase.reportfile = phase.resultfiles[0]
         with open(os.path.join(config.design_genconf.design_dir, config.design_genconf.template_dir, config.design_genconf.custom_parameters['ImplementationScriptTemplate']), 'r') as f:
             script = f.read()
@@ -346,11 +347,17 @@ def VivadoBuildScript(phase, config, model):
         script = script.replace('#SETTING', '\n'.join(options))
         script += '\nreport_timing_summary -file {0}'.format(phase.resultfiles[0])
         script += '\nreport_utilization -file {0}\n'.format(phase.resultfiles[1])
+        script += '\nreport_power -file {0}\n'.format(phase.resultfiles[2])
         with open(config.design_genconf.custom_parameters['ImplementationScriptTemplate'], 'w') as f: 
             f.write(script)
         res = 'vivado -mode batch -source {0} > {1}'.format(config.design_genconf.custom_parameters['ImplementationScriptTemplate'], config.design_genconf.log_dir+'/'+phase.logfile)
 
     if phase.name == 'GenBitstream':
+        with open(os.path.join(config.design_genconf.design_dir, config.design_genconf.template_dir, config.design_genconf.custom_parameters['GenBitstreamScriptTemplate']), 'r') as f:
+            script = f.read()
+        script = script.replace("#EXPORTDIR", str(model.ModelPath.replace('\\','/')))
+        with open(config.design_genconf.custom_parameters['GenBitstreamScriptTemplate'], 'w') as f: 
+            f.write(script)
         res = 'vivado -mode batch -source {0} > {1}'.format(config.design_genconf.custom_parameters['GenBitstreamScriptTemplate'], config.design_genconf.log_dir+'/'+phase.logfile)
 
 
@@ -376,7 +383,16 @@ def VivadoRetrieveResults(phase, config, model):
                     res['UTIL_FF'] = int(re.findall("Slice Registers.*?([0-9]+)", content)[0])
                     res['UTIL_BRAM'] = float(re.findall("Block RAM Tile.*?([0-9]+\.?[0-9]*)", content)[0])
                     res['UTIL_DSP'] = float(re.findall("DSPs.*?([0-9]+)", content)[0])
+
+            if phase.resultfiles[2] != '' and os.path.isfile(phase.resultfiles[2]):
+                with open(phase.resultfiles[2], 'r') as f:
+                    content = f.read()
+                    res['POWER_DYNAMIC'] = float(re.findall("Dynamic \(W\).*?([0-9\.]+)", content)[0])
+                    res['POWER_PL'] = float(re.findall(config.design_genconf.uut_root+".*?([0-9\.]+)", content)[0])
+
     except:
         print 'VivadoRetrieveResults error: ' + str(sys.exc_info())
         return(res)
     return(res)
+
+

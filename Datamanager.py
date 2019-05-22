@@ -501,7 +501,11 @@ class SqlHelper:
                 if v==None: a.Metrics[k] = 0
                 elif type(v) is float: a.Metrics[k] = v
                 elif v =='': a.Metrics[k] = ''
-                else: a.Metrics[k] = ast.literal_eval(str(v))
+                else:
+                    try: 
+                        a.Metrics[k] = ast.literal_eval(str(v))
+                    except:
+                        a.Metrics[k] = str(v)
         return(model_lst)
 
 

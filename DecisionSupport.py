@@ -20,12 +20,22 @@ import random
 import glob
 import copy
 import ast
+import math
 from Davos_Generic import *
 from Datamanager import *
 import DerivedMetrics
 from RegressionModel_Manager import *
+from EvalEngine import *
+from FactorialDesignBuilder import *
+import XilinxInjectorHost 
+import EvalEngine
 
 RmodelStdFolder = 'RegressionModels'
+ModelSummary = 'Summary.xml'
+
+VERITY_CONFIGURATIONS = False
+
+
 
 def derive_metrics(davosconf, datamodel):
     for d in davosconf.DecisionSupportConfig.DerivedMetrics:        
@@ -38,55 +48,62 @@ def derive_metrics(davosconf, datamodel):
 
 
 
-def infer_regression_models(davosconf, datamodel):
-    resdir = os.path.join(config.report_dir, RmodelStdFolder)
-    summaryfile = os.path.normpath(os.path.join(resdir, 'MatlabSummary.xml'))
+def infer_regression_models(davosconf, configurations, resdir, varlist = [] ):
+    summaryfile = os.path.normpath(os.path.join(resdir, ModelSummary))
     if os.path.exists(summaryfile): os.remove(summaryfile)
     if not os.path.exists(resdir): os.makedirs(resdir)
     #1. Export Table of Samples (.csv)
     T = Table('Samples')
-    if len(datamodel.HdlModel_lst) == 0:
+    if len(configurations) == 0:
         return
     FactorLabels = []
     ResponceVariableLabels = []
     ResponceVariableTypes = []
+    valid_individuals = []
+    for i in configurations:
+        if isinstance(i.Metrics['Implprop'], dict) and i.Metrics['Implprop']['VerificationSuccess'] > 0:
+            valid_individuals.append(i)
+        else:
+            print 'WARNING: infer_regression_models: skipping {}'.format(i.Label)
     #append factors
-    for c in datamodel.HdlModel_lst[-1].Factors:
+    for c in valid_individuals[-1].Factors:
         FactorLabels.append(c.FactorName)
         T.add_column(c.FactorName)
-    for row in range(len(datamodel.HdlModel_lst)):
+    for row in range(len(valid_individuals)):        
         T.add_row()
         for col in range(len(T.labels)):
-            x = datamodel.HdlModel_lst[row].get_factor_by_name(T.labels[col])
+            x = valid_individuals[row].get_factor_by_name(T.labels[col])
             T.put(row,col, x.FactorVal)
     #append responce variables
-    metrics = datamodel.HdlModel_lst[-1].get_flattened_metric_dict()
+    metrics = valid_individuals[-1].get_flattened_metric_dict()
     for k, v in metrics.iteritems():
-        if isinstance(v, int):
-            ResponceVariableLabels.append(k)
-            ResponceVariableTypes.append('discrete')
-        if isinstance(v, float):
-            ResponceVariableLabels.append(k)
-            ResponceVariableTypes.append('continuous')
+        if (len(varlist) > 0 and k in varlist) or varlist == []:
+            if isinstance(v, int):
+                ResponceVariableLabels.append(k)
+                ResponceVariableTypes.append('discrete')
+            if isinstance(v, float):
+                ResponceVariableLabels.append(k)
+                ResponceVariableTypes.append('continuous')
     for respvar_ind in range(len(ResponceVariableLabels)):
         lbl = ResponceVariableLabels[respvar_ind]
         T.add_column(lbl)   
-        for row in range(len(datamodel.HdlModel_lst)):
-            metrics = datamodel.HdlModel_lst[row].get_flattened_metric_dict()
-            T.put(row, len(FactorLabels)+respvar_ind, metrics[lbl])
+        for row in range(len(valid_individuals)):
+            if valid_individuals[row].Metrics['Implprop']['VerificationSuccess'] > 0:
+                metrics = valid_individuals[row].get_flattened_metric_dict()
+                T.put(row, len(FactorLabels)+respvar_ind, metrics[lbl])
 
-    matlab_input_file = 'RegressionAnalysisInput.csv'
-    with open(os.path.join(config.report_dir, matlab_input_file), 'w') as f:
+    matlab_input_file = os.path.join(resdir, 'RegressionAnalysisInput.csv') 
+    with open(matlab_input_file, 'w') as f:
         f.write(T.to_csv(',', False))
-    with open(os.path.join(config.call_dir, 'SupportScripts', 'AnovaRegression.m'), 'r') as f:
+    with open(os.path.join(davosconf.call_dir, 'SupportScripts', 'AnovaRegression.m'), 'r') as f:
         matlabscript = f.read()
     matlabscript = matlabscript.replace('#INPFILE', '\'{0}\''.format(matlab_input_file)).replace('#RESFOLDER', '\'{0}/\''.format(unixstyle_path(resdir)))
     matlabscript = matlabscript.replace('#FACTORLABELS', '{{{0}}}'.format(", ".join(["'{0}'".format(c) for c in FactorLabels])))
     matlabscript = matlabscript.replace('#RESPONSEVARIABLELABELS', '{{ {0} }}'.format(", ".join(["'{0}'".format(c) for c in ResponceVariableLabels])))
     matlabscript = matlabscript.replace('#RESPONSEVARIABLETYPES', '{{{0}}}'.format(", ".join(["'{0}'".format(c) for c in ResponceVariableTypes])))
-    with open(os.path.join(config.report_dir, 'AnovaRegression.m'), 'w') as f:
+    with open(os.path.join(davosconf.report_dir, 'AnovaRegression.m'), 'w') as f:
         f.write(matlabscript)
-    shellcmd = 'matlab.exe -nosplash -nodesktop -minimize -r \"cd {0}; run (\'{1}\'); quit\"'.format( config.report_dir, 'AnovaRegression.m' )
+    shellcmd = 'matlab.exe -nosplash -nodesktop -minimize -r \"cd {0}; run (\'{1}\'); quit\"'.format( davosconf.report_dir, 'AnovaRegression.m' )
     proc = subprocess.Popen(shellcmd, shell=True)
     proc.wait()
     while not os.path.exists(summaryfile):
@@ -94,33 +111,213 @@ def infer_regression_models(davosconf, datamodel):
     return((FactorLabels, ResponceVariableLabels))
 
 
-    
+#1 for main effects, 2 for 2-factor interactions, etc.
+def compute_degrees_of_freedom(config, order_or_effects = 1):
+    df = []
+    for f in config.factorial_config.factors:
+        df.append(len(f.setting) - 1)
+    if order_or_effects == 1:
+        return( sum(df) + 1)
+
+
+#filter-out invalid configurations
+def filter_population(population):
+    valid, excluded = [], []
+    for i in population:
+        if ('Error' in i.Metrics) and ('Implprop' in i.Metrics) and ('VerificationSuccess' in i.Metrics['Implprop']) and ('FIT' in i.Metrics['Implprop']) and (i.Metrics['Error'] == '') and (i.Metrics['Implprop']['VerificationSuccess'] > 0) and (i.Metrics['Implprop']['FIT'] > 0):
+            valid.append(i)
+        else:
+            excluded.append(i)
+    return((valid, excluded))
+
+
+
+
+def compute_score(configurations):
+    valid, excluded = filter_population(configurations) 
+    max_freq = max(c.Metrics['Implprop']['FREQUENCY'] for c in valid)
+    min_fit  = min(c.Metrics['Implprop']['FIT'] for c in valid)
+    for c in valid:
+        c.Metrics['Implprop']['Score_Balanced'] = (0.3*c.Metrics['Implprop']['FREQUENCY']/max_freq) + (0.7*min_fit/c.Metrics['Implprop']['FIT'])
+    for c in excluded:
+        c.Metrics['Implprop']['Score_Balanced'] = 0.0
 
 
 if __name__ == "__main__": 
+    call_dir = os.getcwd()
     normconfig = (sys.argv[1]).replace('.xml','_normalized.xml')
     normalize_xml(os.path.join(os.getcwd(), sys.argv[1]), os.path.join(os.getcwd(), normconfig))
     xml_conf = ET.parse(os.path.join(os.getcwd(), normconfig))
     tree = xml_conf.getroot()
-    config = DavosConfiguration(tree.findall('DAVOS')[0])
-    print (to_string(config, "Configuration: "))
+    davosconf = DavosConfiguration(tree.findall('DAVOS')[0])
+    config = davosconf.ExperimentalDesignConfig
+    config.ConfigFile = normconfig
     datamodel = DataModel()
-    datamodel.ConnectDatabase( config.get_DBfilepath(False), config.get_DBfilepath(True) )
+    datamodel.ConnectDatabase( davosconf.get_DBfilepath(False), davosconf.get_DBfilepath(True) )
     datamodel.RestoreHDLModels(None)
+    random.seed(1)   
 
-    if config.DecisionSupport:
-        #1. Derive custom metrics
-        derive_metrics(config, datamodel)
-        #2. Regression analysis (DSE case): infer regression models for each metric as function of input factors: Metric = f(Xi)
-        FactorLabels, ResponceVariableLabels = infer_regression_models(config, datamodel)
+    for m in datamodel.HdlModel_lst:        
+        if ('Error' in m.Metrics) and (not isinstance(m.Metrics['Error'], str)):
+            m.Metrics['Error']  = ''
+
+    DefConf = CreateDefaultConfig(datamodel, config)
+    
+    FactorLabels = ['X01', 'X02', 'X03', 'X04', 'X05', 'X06', 'X07', 'X08', 'X09', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17', 'X18', 'X19', 'X20', 'X21', 'X22', 'X23', 'X24', 'X25', 'X26', 'X27', 'X28', 'X29', 'X30']
+    resdir = 'C:\Projects\Controllers\Doptimal\RegressionModels_sample_196'
+    RM = RegressionModelManager(FactorLabels)
+    RM.load_significant(os.path.join(davosconf.report_dir, resdir), 1.0)
+    RM.compile_estimator_script_multilevel(resdir)
+
+
+    defres = RM.evaluate_python([0,2,0,3,3,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,7,0,17,0,0,0,5,0,3])
+    print(str(defres))
+
+    stat = RM.get_min_max_terms()
+    with open(os.path.join(resdir, 'Stat_v1.txt'), 'w') as file:
+        for k, v in stat.iteritems():
+            file.write('\n\nModel: {}'.format(str(k)))
+            for term in v:
+                file.write('\n{0}\t\t{1:.3f} : {2:.3f}'.format(str(term[0]), term[1], term[2]))
 
 
 
-        #3. Multicriteria Decision Analysis (both benchmarking and DSE)                
-        RM = RegressionModelManager(FactorLabels)
-        RM.load_all(os.path.join(config.report_dir, RmodelStdFolder))
-        RM.compile_estimator_script(os.path.join(config.report_dir, RmodelStdFolder))
+
+
+    if davosconf.DecisionSupport:
+        if davosconf.DecisionSupportConfig.task == 'DSE':
+            if davosconf.DecisionSupportConfig.method == 'Statistical':
+                #build a list of configurations to implement and evaluate
+                existing_models, new_models  = Build_ExperimentalDesign(datamodel, config)   
+                new_models.append(DefConf)                                                                                                                           
+                os.chdir(config.call_dir)
+                #Instantiate evaluation engine and initialize it
+                JM = JobManager(config.max_proc)
+
+                if config.factorial_config.design_type == 'Doptimal':
+                    sample_size = compute_degrees_of_freedom(config, 1)   
+                    excluded = []                 
+                    for i in range(10):
+                        print '\nTrying sample size {0:d}\n'.format(sample_size)
+                        valid_sample = False
+                        while not valid_sample:
+                            for c in existing_models + new_models:
+                                c.Metrics['SampleSizeGoal'] = int(0)
+                                c.Metrics['ErrorMarginGoal'] = float(0.10)
+                            #supply configurations to the evaluation engine
+                            configurations = evaluate(existing_models + new_models, config, JM, datamodel, False)
+                            configurations = [item for item in configurations if item.Label != DefConf.Label]
+                            datamodel.SaveHdlModels()
+                            export_DatamodelStatistics(datamodel, os.path.join(config.design_genconf.design_dir, config.statfile))
+                            configurations, buf = filter_population(configurations)
+                            if len(configurations) == 0:
+                                print 'Warning: all configurations filtered-out'
+                            excluded = excluded + buf
+                            #excluded = datamodel.HdlModel_lst
+                            if len(configurations) < sample_size:
+                                existing_models, new_models = augment_design(configurations, excluded + configurations, datamodel, config, sample_size)
+                                valid_sample = False
+                            else:
+                                valid_sample = True
+
+                        compute_score(configurations)
+                        resdir = os.path.join(davosconf.report_dir, '{}_sample_{}'.format(RmodelStdFolder, str(sample_size)))
+                        FactorLabels, ResponceVariableLabels = infer_regression_models(davosconf, configurations, resdir,  ['FREQUENCY', 'EssentialBits', 'FailureRate', 'FIT', 'POWER_PL', 'Score_Balanced'])
+                        RM = RegressionModelManager(FactorLabels)
+                        RM.load_significant(os.path.join(davosconf.report_dir, resdir), 1.0)
+                        RM.compile_estimator_script_multilevel(resdir)
+                        stat = RM.get_min_max_terms()
+                        with open(os.path.join(resdir, 'Stat_v1.txt'), 'w') as file:
+                            for k, v in stat.iteritems():
+                                file.write('\n\nModel: {}'.format(str(k)))
+                                for term in v:
+                                    file.write('\n{0}\t\t{1:.3f} : {2:.3f}'.format(str(term[0]), term[1]*1000, term[2]*1000))
+
+
+
+                        if VERITY_CONFIGURATIONS and (sample_size in [124, 160, 196]):
+                            predicted = RM.get_min_max_linear(DefConf.get_setting_dict())
+                            bestconflist = []
+                            if predicted != None:
+                                for varmane, prop in predicted.iteritems():
+                                    if varmane in ['FREQUENCY', 'Score_Balanced']:
+                                        best_val = prop[1]
+                                        best_conf = prop[3]
+                                    else:
+                                        best_val = prop[0]
+                                        best_conf = prop[2]
+                                    bestconf = CreateConfigForSetting(datamodel, config, best_conf)
+                                    if bestconf != None:
+                                        bestconf.Metrics['Predicted'] = dict()
+                                        for k,v in RM.evaluate_python(best_conf).iteritems():
+                                            bestconf.Metrics['Predicted'][k+'_Predicted'] = v
+                                        bestconf.Metrics['Predicted']['BestVar'] = varmane
+                                        bestconf.Metrics['Predicted']['BestVal'] = best_val
+                                        bestconf.Metrics['Predicted']['BestConf'] = ','.join(map(str, best_conf))
+                                        bestconf.Metrics['Predicted']['SampleSize'] = sample_size
+                                        bestconflist.append(bestconf)
+
+                            datamodel.SaveHdlModels()
+                            #print(str(bestconflist))
+                            if len(bestconflist) > 0:
+                                print 'Evaluating Predicted Configurations at {} sample size'.format(str(sample_size))
+                                for c in bestconflist:
+                                    c.Metrics['SampleSizeGoal'] = int(0)
+                                    c.Metrics['ErrorMarginGoal'] = float(0.10)
+                                bestconflist = evaluate(bestconflist, config, JM, datamodel, False)
+                                datamodel.SaveHdlModels()
+
+                                #if some best configurations are invalid - check suboptimal configurations
+                                altconfigs = []
+                                for c in bestconflist:
+                                    if c.Metrics['Error'] != '':
+                                        bestvar = c.Metrics['Predicted']['BestVar']
+                                        goal = OptimizationGoals.min if c.Metrics['Predicted']['BestVar'] in ['EssentialBits', 'FailureRate', 'FIT', 'POWER_PL'] else OptimizationGoals.max
+                                        altern_settings = RM.get_alternative_configurations(bestvar, c.get_setting_dict(), goal)
+                                        for s in altern_settings:
+                                            AltConf = CreateConfigForSetting(datamodel, config, s)
+                                            if AltConf!= None:
+                                                AltConf.Metrics['Predicted'] = dict()
+                                                for k,v in RM.evaluate_python(s).iteritems():
+                                                    AltConf.Metrics['Predicted'][k+'_Predicted'] = v
+                                                AltConf.Metrics['Predicted']['BestVar'] = bestvar 
+                                                AltConf.Metrics['Predicted']['BestVal'] = AltConf.Metrics['Predicted'][bestvar+'_Predicted']
+                                                AltConf.Metrics['Predicted']['BestConf'] = ','.join(map(str, s))
+                                                AltConf.Metrics['Predicted']['SampleSize'] = sample_size
+                                                AltConf.Metrics['SampleSizeGoal'], AltConf.Metrics['ErrorMarginGoal'] = int(0), float(0.10)
+                                                altconfigs.append(AltConf)
+                                bestconflist = evaluate(bestconflist+altconfigs, config, JM, datamodel, False)
+
+                                compute_score(bestconflist)                                    
+                                varlist =  ['FREQUENCY', 'EssentialBits', 'FailureRate', 'FIT', 'Score_Balanced', 'POWER_PL'] + bestconflist[0].Metrics['Predicted'].keys()
+#                                for k, v in bestconflist[0].Metrics['Predicted'].iteritems():
+#                                    varlist.append(k)
+                                T = configs_to_table(bestconflist, varlist)
+                                with open(os.path.join(resdir,'Predicted.csv'), 'w') as f:
+                                    f.write(T.to_csv(',', False))                            
+                            datamodel.SaveHdlModels()
+
+
+
+
+
+
+
+                        sample_size+=int(math.ceil(0.1*compute_degrees_of_freedom(config, 1)))
+                
+
+                #Derive custom metrics
+#                derive_metrics(config, datamodel)
+
+                
+
+                #Multicriteria Decision Analysis
+#                RM = RegressionModelManager(FactorLabels)
+#                RM.load_all(os.path.join(config.report_dir, RmodelStdFolder))
+#                RM.compile_estimator_script(os.path.join(config.report_dir, RmodelStdFolder))
         
+
+
         #res = RM.evaluate_python([0,1, 0,   1,0,    0, 0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,   0, 0, 0, 1, 0,1, 0,0,0])        
         #for i in range(1000):
         #    res = RM.evaluate_python([random.randint(0,1),random.randint(0,1),random.randint(0,1),random.randint(0,1),1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,1,1,random.randint(0,1)])

@@ -476,6 +476,22 @@ class Table:
                 res.put_data(r,c, self.get(r,c))
         return(res)
  
+    def query(self, filter):
+        res = []
+        for row in range(self.rownum()):
+            match = True
+            for key in filter:
+                val = self.getByLabel(key, row)
+                if val.find(filter[key]) < 0:
+                    match = False
+                    break
+            if match:
+                d = dict()
+                for l in self.labels:
+                    d[l] = self.getByLabel(l, row)
+                res.append(d)
+        return(res)
+
 
 
 class HtmlTableCell:
@@ -1395,17 +1411,20 @@ def save_statistics(statlist, statfile):
     for i in statlist:
         res += '\n\n' + i.to_xml()
     res += '\n</data>'
-    with open(statfile, 'w') as f:
-        f.write(res)
-    #minimized stat file - export only changed items
-    res = '<?xml version=\"1.0\"?>\n<data>'
-    for i in statlist:
-        if i.get_mark():
-            res += '\n\n' + i.to_xml()
-            i.set_mark(False)
-    res += '\n</data>'
-    with open(statfile.replace('.xml','_min.xml'), 'w') as f:
-        f.write(res)
+    try:
+        with open(statfile, 'w') as f:
+            f.write(res)
+        #minimized stat file - export only changed items
+        res = '<?xml version=\"1.0\"?>\n<data>'
+        for i in statlist:
+            if i.get_mark():
+                res += '\n\n' + i.to_xml()
+                i.set_mark(False)
+        res += '\n</data>'
+        with open(statfile.replace('.xml','_min.xml'), 'w') as f:
+            f.write(res)
+    except:
+        print 'ERROR: save_statistics(): {}'.format(statfile)
 
 
 def typed(istring):
@@ -1442,3 +1461,13 @@ def console_complex_message(msgtxt_lst, color_lst = [], clrflag = False):
     if clrflag: msg += '\r'
     sys.stdout.write(msg)
     sys.stdout.flush()
+
+#determines whether two intervals (A and B) intersect, and calculates the intersection length
+def intersect_intervals(A_low, A_high, B_low, B_high):
+    if B_high >= A_low and B_low <= A_high:
+        return((True, min(A_high, B_high) - max(A_low,B_low)))
+    else:
+        return((False, 0))  
+
+
+

@@ -1,5 +1,5 @@
-#do dadse_rtl_nodes.do {Scope/*} {outfile.txt} {parse arrays: on/...} {filter_expression}
-#do dadse_rtl_nodes.do /tb/mc8051_top/mc8051_core//* ./code/obs_instances_log.txt on -internal
+#do modelsim_rtl_nodes.do {Scope/*} {outfile.txt} {parse arrays: on/...} {filter_expression}
+#do modelsim_rtl_nodes.do /tb/mc8051_top/mc8051_core//* ./code/obs_instances_log.txt on -internal
 
 quietly set allsignals {}
 

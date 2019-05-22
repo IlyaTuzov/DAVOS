@@ -564,8 +564,10 @@ class ExperimentalDesignGenerics:
         self.std_clock_period = float(xnode.get('std_clock_period','0'))
         self.constraint_file = xnode.get('constraint_file','')
         cp = xnode.get('custom_parameters','')
-        if cp != '':
-            self.custom_parameters = ast.literal_eval(cp)
+        if cp != '': self.custom_parameters = ast.literal_eval(cp)
+        cp = xnode.get('post_injection_recovery_nodes','')
+        if cp != '': self.post_injection_recovery_nodes = ast.literal_eval(cp)
+
         
 
 
@@ -583,6 +585,7 @@ class FactorialDesignConfig:
     def build_from_xml(self, xnode):
         self.table_of_factors = xnode.get('table_of_factors','')
         self.resolution = 0 if xnode.get('resolution')=='' else int(xnode.get('resolution'))
+        self.design_type = xnode.get('design_type','')
         for i in xnode.findall('factor'):
             self.factors.append(IFactor(i))
 
@@ -665,6 +668,12 @@ class ImplementationFlow:
             current = current.next
         return(res)
 
+    def get_phase(self, name):
+        for p in self.get_phase_chain():
+            if p.name == name:
+                return(p)
+        return(None)
+
     def to_string(self):
         res = 'ImplementationFlow: ' + self.name
         for c in self.get_phase_chain():
@@ -710,6 +719,12 @@ class ImplementationPhase:
         for c in self.options:
             res += "\n\t" + c.to_string()
         return(res)
+
+    def get_option(self, name):
+        for i in self.options:
+            if i.name == name:
+                return(i)
+        return(None)
 
 
     
@@ -797,6 +812,8 @@ class DecisionSupportConfiguration:
             self.build_from_xml(xnode)
 
     def build_from_xml(self, xnode):
+        self.task = xnode.get('task', '')
+        self.method = xnode.get('method', '')
         a = xnode.findall('DerivedMetrics')
         if len(a) > 0:
             for x in a[0].findall('DerivedMetric'):

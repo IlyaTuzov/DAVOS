@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{47bcee03-0500-4221-8cef-36997cfb0a85}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>Evolutionary_DSE.py</StartupFile>
+    <StartupFile>DecisionSupport.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -13,7 +13,7 @@
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterId />
     <InterpreterVersion />
-    <CommandLineArguments>./testconfig/DAVOS_Vivado_MC8051.xml</CommandLineArguments>
+    <CommandLineArguments>./testconfig/Vivado_MC8051.xml</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
     <IsWindowsApplication>False</IsWindowsApplication>
   </PropertyGroup>
@@ -32,10 +32,11 @@
     <Compile Include="DecisionSupport.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="DesignBuilder.py" />
-    <Compile Include="Evolutionary_DSE.py">
+    <Compile Include="FactorialDesignBuilder.py" />
+    <Compile Include="EvalEngine.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Evolutionary.py" />
     <Compile Include="ImplementationTool.py">
       <SubType>Code</SubType>
     </Compile>
@@ -73,9 +74,11 @@
     <Compile Include="testconfig\obsolete\qtest.py" />
     <Compile Include="UserInterface\SBFI\dumptrace.py" />
     <Compile Include="UserInterface\SBFI\query.py" />
+    <Compile Include="XilinxInjectorHost.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="FaultDictionaries\" />
+    <Folder Include="XilinxInjector\" />
     <Folder Include="SupportScripts\" />
     <Folder Include="testconfig\" />
     <Folder Include="testconfig\obsolete\" />
@@ -83,9 +86,16 @@
     <Folder Include="UserInterface\IMPL\" />
     <Folder Include="UserInterface\libs\" />
     <Folder Include="UserInterface\SBFI\" />
+    <Folder Include="XilinxInjector\Cache\" />
+    <Folder Include="XilinxInjector\Injector_build\" />
+    <Folder Include="XilinxInjector\Injector_src\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="FaultDictionaries\Xilinx_Simprim_VHDL.xml" />
+    <Content Include="SupportScripts\AnovaRegression.m" />
+    <Content Include="SupportScripts\AugmentDesign.m" />
+    <Content Include="SupportScripts\doptimal.m" />
+    <Content Include="SupportScripts\excludeitems.m" />
     <Content Include="SupportScripts\factorial.m" />
     <Content Include="SupportScripts\modelsim_rtl_nodes.do" />
     <Content Include="testconfig\DAVOS_LEON3.xml" />
@@ -105,6 +115,8 @@
     <Content Include="testconfig\obsolete\PIC_IMPL.xml" />
     <Content Include="testconfig\obsolete\PIC_JOIN.xml" />
     <Content Include="testconfig\obsolete\PIC_RTL.xml" />
+    <Content Include="testconfig\Vivado_MC8051.xml" />
+    <Content Include="testconfig\Vivado_MC8051_Genetic.xml" />
     <Content Include="UserInterface\IMPL\markupstyle.css" />
     <Content Include="UserInterface\IMPL\Monitoring.html" />
     <Content Include="UserInterface\IMPL\Monitoring.js" />
@@ -118,6 +130,20 @@
     <Content Include="UserInterface\SBFI\markupstyle.css" />
     <Content Include="UserInterface\SBFI\query.html" />
     <Content Include="UserInterface\SBFI\xscript.js" />
+    <Content Include="XilinxInjector\Cache\FarArray.txt" />
+    <Content Include="XilinxInjector\Injector_build\Injector.elf" />
+    <Content Include="XilinxInjector\Injector_build\Injector.elf.size" />
+    <Content Include="XilinxInjector\Injector_build\ps7_init.tcl" />
+    <Content Include="XilinxInjector\Injector_build\system.hdf" />
+    <Content Include="XilinxInjector\Injector_src\BitArray.c" />
+    <Content Include="XilinxInjector\Injector_src\BitArray.h" />
+    <Content Include="XilinxInjector\Injector_src\lscript.ld" />
+    <Content Include="XilinxInjector\Injector_src\platform.c" />
+    <Content Include="XilinxInjector\Injector_src\platform.h" />
+    <Content Include="XilinxInjector\Injector_src\platform_config.h" />
+    <Content Include="XilinxInjector\Injector_src\SeuInjector.c" />
+    <Content Include="XilinxInjector\Injector_src\SeuInjector.h" />
+    <Content Include="XilinxInjector\Injector_src\Xilinx.spec" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />

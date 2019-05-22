@@ -25,26 +25,30 @@ import VendorSpecific
 TIMEOUT_IMPL_PHASE = 1000
 
 
-def implement_model(config, model, adjust_constraints, stat):
+def implement_model(config, model, adjust_constraints, stat, ForceReimplement = False):
     os.chdir(config.design_genconf.design_dir)    
-    if update_metrics(model) != None: return
+    if (not ForceReimplement) and (update_metrics(model) != None): return
     if not os.path.exists(config.design_genconf.tool_log_dir):
         os.makedirs(config.design_genconf.tool_log_dir)            
     log = open(os.path.join(config.design_genconf.tool_log_dir, model.Label+".log"), 'w')
     log.write("\nImplementing: " + model.Label + ', started: ' + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    if stat == None:
-        stat = ProcStatus('Config')
+    if stat == None: stat = ProcStatus('Config')
+    if not 'EvalTime' in model.Metrics: model.Metrics['EvalTime'] = dict()
+    if not isinstance(model.Metrics['EvalTime'], dict): model.Metrics['EvalTime'] = dict()
+    for k,v in model.Metrics['EvalTime'].iteritems():
+        stat.update(str(k), '{} sec'.format(v), 'ok')
 
     #If this configuration has not been implemented previously - implement it, retrieve the results, update statistics for monitoring interface
-    #if os.path.exists(model.ModelPath):
-    #    try:
-    #        #backup_script = 'zip -r {0}_BACKUP {1} > {2}/ziplog_{3}.log'.format(model.Label, cleanup_path(get_relative_path(os.getcwd(), model.ModelPath)), config.design_genconf.tool_log_dir, model.Label)
-    #        #proc = subprocess.Popen(backup_script, shell=True)
-    #        #print('Running backup of previous results: {0}'.format(backup_script))
-    #        #proc.wait()
-    #        shutil.rmtree(model.ModelPath)
-    #    except e:
-    #        print(str(e))
+    if ForceReimplement:
+        if os.path.exists(model.ModelPath):
+            try:
+        #        #backup_script = 'zip -r {0}_BACKUP {1} > {2}/ziplog_{3}.log'.format(model.Label, cleanup_path(get_relative_path(os.getcwd(), model.ModelPath)), config.design_genconf.tool_log_dir, model.Label)
+        #        #proc = subprocess.Popen(backup_script, shell=True)
+        #        #print('Running backup of previous results: {0}'.format(backup_script))
+        #        #proc.wait()
+                shutil.rmtree(model.ModelPath)
+            except e:
+                print(str(e))
     if not os.path.exists(model.ModelPath):
         shutil.copytree(os.path.join(config.design_genconf.design_dir, config.design_genconf.template_dir), model.ModelPath)
     os.chdir(model.ModelPath)
@@ -60,7 +64,7 @@ def implement_model(config, model, adjust_constraints, stat):
         with open(config.design_genconf.constraint_file, 'r') as f:
             constraint_template = f.read()
     
-
+    implentability_checked, impl_test = False, False
     phase = config.flow.entry_phase
     while phase != None:
         stat.update('Progress', phase.name, 'wait')
@@ -96,9 +100,13 @@ def implement_model(config, model, adjust_constraints, stat):
                 success = False             
             else:
                 success = getattr(VendorSpecific, phase.postcondition_handler)(phase, config, model)
-            timetaken = str(datetime.datetime.now().replace(microsecond=0) - timestart)
-            if success:
-                stat.update(phase.name, '100%: '+ timetaken, 'ok')
+            timetaken = datetime.datetime.now().replace(microsecond=0) - timestart
+            if success:                
+                if not phase.name in model.Metrics['EvalTime']: 
+                    model.Metrics['EvalTime'][phase.name] = int(time_to_seconds(timetaken))
+                else: 
+                    model.Metrics['EvalTime'][phase.name] += int(time_to_seconds(timetaken))
+                stat.update(phase.name, '{} sec'.format(model.Metrics['EvalTime'][phase.name]), 'ok')
                 completed = True
             else:
                 if attempt > config.retry_attempts:
@@ -109,15 +117,21 @@ def implement_model(config, model, adjust_constraints, stat):
                     return      
 
         res = getattr(VendorSpecific, phase.result_handler)(phase, config, model)
-        if not 'Implprop' in model.Metrics: 
-            model.Metrics['Implprop'] = dict()
+        if not 'Implprop' in model.Metrics: model.Metrics['Implprop'] = dict()
+        if not isinstance(model.Metrics['Implprop'], dict): model.Metrics['Implprop'] = dict()
         for k, v in res.iteritems():
             model.Metrics['Implprop'][k] = v
             stat.update(k, str(v), 'res')
 
         if adjust_constraints and phase.constraint_to_adjust != None:
             satisfied = getattr(VendorSpecific, phase.constraint_to_adjust.check_handler)(phase, config, model)
+            
             if satisfied:
+                implentability_checked = True
+                if impl_test:
+                    impl_test == False
+                    phase.constraint_to_adjust.current_value = saved_constraint
+                    log.write('\n{0}\tImplementation test passed'.format(str(timestart)))
                 if phase.constraint_to_adjust.converged:
                     phase = phase.next
                 else:
@@ -127,17 +141,43 @@ def implement_model(config, model, adjust_constraints, stat):
                     elif phase.constraint_to_adjust.goal == AdjustGoal.max:
                         phase.constraint_to_adjust.current_value += phase.constraint_to_adjust.adjust_step
                     log.write('\n{0}\tConstraint adjusted: {1} = {2}'.format(str(timestart), phase.constraint_to_adjust.placeholder, phase.constraint_to_adjust.current_value))
+                    if phase.constraint_to_adjust.current_value <= 0:
+                         #mask config as non implementable and exit
+                         model.Metrics['Implprop']['Error'] = 'ImplError'
+                         completed = True
+                         phase = None
+                         break
                     phase = phase.constraint_to_adjust.return_to_phase
             else:
-                #once not satisfied - converged
-                phase.constraint_to_adjust.converged = True
-                #relax the constraint until satisfied
-                if phase.constraint_to_adjust.goal == AdjustGoal.min:
-                    phase.constraint_to_adjust.current_value += phase.constraint_to_adjust.adjust_step
-                elif phase.constraint_to_adjust.goal == AdjustGoal.max:
-                    phase.constraint_to_adjust.current_value -= phase.constraint_to_adjust.adjust_step
-                log.write('\n{0}\tConstraint adjusted: {1} = {2}'.format(str(timestart), phase.constraint_to_adjust.placeholder, phase.constraint_to_adjust.current_value))
-                phase = phase.constraint_to_adjust.return_to_phase
+                if (not implentability_checked) and phase.constraint_to_adjust.goal == AdjustGoal.max:
+                    if impl_test:
+                        model.Metrics['Implprop']['Error'] = 'ImplError'
+                        completed = True
+                        phase = None
+                        log.write('\n{0}\tImplementation test failed'.format(str(timestart)))
+                        break
+                    else:    
+                        saved_constraint = phase.constraint_to_adjust.current_value - phase.constraint_to_adjust.adjust_step           
+                        phase.constraint_to_adjust.current_value = 2.0
+                        impl_test = True
+                        phase = phase.constraint_to_adjust.return_to_phase
+                        log.write('\n{0}\tImplementation test started'.format(str(timestart)))
+                else:
+                    #once not satisfied - converged
+                    phase.constraint_to_adjust.converged = True
+                    #relax the constraint until satisfied
+                    if phase.constraint_to_adjust.goal == AdjustGoal.min:
+                        phase.constraint_to_adjust.current_value += phase.constraint_to_adjust.adjust_step
+                    elif phase.constraint_to_adjust.goal == AdjustGoal.max:
+                        phase.constraint_to_adjust.current_value -= phase.constraint_to_adjust.adjust_step
+                    if phase.constraint_to_adjust.current_value <= 0:
+                         #mask config as non implementable and exit
+                         model.Metrics['Implprop']['Error'] = 'ImplError'
+                         completed = True
+                         phase = None
+                         break
+                    log.write('\n{0}\tConstraint adjusted: {1} = {2}'.format(str(timestart), phase.constraint_to_adjust.placeholder, phase.constraint_to_adjust.current_value))
+                    phase = phase.constraint_to_adjust.return_to_phase
         else:
             phase = phase.next
 
@@ -175,7 +215,7 @@ def proclist_stat(proclist):
     return(active_proc, finished_proc)
 
 
-def allocate_user_interface(config):
+def allocate_gui_local(config):
     os.chdir(config.design_genconf.design_dir)
     copy_all_files(os.path.join(config.call_dir,'UserInterface/IMPL'), config.design_genconf.design_dir)
     copy_all_files(os.path.join(config.call_dir,'UserInterface/libs'), os.path.join(config.design_genconf.design_dir, 'libs'))
@@ -212,6 +252,8 @@ def allocate_user_interface(config):
 
 
 def update_metrics(m):
+
+
     if os.path.isfile(os.path.join(m.ModelPath, HDLModelDescriptor.std_dumpfile_name)):
         tag = ET.parse(os.path.join(m.ModelPath, HDLModelDescriptor.std_dumpfile_name)).getroot()
         res = HDLModelDescriptor.deserialize(SerializationFormats.XML, tag).Metrics
@@ -272,11 +314,11 @@ def implement_models_multicore(config, models, recover_state = True):
     manager = BaseManager()
     manager.start()
     #Allocate User Interface and launch it - monitoring page (no web-server required)
-    allocate_user_interface(config)
+    allocate_gui_local(config)
     if not os.path.exists(config.design_genconf.tool_log_dir):
         os.makedirs(config.design_genconf.tool_log_dir)            
 
-    procdict = recover_statistics(models, config.statfile, recover_state)
+    procdict = recover_statistics(models, os.path.join(config.design_genconf.design_dir, config.statfile), recover_state)
     globalstatdict = dict()
     stat = ProcStatus('Global')
     stat.update('Phase', 'Implementation','')
@@ -312,7 +354,7 @@ def implement_models_multicore(config, models, recover_state = True):
                 (active_proc_num, finished_proc_num) = proclist_stat(list(procdict.values()))
                 globalstatdict['Implementation'].update('Progress', str('%.2f' % (100*float(finished_proc_num)/float(len(models_to_implement))))+'%', '')
                 globalstatdict['Implementation'].update('Time_Taken', str(datetime.datetime.now().replace(microsecond=0) - timestart), 'ok')
-                save_statistics( [val for key, val in sorted(globalstatdict.items())] + [item[2] for item in [val for key, val in sorted(procdict.items())]], config.statfile ) 
+                save_statistics( [val for key, val in sorted(globalstatdict.items())] + [item[2] for item in [val for key, val in sorted(procdict.items())]], os.path.join(config.design_genconf.design_dir, config.statfile) ) 
                 print('Finished: {0}, Running: {1}'.format(finished_proc_num, active_proc_num))
                 if active_proc_num < config.max_proc:
                     break
@@ -325,7 +367,7 @@ def implement_models_multicore(config, models, recover_state = True):
             (active_proc_num, finished_proc_num) = proclist_stat(list(procdict.values()))
             globalstatdict['Implementation'].update('Progress', str('%.2f' % (100*float(finished_proc_num)/float(len(models_to_implement))))+'%', '')
             globalstatdict['Implementation'].update('Time_Taken', str(datetime.datetime.now().replace(microsecond=0) - timestart), 'ok')
-            save_statistics( [val for key, val in sorted(globalstatdict.items())] + [item[2] for item in [val for key, val in sorted(procdict.items())]], config.statfile ) 
+            save_statistics( [val for key, val in sorted(globalstatdict.items())] + [item[2] for item in [val for key, val in sorted(procdict.items())]], os.path.join(config.design_genconf.design_dir, config.statfile) ) 
             print('Finished: {0}, Running: {1}'.format(finished_proc_num, active_proc_num))
             if active_proc_num < 1:
                 break
@@ -338,7 +380,7 @@ def implement_models_multicore(config, models, recover_state = True):
 
 
 
-def ImplementConfigurationsManaged(configlist, config, JM):
+def ImplementConfigurationsManaged(configlist_implement, configlist_inject, config, JM, callback_func = None, callback_period = 0):
     BaseManager.register('ProcStatus', ProcStatus)
     manager = BaseManager()
     manager.start()
@@ -349,20 +391,30 @@ def ImplementConfigurationsManaged(configlist, config, JM):
     stat.update('Progress', '0%','')
     stat.update('Report', 'wait','')
     globalstatdict['Implementation'] = stat
+    conf_count = len(configlist_implement) + len(configlist_inject)
 
-    for i in configlist:
+    for i in configlist_inject:
+        stat = manager.ProcStatus('Config')   #shared proxy-object for process status monitoring
+        stat.update('Label', i.Label,'')
+        configstat.append(stat)
+        JM.queue_faulteval.put([i, stat, config])
+    for i in configlist_implement:
         stat = manager.ProcStatus('Config')   #shared proxy-object for process status monitoring
         stat.update('Label', i.Label,'')
         configstat.append(stat)
         JM.queue_implement.put([i, stat, config])
-    impl_results = []
-    while(JM.queue_result.qsize() < len(configlist)):
-        with JM.console_lock: print 'Implementation_Queue = {0:d}, SeuInjection_Queue = {1:d}, Result_Queue = {2:d} / {3:d}\r'.format(JM.queue_implement.qsize(), JM.queue_faulteval.qsize(), JM.queue_result.qsize(),  len(configlist))
-        save_statistics( [val for key, val in sorted(globalstatdict.items())] + configstat, config.statfile )
+    tmark = time.time()
+    while(JM.queue_result.qsize() < conf_count):
+        with JM.console_lock: 
+            console_message('Implementation_Queue = {0:d}, SeuInjection_Queue = {1:d}, Result_Queue = {2:d} / {3:d}\r'.format(JM.queue_implement.qsize(), JM.queue_faulteval.qsize(), JM.queue_result.qsize(),  conf_count), ConsoleColors.Green, True)
+        save_statistics( [val for key, val in sorted(globalstatdict.items())] + configstat, os.path.join(config.design_genconf.design_dir, config.statfile) )
         time.sleep(1)
-    save_statistics( [val for key, val in sorted(globalstatdict.items())] + configstat, config.statfile )
-
-    for i in range(len(configlist)):
+        if callback_func != None and int(time.time()-tmark) >= callback_period:
+            callback_func()
+            tmark = time.time()
+    save_statistics( [val for key, val in sorted(globalstatdict.items())] + configstat, os.path.join(config.design_genconf.design_dir, config.statfile) )
+    impl_results = []
+    for i in range(conf_count):
         c = JM.queue_result.get()[0]
         with JM.console_lock: print 'Appending Result: {0}:{1}'.format(str(c.Label), str(c.Metrics))
         impl_results.append(c)

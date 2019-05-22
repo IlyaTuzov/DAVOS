@@ -1,7 +1,8 @@
 clear;
 set(0,'DefaultFigureVisible','off');
 %specify the type of generalized model: linear, interactions, quadratic, etc.
-model_type = 'interactions';
+model_type = 'linear';
+%model_type = 'interactions';
 %specify input data tables and output folder
 inpfile = #INPFILE;
 resfolder = #RESFOLDER;
@@ -10,10 +11,11 @@ FullFactorSet = #FACTORLABELS;
 ResponseVariableArray= #RESPONSEVARIABLELABELS;
 %define distribution type for each variable: continuous or discrete
 ResponceVarType = #RESPONSEVARIABLETYPES;
-DistributionContinuous = {'normal', 'gamma', 'inverse gaussian'};
+%DistributionContinuous = {'normal', 'gamma', 'inverse gaussian'};
+DistributionContinuous = {'normal'};
 DistributionDiscrete = {'poisson'};
 %significance theshold for ANOVA
-treshold = double(0.05);
+treshold = double(1.0);
 %Rsquared treshold for fitglm, if not met - stepwiseglm is executed
 rsquared_treshold = double(0.9);
 
@@ -106,7 +108,7 @@ rsquared_treshold = double(0.9);
     fprintf(fdesc, '"/>\n</data>');
     fclose(fdesc);
 
-    fdesc = fopen(strcat(resfolder, 'MatlabSummary.xml'),'wt');
+    fdesc = fopen(strcat(resfolder, 'Summary.xml'),'wt');
     summary = strcat(summary, '\n\n</Summary>');
     fprintf(fdesc, summary);
     fclose(fdesc);
