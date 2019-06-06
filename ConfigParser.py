@@ -637,7 +637,7 @@ class ImplementationFlow:
                     self.entry_phase = c
                     break
             if self.entry_phase == None:
-                raw_input('ImplementationFlow: entry phase not counf in configuration xml')
+                raw_input('ImplementationFlow: entry phase not counf in configuration xml\nPress any key to continue...')
             current = self.entry_phase
             while current != None:
                 found = False

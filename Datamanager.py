@@ -201,7 +201,7 @@ class FactorSetting:
             if len(buf) > 1: res.OptionName = str(buf[1])
             if len(buf) > 2: res.OptionVal = str(buf[2])
             if len(buf) > 3: res.FactorName = str(buf[3])
-            if len(buf) > 4: res.FactorVal = int(str(buf[4]))
+            if len(buf) > 4: res.FactorVal = int(str(buf[4])) if buf[4] != '' else ''
         elif format == SerializationFormats.XML:
             res.Phase     =ipack.get('Phase', '')
             res.OptionName=ipack.get('OptionName', '')

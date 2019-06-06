@@ -269,7 +269,7 @@ try:
                     sampled_ind += 1
                     #Update the distribution tree
                     pth = []
-                    for p in re.split(pathsep, c[pathfield_index].replace('{','').replace('}','')):
+                    for p in re.split(pathsep, c[pathfield_index].replace('{','').replace('}','').replace('\\','')):
                         if p != '':
                             pth.append(p)
                     DesignTree.append(pth, t.lower())                    

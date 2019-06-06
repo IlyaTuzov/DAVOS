@@ -16,9 +16,12 @@
 		<macrocell name = "X_FFD"  >
 			<port name = "O" />
 		</macrocell>
+        
+        
 		<macrocell name = "SIGNAL"  >
 			
-		</macrocell>        
+		</macrocell>   
+        
 	</observation_spec>
 	
 	

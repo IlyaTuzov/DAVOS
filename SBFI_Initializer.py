@@ -117,7 +117,7 @@ def InitializeHDLModels(config, toolconf):
                 for scope in config.initializer.injection_scopes:
                     if(scope.unit_path == i):
                         for s in content:
-                            s = s.replace('[','(').replace(']',')')
+                            #s = s.replace('[','(').replace(']',')')
                             x = DesignNode()
                             wl = s.split(' ')
                             if config.genconf.design_type == 'netlist':
@@ -243,7 +243,7 @@ def InitializeHDLModels(config, toolconf):
         # signal
         for c in config.initializer.generic_observation_nodes.signals:
             content = "\n# " + c.comment
-            content += "\n\tadd list " + c.options + " -label " + c.label + " " + c.path
+            content += "\n\tadd list " + c.options + " -label " + c.label + " {" + c.path + "}"
             if(c.location == 'OUTPUTS'):
                 GenericExternalObservationContent += content
             else:
@@ -262,7 +262,7 @@ def InitializeHDLModels(config, toolconf):
         for c in config.initializer.generic_observation_nodes.memarrays:
             mcontent = "\n# " + c.comment
             for address in range(c.low_address, c.high_address+1, 1):
-                mcontent += "\n\tadd list " + c.options + " -label " + c.label + "(" + str(address) + ") " + c.path + "(" + str(address) + ")"
+                mcontent += "\n\tadd list " + c.options + " -label " + c.label + "(" + str(address) + ") {" + c.path + "(" + str(address) + ")}"
             if(c.location == 'OUTPUTS'):
                 GenericExternalObservationContent += mcontent
             else:
@@ -297,7 +297,7 @@ def InitializeHDLModels(config, toolconf):
                 for scope in config.initializer.observation_scopes:
                     if(scope.unit_path == i):
                         for s in content:
-                            s = s.replace('[','(').replace(']',')')
+                            #s = s.replace('[','(').replace(']',')')
                             x = DesignNode()
                             wl = s.split(' ')
                             if config.genconf.design_type == 'netlist':
@@ -356,9 +356,9 @@ def InitializeHDLModels(config, toolconf):
                                 if p == x.unit_path and x.name.startswith(scope.node_prefix):
                                     for port in observable_macrocells.get_macrocell_ports(x.type):
                                         if(scope.node_prefix!=''):
-                                            Registers_Init_Content += "\n\tadd list " + scope.sampling_options  + " -label " + subpath_prefix + x.name.replace(scope.node_prefix, scope.label_prefix) + "_"+ port + " " + x.name + "/" + port
+                                            Registers_Init_Content += "\n\tadd list " + scope.sampling_options  + " -label {" + subpath_prefix + x.name.replace(scope.node_prefix, scope.label_prefix) + "_"+ port + "} {" + x.name + "/" + port + "}"
                                         else:
-                                            Registers_Init_Content += "\n\tadd list " + scope.sampling_options  + " -label " + subpath_prefix + x.name + "_"+ port + " " + x.name + "/" + port
+                                            Registers_Init_Content += "\n\tadd list " + scope.sampling_options  + " -label {" + subpath_prefix + x.name + "_"+ port + "} {" + x.name + "/" + port + "}"
                             #Build and Append Virtual registers
                             if config.initializer.virtual_register_reconstruction:
                                 reglist = RegisterList()
@@ -402,15 +402,15 @@ def InitializeHDLModels(config, toolconf):
                                     if(bus_def == ""):
                                         port = reg_reconstruct_macrocells.get_macrocell_port(i.single_bit_type)
                                         if(scope.node_prefix!=''):
-                                            Registers_Init_Content += "\n\tadd list " + scope.sampling_options  + " -label " + subpath_prefix + i.name.replace(scope.node_prefix, scope.label_prefix) + "_"+ port + " " + i.name + "/" + port
+                                            Registers_Init_Content += "\n\tadd list " + scope.sampling_options  + " -label {" + subpath_prefix + i.name.replace(scope.node_prefix, scope.label_prefix) + "_"+ port + "} {" + i.name + "/" + port + "}"
                                         else:
-                                            Registers_Init_Content += "\n\tadd list " + scope.sampling_options  + " -label " + subpath_prefix + i.name + "_"+ port + " " + i.name + "/" + port
+                                            Registers_Init_Content += "\n\tadd list " + scope.sampling_options  + " -label {" + subpath_prefix + i.name + "_"+ port + "} {" + i.name + "/" + port + "}"
                                     else:
                                         Registers_Init_Content += "\n" + bus_def
                                         if(scope.node_prefix!=''):
-                                            Registers_Init_Content += "\n\tadd list " + scope.sampling_options  + " -label " + subpath_prefix + bus_name.replace(scope.node_prefix, scope.label_prefix) + " " + bus_name
+                                            Registers_Init_Content += "\n\tadd list " + scope.sampling_options  + " -label {" + subpath_prefix + bus_name.replace(scope.node_prefix, scope.label_prefix) + "} {" + bus_name + "}"
                                         else:
-                                            Registers_Init_Content += "\n\tadd list " + scope.sampling_options  + " -label " + subpath_prefix + bus_name + " " + bus_name
+                                            Registers_Init_Content += "\n\tadd list " + scope.sampling_options  + " -label {" + subpath_prefix + bus_name + "} {" + bus_name + "}"
                             SimInitContent += '\n' + Registers_Init_Content
             #For RTL append internal signals
             elif config.genconf.design_type == 'rtl' and inj_match_nodelist == None:
@@ -424,16 +424,16 @@ def InitializeHDLModels(config, toolconf):
                             for x in cdata.all_nodes:
                                 if(x.unit_path == p):
                                     if(scope.node_prefix!=''):
-                                        SimInitContent += ("\n\tadd list " + scope.sampling_options  + " -label " + subpath_prefix + x.name.replace(scope.node_prefix, scope.label_prefix)  + " " + x.name).replace('[','(').replace(']',')')
+                                        SimInitContent += ("\n\tadd list " + scope.sampling_options  + " -label {" + subpath_prefix + x.name.replace(scope.node_prefix, scope.label_prefix)  + "} {" + x.name + "}").replace('[','(').replace(']',')')
                                     else:
-                                        SimInitContent += ("\n\tadd list " + scope.sampling_options  + " -label " + subpath_prefix + x.name + " " + x.name).replace('[','(').replace(']',')')
+                                        SimInitContent += ("\n\tadd list " + scope.sampling_options  + " -label {" + subpath_prefix + x.name + "} {" + x.name + "}").replace('[','(').replace(']',')')
                                     
             elif config.genconf.design_type == 'rtl' and inj_match_nodelist != None:
                 for node in all_inj_nodes:
                     for d in inj_match_nodelist:
                         if remove_delimiters(d.name) == remove_delimiters(node.unit_path + node.name) :
                             #SimInitContent += ("\nenv " + node.unit_path.replace('[','(').replace(']',')') + "\n\tadd list " + '-notrigger'  + " -label " + node.name + " " + node.unit_path + node.name).replace('[','(').replace(']',')')
-                            SimInitContent += ("\nenv " + node.unit_path.replace('[','(').replace(']',')') + "\n\tadd list " + '-notrigger'  + " -label " + node.unit_path + node.name + " " + node.unit_path + node.name).replace('[','(').replace(']',')')                        
+                            SimInitContent += ("\nenv " + node.unit_path.replace('[','(').replace(']',')') + "\n\tadd list " + '-notrigger'  + " -label {" + node.unit_path + node.name + "} {" + node.unit_path + node.name + "}").replace('[','(').replace(']',')')                        
                             break
             initmodel_file = open(os.path.join(c.work_dir, toolconf.list_init_file),'w')
             initmodel_file.write(SimInitContent + '\n#</INTERNALS>')

@@ -119,7 +119,7 @@ def generate_injection_scripts(config, modelconf, toolconf, faultdict):
                         for t in inj_time:
                              inj_script += str(int(t)-int(checkpoint_linked)) + "ns "
                         inj_script += "}"
-                        inj_script += "\n\nforeach i $InjTime {\n\twhen \"\\$now >= $i\" {\n\t\tputs \"Time: $::now: Injection of " + fconfig.model + " Into {0}".format(instance.name) + "\"\n\t\t" + c[1] + "\n\t}\n}"
+                        inj_script += "\n\nforeach i $InjTime {\n\twhen \"\\$now >= $i\" {\n\t\tputs \"Time: $::now: Injection of " + fconfig.model + "\"\n\t\t" + c[1] + "\n\t}\n}"
                         fname = "fault_" + str_index + "__checkpoint_" + str(checkpoint_linked) + ".do"
                     else:       #event-driven injection (on trigger expression)
                         inj_script += "\nset ExecTime " + str(int(config.genconf.std_workload_time*scale_factor)) + "ns"
@@ -127,7 +127,7 @@ def generate_injection_scripts(config, modelconf, toolconf, faultdict):
                         for t in inj_time:
                              inj_script += str(int(t)) + "ns "
                         inj_script += "}"
-                        inj_script += "\n\nwhen {" + fconfig.trigger_expression + "} {\n\tforeach i $InjTime {\n\t\twhen \"\\$now >= $i\" {\n\t\t\tputs \"Time: $::now: Injection of " + fconfig.model + " Into {0}".format(instance.name) +"\"\n\t\t\t" + c[1] + "\n\t\t}\n\t}\n}"
+                        inj_script += "\n\nwhen {" + fconfig.trigger_expression + "} {\n\tforeach i $InjTime {\n\t\twhen \"\\$now >= $i\" {\n\t\t\tputs \"Time: $::now: Injection of " + fconfig.model  +"\"\n\t\t\t" + c[1] + "\n\t\t}\n\t}\n}"
                         fname = "fault_" + str_index + "__checkpoint_0" + ".do"
                     inj_script += ("\nwhen \"\$now >= $ExecTime && {0}'event && {1} == 1\"".format(config.genconf.clk_signal, config.genconf.clk_signal)  if config.genconf.clk_signal != '' else "\nwhen \"\$now >= $ExecTime\"") + " { force -freeze "+ (toolconf.finish_flag if config.genconf.finish_flag == '' else config.genconf.finish_flag) + " 1 }"
                     if config.injector.checkpont_mode == CheckpointModes.ColdRestore:

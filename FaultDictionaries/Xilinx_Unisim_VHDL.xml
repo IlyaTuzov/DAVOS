@@ -1,0 +1,92 @@
+<!-- 
+    Dictionary of fault models for Xilinx simprim macrocell library
+    Author: Ilya Tuzov, Universitat Politecnica de Valencia
+-->
+
+
+<data>
+
+	<observation_spec>
+
+        
+		<macrocell name = "FDRE"  >
+			<port name = "Q" />
+		</macrocell>
+        
+		<macrocell name = "SIGNAL"  >
+			
+		</macrocell>   
+        
+	</observation_spec>
+	
+	
+
+	<register_reconstruction>
+
+        <macrocell name = "FDRE" outport = "Q"/>	
+		<macrocell name = "SIGNAL" outport = ""/>	
+        
+	</register_reconstruction>
+
+	
+	
+<fdesc 	model = "stuck_at" 
+		macrocells = "SIGNAL" >
+	<injection_rule
+		code_pattern = "force -freeze #PATH #FORCEDVALUE 0" >
+
+        <injectioncase label = "" nodes = "" />        
+	</injection_rule>
+</fdesc>	
+
+
+<fdesc 	model = "bit_flip" 
+		macrocells = "SIGNAL" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH]#;
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -deposit #PATH $nv 0#;" >
+        
+        <injectioncase label = "" nodes = "" />
+	</injection_rule>
+</fdesc>	   
+	   
+
+<fdesc 	model = "pulse" 
+		macrocells = "SIGNAL" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -freeze #PATH $nv 0 -cancel #DURATION#;" >
+
+            <injectioncase label = "" nodes = "" />            
+	</injection_rule>
+</fdesc>	
+	
+	
+
+
+	
+<fdesc 	model = "bit_flip" 
+		macrocells = "FDRE" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine {#PATH/#NODE_1}]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+            force -deposit {#PATH/#NODE_1} $nv 0#;" >
+			
+		<injectioncase label = "Q" nodes = "#NODE_1=q_out"/>
+	</injection_rule>
+</fdesc>	   
+
+
+
+
+
+
+
+
+
+</data>

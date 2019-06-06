@@ -77,7 +77,7 @@ def generate_reference_script(config, toolconfig):
         workload_time = int(config.genconf.std_workload_time * scale_factor)   
         print "Scale factor: " + str(scale_factor)
         reference_script = "do " + config.genconf.run_script + " " + c.run_options
-        reference_script += "\nrun " + str(init_time)
+        reference_script += "\nrun " + str(init_time) + "ns"
         reference_script += "\ncheckpoint " + toolconfig.checkpoint_dir + "/" + toolconfig.std_start_checkpoint
         reference_script += "\ncheckpoint " + toolconfig.checkpoint_dir + "/checkpoint_0.sim"             
         reference_script += "\nquit\n"
@@ -137,7 +137,7 @@ def generate_precise_checkpoints(config, toolconf, conf):
     c_time_point = int(0)
     for ind in range(0, config.injector.workload_split_factor, 1):
         ct_script += "\ncheckpoint " + toolconf.checkpoint_dir + "/checkpoint_" + str(c_time_point) + ".sim"
-        ct_script += "\nrun " + str(delta)
+        ct_script += "\nrun " + str(delta) + "ns"
         c_time_point += delta
     ct_script += "\nquit\n"
     os.chdir(conf.work_dir)

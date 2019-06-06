@@ -1470,4 +1470,3 @@ def intersect_intervals(A_low, A_high, B_low, B_high):
         return((False, 0))  
 
 
-
