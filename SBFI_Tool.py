@@ -54,7 +54,7 @@ def compile_project(config, toolconfig):
     #When using Sun Grid Engine
     if config.platform == Platforms.Grid or config.platform == Platforms.GridLight:
         for c in config.parconf:
-            run_qsub(config.injector.work_label + '_compile_' + c.label , "vsim -c -do \"do " + config.genconf.compile_script + " " + c.compile_options + " ;quit\" > ./ilogs/compile_log.txt", c.work_dir, config.injector.sim_time_checkpoints, "2g")
+            run_qsub(config.injector.work_label + '_compile_' + c.label , "vsim -c -do \"do " + config.genconf.compile_script + " " + c.compile_options + " ;quit\" > ./ilogs/compile_log.txt", c.work_dir, config.injector.sim_time_checkpoints, "2g", os.path.join(c.work_dir, toolconf.log_dir))
         joblst = get_queue_state_by_job_prefix(config.injector.work_label + '_compile_')
         while joblst.total_len() > 0:
             print "[Compile] Running: " + str(len(joblst.running)) + ",\tPending: " + str(len(joblst.pending))
@@ -104,7 +104,7 @@ def create_checkpoints(config, toolconfig):
     if config.platform == Platforms.Grid or config.platform == Platforms.GridLight:
         for c in config.parconf:
             #qsub_wait_threads(maxproc-1)
-            run_qsub(config.injector.work_label + c.label , "vsim -c -do \"do ./iscripts/checkpointsim.do \" > ./iresults/checkpoint_sim_log.txt", c.work_dir, config.injector.sim_time_checkpoints, "4g")
+            run_qsub(config.injector.work_label + c.label , "vsim -c -do \"do ./iscripts/checkpointsim.do \" > ./iresults/checkpoint_sim_log.txt", c.work_dir, config.injector.sim_time_checkpoints, "4g", os.path.join(c.work_dir, toolconf.log_dir))
             print "STARTED CHECKPOINT SIM: " + c.label + " MAX TIME REQUESTED: " + config.injector.sim_time_checkpoints
         joblst = get_queue_state_by_job_prefix(config.injector.work_label)
         while joblst.total_len() > 0:
@@ -161,7 +161,7 @@ def generate_precise_checkpoints(config, toolconf, conf):
             cpdir = os.path.join(conf.work_dir, toolconf.checkpoint_dir)
             if Dirstate(cpdir).nfiles >= config.injector.workload_split_factor: break
             work_label = config.injector.work_label + 'cp_' + str(task_run_at) + '_'
-            run_qsub(work_label + conf.label , sim_script , conf.work_dir, config.injector.sim_time_checkpoints, "4g")
+            run_qsub(work_label + conf.label , sim_script , conf.work_dir, config.injector.sim_time_checkpoints, "4g", os.path.join(conf.work_dir, toolconf.log_dir))
             time.sleep(20)
             joblst = get_queue_state_by_job_prefix(work_label + conf.label)
             while joblst.total_len() > 0:
@@ -183,7 +183,7 @@ def launch_analysis(config, toolconf, conf, datamodel):
         process_dumps(config, toolconf,conf, datamodel)
     elif config.platform == Platforms.GridLight:
         work_label = config.injector.work_label + 'Analysis_'
-        run_qsub(work_label , 'python Analyzer_Iso_Grid.py ' + config.file + ' ' + conf.label + ' > ' + 'Analyzer.log', config.call_dir, config.injector.sim_time_injections, "4g")
+        run_qsub(work_label , 'python Analyzer_Iso_Grid.py ' + config.file + ' ' + conf.label + ' > ' + 'Analyzer.log', config.call_dir, config.injector.sim_time_injections, "4g", os.path.join(conf.work_dir, toolconf.log_dir))
         joblst_prev = get_queue_state_by_job_prefix(work_label)
         remaining_jobs = True
         while remaining_jobs:
@@ -207,7 +207,7 @@ def launch_analysis(config, toolconf, conf, datamodel):
                 except Exception as e:
                     pass
                 #Re-run analysis
-                run_qsub(work_label , 'python Analyzer_Iso_Grid.py ' +  config.file + ' ' + conf.label + ' > ' + 'Analyzer.log', config.call_dir, config.injector.sim_time_injections, "4g")
+                run_qsub(work_label , 'python Analyzer_Iso_Grid.py ' +  config.file + ' ' + conf.label + ' > ' + 'Analyzer.log', config.call_dir, config.injector.sim_time_injections, "4g", os.path.join(conf.work_dir, toolconf.log_dir))
                 remaining_jobs = True
             print "Analysis: " + str(len(joblst.running)) + ",\tPending: " + str(len(joblst.pending))
         shutil.copy(config.get_DBfilepath(False), config.get_DBfilepath(True))        
@@ -284,7 +284,7 @@ def RunSBFI(datamodel, config, toolconf):
         
                 #3.7. Faultload generator: Instantiate, Connect and Run in a new thread
                 if config.injector.create_injection_scripts:
-                    generate_injection_scripts(config, conf, toolconf, fault_dict)
+                    GenerateInjectionScripts_SamplingMode(config, conf, toolconf, fault_dict)
 
                 #3.8. Execute scripts (simulate - on Selected platform)
                 if config.injector.run_faultinjection:
@@ -316,7 +316,7 @@ if __name__ == "__main__":
     fault_dict = FaultDict(config.genconf.library_specification)
     #Prepare data model
     datamodel = None
-    if config.platform == Platforms.Multicore or config.platform == Platforms.Grid:
+    if config.platform == Platforms.Multicore or config.platform == Platforms.Grid or config.platform == Platforms.GridLight:
         datamodel = DataModel()
         datamodel.ConnectDatabase( config.get_DBfilepath(False), config.get_DBfilepath(True) )
         datamodel.RestoreHDLModels(config.parconf)

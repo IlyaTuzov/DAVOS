@@ -79,7 +79,24 @@
 			
 		<injectioncase label = "Q" nodes = "#NODE_1=q_out"/>
 	</injection_rule>
-</fdesc>	   
+</fdesc>
+
+
+
+<fdesc 	model = "bit_flip" 
+		macrocells = "ramb18e1" 
+		configuration = "RAM_MODE:TDP" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine {#PATH/#NODE_1}]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			change {#PATH/#NODE_1} $nv 0#;">
+			
+		<injectioncase label = "TDP/RAMB18E1_TDP_inst/prcs_clk/mem" 
+			  dimensions = "0-1023, 0-15" 
+			  nodes = "#NODE_1=TDP/RAMB18E1_TDP_inst/prcs_clk/mem#DIM"/>
+	</injection_rule>
+</fdesc>   
 
 
 

@@ -446,7 +446,7 @@ class SqlHelper:
                 if immediate_commit:
                     self.connection.commit()
             except Exception as e:                
-                print 'DB execute error: ' + str(e)
+                print 'DB execute error: ' + str(e) + '\nQuery: ' + str(query)
                 #time.sleep(0.1)
                 continue
             break
@@ -457,6 +457,7 @@ class SqlHelper:
 
     def createdb(self):
         self.connection = sqlite3.connect(self.dbfile)
+        os.chmod(self.dbfile, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
         self.cursor = self.connection.cursor()
         for tablename, sqlcode in CreateDBquery.items():
             query = 'SELECT name FROM sqlite_master WHERE type=\'table\' AND name=\'{0}\';'.format(tablename)

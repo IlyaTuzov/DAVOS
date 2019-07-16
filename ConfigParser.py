@@ -251,6 +251,8 @@ class FaultModelConfig:
             self.duration = float(0)
             self.modifier = ''
             self.trigger_expression = ''
+            self.multiplicity = int(0)
+            self.simulataneous_faults = False
         else:
             self.build_from_xml(xnode)
                  
@@ -276,6 +278,8 @@ class FaultModelConfig:
         self.activity_time_end = float(xnode.get('activity_time_end', '0'))
         self.inactivity_time_start = float(xnode.get('inactivity_time_start', '0'))
         self.inactivity_time_end = float(xnode.get('inactivity_time_end', '0'))
+        self.multiplicity = int(xnode.get('multiplicity','1'))
+        self.simulataneous_faults = True if int(xnode.get('simultaneous_faults','')=='yes') else False
         return(0)
 
 class SBFIConfigInjector:

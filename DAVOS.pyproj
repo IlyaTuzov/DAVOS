@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{47bcee03-0500-4221-8cef-36997cfb0a85}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>SBFI_Tool.py</StartupFile>
+    <StartupFile>BitstreamParser.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -13,7 +13,8 @@
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterId />
     <InterpreterVersion />
-    <CommandLineArguments>./testconfig/AVR_SIM.xml</CommandLineArguments>
+    <CommandLineArguments>
+    </CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
     <IsWindowsApplication>False</IsWindowsApplication>
   </PropertyGroup>
@@ -25,6 +26,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Analyzer_Iso_Grid.py" />
+    <Compile Include="BitstreamParser.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="ConfigParser.py">
       <SubType>Code</SubType>
     </Compile>

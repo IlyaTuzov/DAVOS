@@ -185,7 +185,7 @@ def build_summary_page(config, toolconf, datamodel):
         for k, stat in fm_stat.iteritems():
             stat_table.put_data(row, 0, str(k))
             for l in range(len(labels)):
-                data = "{0:.4f}".format(stat[labels[l]]) if type(stat[labels[l]]) is float else str(stat[labels[l]])
+                data = ("{0:.4f}".format(stat[labels[l]]) if type(stat[labels[l]]) is float else str(stat[labels[l]])) if (labels[l] in stat) else "0.0"
                 stat_table.put_data(row, l+1, data)
             row += 1
         logpage.put_data(stat_table.to_string() + "<hr><br>")

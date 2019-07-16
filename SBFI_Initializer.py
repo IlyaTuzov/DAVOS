@@ -351,7 +351,7 @@ def InitializeHDLModels(config, toolconf):
                             subpath_prefix = p[len(scope.unit_path):].replace('/','_')
                             #Append real registers 
                             Registers_Init_Content = "\n\n# Registers in scope: " + p + ', path_prefix: ' + subpath_prefix + ', item_prefix: ' + scope.node_prefix
-                            Registers_Init_Content += "\nenv "+p
+                            Registers_Init_Content += "\nenv {" + p + "}"
                             for x in rst_observation_nodes:
                                 if p == x.unit_path and x.name.startswith(scope.node_prefix):
                                     for port in observable_macrocells.get_macrocell_ports(x.type):
@@ -420,7 +420,7 @@ def InitializeHDLModels(config, toolconf):
                             subpath_prefix = p[len(scope.unit_path):].replace('/','_')
                             #Append signals
                             SimInitContent += "\n\n# Signals in scope: " + p + ', path_prefix: ' + subpath_prefix + ', prefix: ' + scope.label_prefix
-                            SimInitContent += "\nenv "+p
+                            SimInitContent += "\nenv {"+ p +"}"
                             for x in cdata.all_nodes:
                                 if(x.unit_path == p):
                                     if(scope.node_prefix!=''):
@@ -433,7 +433,7 @@ def InitializeHDLModels(config, toolconf):
                     for d in inj_match_nodelist:
                         if remove_delimiters(d.name) == remove_delimiters(node.unit_path + node.name) :
                             #SimInitContent += ("\nenv " + node.unit_path.replace('[','(').replace(']',')') + "\n\tadd list " + '-notrigger'  + " -label " + node.name + " " + node.unit_path + node.name).replace('[','(').replace(']',')')
-                            SimInitContent += ("\nenv " + node.unit_path.replace('[','(').replace(']',')') + "\n\tadd list " + '-notrigger'  + " -label {" + node.unit_path + node.name + "} {" + node.unit_path + node.name + "}").replace('[','(').replace(']',')')                        
+                            SimInitContent += ("\nenv {" + node.unit_path.replace('[','(').replace(']',')') + "}\n\tadd list " + '-notrigger'  + " -label {" + node.unit_path + node.name + "} {" + node.unit_path + node.name + "}").replace('[','(').replace(']',')')                        
                             break
             initmodel_file = open(os.path.join(c.work_dir, toolconf.list_init_file),'w')
             initmodel_file.write(SimInitContent + '\n#</INTERNALS>')

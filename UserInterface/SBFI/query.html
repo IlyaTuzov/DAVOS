@@ -453,7 +453,9 @@ var treemap = d3.tree().size([height, width]);
         function updateNodeTree(jsonNodes){
             UniqueNodeList = [];
             TreeToList(jsonNodes, "");            
-            var SelectList = $('#TreeNodeOptions');                     
+            var SelectList = $('#TreeNodeOptions');
+            document.getElementById('TreeNodeOptions').innerHTML = '';
+            document.getElementById('TreeNodeSelect').value = '';            
             $.each(UniqueNodeList, function(key, value){
                 SelectList.append($("<option></option>").attr("value", value).text(value));
             });   

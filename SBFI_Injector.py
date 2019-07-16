@@ -26,6 +26,7 @@ def execute_injection_scripts(config, toolconf, conf):
 
 
 def execute_injection_scripts_SGE(config, toolconf, conf):
+    #raw_input("RUNNING execute_injection_scripts_SGE....any key to continue...")
     task_run_at = 0
     time_start = datetime.datetime.now().replace(microsecond=0)
     remaining_jobs = True
@@ -139,7 +140,7 @@ def execute_injection_scripts_SGE(config, toolconf, conf):
                 shell_script_list[ind] = shell_script_list[ind][1:]
                 robust_file_write("./ilogs/shfile_"+str(ind)+".sh", shell_script_list[ind])
                 #Push to the queue - qsub
-                run_qsub(work_label + str("%03d" % ind), shell_script_list[ind], conf.work_dir, config.injector.sim_time_injections, "4g")                    
+                run_qsub(work_label + str("%03d" % ind), shell_script_list[ind], conf.work_dir, config.injector.sim_time_injections, "4g", os.path.join(conf.work_dir, toolconf.log_dir))                    
         time.sleep(15)
         jstat = get_queue_state_by_job_prefix(work_label)
         print "\n\tRunning processes:"
@@ -235,6 +236,7 @@ def execute_injection_scripts_SGE(config, toolconf, conf):
     
 
 def execute_injection_scripts_Multicore(config, toolconf, conf):
+    #raw_input("RUNNING execute_injection_scripts_Multicore....any key to continue...")
     fscriptlist = []
     print "\n\nStarting fault injection: " + conf.work_dir
     os.chdir(os.path.join(conf.work_dir, toolconf.script_dir))

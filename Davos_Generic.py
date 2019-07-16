@@ -194,6 +194,7 @@ def robust_file_write(fname, content):
             if(statinfo.st_size == 0):
                 print "robust_file_write: zero-size file error: " + fname + ", retrying"
                 continue
+            os.chmod(fname, stat.S_IRWXU)
         except Exception as e:
             print 'robust_file_write exception ['+ str(e) +'] on file write: ' + fname + ', retrying [attempt ' + str(i) + ']'
             time.sleep(0.001)
@@ -371,10 +372,11 @@ def normalize_xml(infilename, outfilename):
 # classes for logs and HTML reports
 #----------------------------------------------            
 class Table:
-    def __init__(self, name):
+    def __init__(self, name, ilabels = []):
         self.name = name
         self.columns = []
-        self.labels = []
+        self.labels = ilabels
+        for i in ilabels: self.columns.append([])
   
     def rownum(self):
         if(len(self.columns) > 0):
@@ -385,12 +387,10 @@ class Table:
     def colnum(self):
         return(len(self.columns))
 
-    def add_column(self, lbl):
-        nrow = []
-        for c in range(0, self.rownum(),1):
-            nrow.append('')
-        self.columns.append(nrow)
+    def add_column(self, lbl, data=[]):
         self.labels.append(lbl)
+        self.columns.append(data if data!=[] else ['']*self.rownum())
+
         
     def add_row(self, idata=None):
         if(idata!=None):
@@ -492,6 +492,35 @@ class Table:
                 res.append(d)
         return(res)
 
+    def delete_rows(self, indexes):
+        for i in range(self.colnum()):
+            c = self.columns[i]
+            c = [c[v] for v in range(len(c)) if not v in indexes]
+            self.columns[i] = c
+
+    def delete_columns(self, indexes):
+        self.columns = [self.columns[i] for i in range(len(self.columns)) if not i in indexes]
+        self.labels =  [self.labels[i] for i in range(len(self.labels)) if not i in indexes]
+
+    def filter(self, lbl, val):
+        marked_rows = []
+        column_index = self.labels.index(lbl)
+        for row_index in range(self.rownum()):
+            if self.get(row_index, column_index) == val: 
+                marked_rows.append(row_index)
+        self.delete_rows(marked_rows)
+        self.delete_columns([column_index])
+
+    def reorder_columns(self, labelsequence):
+        order = [self.labels.index(l) for l in labelsequence]
+        self.columns = [self.columns[i] for i in  order]
+        self.labels = [self.labels[i] for i in  order]
+
+    def search_row(self, value_sequence, column_align=0):
+        for row_index in range(self.rownum()):
+            row = [self.columns[i][row_index] for i in range(self.colnum())]
+            if row[column_align : column_align+len(value_sequence)] == value_sequence:
+                return row_index, row
 
 
 class HtmlTableCell:
