@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{47bcee03-0500-4221-8cef-36997cfb0a85}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>BitstreamParser.py</StartupFile>
+    <StartupFile>Evolutionary.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -13,8 +13,7 @@
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterId />
     <InterpreterVersion />
-    <CommandLineArguments>
-    </CommandLineArguments>
+    <CommandLineArguments>testconfig/Vivado_AVR_Genetic.xml</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
     <IsWindowsApplication>False</IsWindowsApplication>
   </PropertyGroup>
@@ -55,7 +54,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="SBFI_Injector.py" />
-    <Compile Include="SBFI_Profiling.py">
+    <Compile Include="SBFI_Profiler.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="SBFI_reportbuilder.py">
@@ -78,7 +77,19 @@
     <Compile Include="testconfig\obsolete\qtest.py" />
     <Compile Include="UserInterface\SBFI\dumptrace.py" />
     <Compile Include="UserInterface\SBFI\query.py" />
-    <Compile Include="XilinxInjectorHost.py" />
+    <Compile Include="XilinxInjector\BitstreamParseLib.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="XilinxInjector\InjHostLib.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="XilinxInjectorHostApp.py" />
+    <Compile Include="XilinxInjector\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="FaultDictionaries\" />
@@ -91,8 +102,8 @@
     <Folder Include="UserInterface\libs\" />
     <Folder Include="UserInterface\SBFI\" />
     <Folder Include="XilinxInjector\Cache\" />
-    <Folder Include="XilinxInjector\Injector_build\" />
-    <Folder Include="XilinxInjector\Injector_src\" />
+    <Folder Include="XilinxInjector\InjApp_build\" />
+    <Folder Include="XilinxInjector\InjApp_src\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="FaultDictionaries\Xilinx_Simprim_VHDL.xml" />
@@ -135,19 +146,10 @@
     <Content Include="UserInterface\SBFI\query.html" />
     <Content Include="UserInterface\SBFI\xscript.js" />
     <Content Include="XilinxInjector\Cache\FarArray.txt" />
-    <Content Include="XilinxInjector\Injector_build\Injector.elf" />
-    <Content Include="XilinxInjector\Injector_build\Injector.elf.size" />
-    <Content Include="XilinxInjector\Injector_build\ps7_init.tcl" />
-    <Content Include="XilinxInjector\Injector_build\system.hdf" />
-    <Content Include="XilinxInjector\Injector_src\BitArray.c" />
-    <Content Include="XilinxInjector\Injector_src\BitArray.h" />
-    <Content Include="XilinxInjector\Injector_src\lscript.ld" />
-    <Content Include="XilinxInjector\Injector_src\platform.c" />
-    <Content Include="XilinxInjector\Injector_src\platform.h" />
-    <Content Include="XilinxInjector\Injector_src\platform_config.h" />
-    <Content Include="XilinxInjector\Injector_src\SeuInjector.c" />
-    <Content Include="XilinxInjector\Injector_src\SeuInjector.h" />
-    <Content Include="XilinxInjector\Injector_src\Xilinx.spec" />
+    <Content Include="XilinxInjector\InjApp_build\Injector.elf" />
+    <Content Include="XilinxInjector\InjApp_build\Injector.elf.size" />
+    <Content Include="XilinxInjector\InjApp_build\ps7_init.tcl" />
+    <Content Include="XilinxInjector\InjApp_build\system.hdf" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />

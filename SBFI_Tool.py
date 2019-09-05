@@ -1,4 +1,4 @@
-# Fault injector top-level script: launches and monitors all SBFI phases)
+﻿# Fault injector top-level script: launches and monitors all SBFI phases)
 # Launch format: python SBFI_Tool.py config.xml
 # Where config.xml - configuration of fault injection campaign (XML-formatted)
 # Refer to documentation for more information
@@ -19,7 +19,7 @@ import copy
 from Davos_Generic import *
 from Datamanager import *
 from SBFI_Initializer import *
-from SBFI_Profiling import *
+from SBFI_Profiler import *
 from SBFI_FaultloadGenerator import *
 from SBFI_Injector import *
 from SBFI_Analyzer import *

@@ -69,9 +69,9 @@
         -->
         <FaultInjection
             platform = "Multicore"
-            initializer_phase = "off"    
+            initializer_phase = "on"    
             profiler_phase = "off"
-            injector_phase = "on"
+            injector_phase = "off"
             reportbuilder_phase = "on"    
             >
               <!-- 
@@ -110,15 +110,15 @@
                 
                     
             <!-- unit path: withing the design scope-->            
-                <InjectionScope node_prefix = ""   unit_path = "/avr_tmr_tb/uut/" />
+                <InjectionScope node_prefix = ""   unit_path = "/core_tb/uut/" />
 
-                <ObservationScope node_prefix = "" unit_path = "/avr_tmr_tb/uut/" label_prefix = "" sampling_options = "-notrigger"/>
+                <ObservationScope node_prefix = "" unit_path = "/core_tb/uut/" label_prefix = "" sampling_options = "-notrigger"/>
 
                     
                     <!-- location: INTERNALS / OUTPUTS -->            
                 <GenericObservationNodes>
                     
-                    <memarray 	location = "OUTPUTS" 	options = "" 		label = "RES" 	path= "/avr_tmr_tb/result" low_address = "0" high_address = "19" comment="Result Array" />		
+                    <memarray 	location = "OUTPUTS" 	options = "" 		label = "RES" 	path= "/core_tb/result" low_address = "0" high_address = "19" comment="Result Array" />		
                    
                    
                 </GenericObservationNodes>
@@ -129,11 +129,11 @@
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
                     checkpont_mode = "ColdRestore"
-                    maxproc = "7"
+                    maxproc = "4"
                     workload_split_factor = "10"			
                     campaign_label = "AVR_UNISIM"		
-                    cleanup_folders="off"
-                    compile_project = "off"
+                    cleanup_folders="on"
+                    compile_project = "on"
                     create_scripts="off"
                     create_checkpoints="off"
                     create_precise_checkpoints = "off"

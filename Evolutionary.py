@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import xml.etree.ElementTree as ET
 import re
 import os
@@ -398,33 +398,33 @@ if __name__ == '__main__':
     #invalidate_robustness_metrics(datamodel.HdlModel_lst)
     #datamodel.SaveHdlModels()
 
-    synt = {'min':1000000.0, 'max':0.0, 'mean':0.0}
-    impl = {'min':1000000.0, 'max':0.0, 'mean':0.0}
-    total = {'min':1000000.0, 'max':0.0, 'mean':0.0}
-    for i in range(36):
-        m = datamodel.HdlModel_lst[i].Metrics['EvalTime']
-        if m['Synthesis'] < synt['min']: synt['min'] = m['Synthesis']
-        if m['Synthesis'] > synt['max']: synt['max'] = m['Synthesis']
-        synt['mean'] += m['Synthesis']
-        if m['Implementation'] < impl['min']: impl['min'] = m['Implementation']
-        if m['Implementation'] > impl['max']: impl['max'] = m['Implementation']
-        impl['mean'] += m['Implementation']
+    #synt = {'min':1000000.0, 'max':0.0, 'mean':0.0}
+    #impl = {'min':1000000.0, 'max':0.0, 'mean':0.0}
+    #total = {'min':1000000.0, 'max':0.0, 'mean':0.0}
+    #for i in range(36):
+    #    m = datamodel.HdlModel_lst[i].Metrics['EvalTime']
+    #    if m['Synthesis'] < synt['min']: synt['min'] = m['Synthesis']
+    #    if m['Synthesis'] > synt['max']: synt['max'] = m['Synthesis']
+    #    synt['mean'] += m['Synthesis']
+    #    if m['Implementation'] < impl['min']: impl['min'] = m['Implementation']
+    #    if m['Implementation'] > impl['max']: impl['max'] = m['Implementation']
+    #    impl['mean'] += m['Implementation']
 
-        total['mean'] += (m['Synthesis'] + m['Implementation'])
+    #    total['mean'] += (m['Synthesis'] + m['Implementation'])
 
-    synt['mean'] = synt['mean']/36
-    impl['mean'] = impl['mean']/36
-    total['mean'] = total['mean']/36
+    #synt['mean'] = synt['mean']/36
+    #impl['mean'] = impl['mean']/36
+    #total['mean'] = total['mean']/36
 
     #Build Worker processes
     JM = JobManager(config.max_proc)
-    random.seed(1)
+    random.seed(123)
     #GeneticSearch_PresiceRanking(config, JM, datamodel)
     c_population = []
-    for i in datamodel.HdlModel_lst:
-       if i.ID in [30, 25, 27, 24, 29, 21, 31, 32, 33, 34, 35, 36]:
-           if i.ModelPath == '': i.ModelPath = os.path.abspath(os.path.join(config.design_genconf.design_dir, i.Label))
-           c_population.append(i)
+    #for i in datamodel.HdlModel_lst:
+    #   if i.ID in [30, 25, 27, 24, 29, 21, 31, 32, 33, 34, 35, 36]:
+    #       if i.ModelPath == '': i.ModelPath = os.path.abspath(os.path.join(config.design_genconf.design_dir, i.Label))
+    #       c_population.append(i)
 
     GeneticSearch_AdaptiveRanking(config, JM, datamodel, [], 0)
 

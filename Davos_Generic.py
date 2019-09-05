@@ -1,4 +1,4 @@
-# Library defining generic data structures and procedures used by DAVOS
+﻿# Library defining generic data structures and procedures used by DAVOS
 # Covers:
 # 1. Management of Grid Jobs (submission, monitoring, etc.)
 # 2. Custom HTML-formatted logs
@@ -398,7 +398,8 @@ class Table:
                 for c in range(0, len(self.columns), 1):
                     self.columns[c].append(idata[c])
             else:
-                print "Warning: Building Table - line not complete at add_row(): " + str(len(idata)) + " <> " + str(self.colnum())
+                pass
+                #print "Warning: Building Table - line not complete at add_row(): " + str(len(idata)) + " <> " + str(self.colnum())
         else:
             for c in self.columns:
                 c.append("")

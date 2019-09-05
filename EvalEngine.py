@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import xml.etree.ElementTree as ET
 import re
 import os
@@ -16,8 +16,8 @@ from subprocess import call
 from sys import platform
 from Datamanager import *
 import ImplementationTool
-from XilinxInjectorHost import *
-
+#from XilinxInjector import InjHostLib
+from XilinxInjector.InjHostLib import *
 
 class EvalEngineParameters:
     FIT_DEVICE = (75.0/float(1024*1024))
@@ -51,7 +51,7 @@ def invalidate_robustness_metrics(configurations):
 class JobManager:
     def __init__(self, proc_num):
         self.proc_num = proc_num
-        self.DeviceList =   [{'TargetId':'2', 'PortID':'COM3'},{'TargetId':'6', 'PortID':'COM5'}] #[]
+        self.DeviceList =  [{'TargetId':'2', 'PortID':'COM3'}]  #[{'TargetId':'2', 'PortID':'COM3'},{'TargetId':'6', 'PortID':'COM5'}] 
         if len(self.DeviceList) == 0:
             self.DeviceList = get_devices('Cortex-A9 MPCore #0')       
         if raw_input('Clean the cache before running: Y/N: ').lower().startswith('y'):                                   
@@ -81,7 +81,7 @@ def worker_Implement(idx, queue_i, queue_o, lock):
         config = item[2]
         with lock: print('worker_Implement {0} :: Implementing {1}'.format(id_proc, model.Label))           
           
-        ImplementationTool.implement_model(config, model, True, stat, False)
+        ImplementationTool.implement_model(config, model, False, stat, False)
         #dummy_implement(config, model, True, stat)
 
         model.Metrics['Error'] = ''
@@ -131,16 +131,27 @@ def estimate_robustness(model, Device, stat, config, lock):
     if not 'Implprop' in model.Metrics: model.Metrics['Implprop'] = dict()
     for k,v in model.Metrics['EvalTime'].iteritems():
         stat.update(str(k), '{} sec'.format(v), 'ok')
+    
+    Injector = InjectorHostManager(model.ModelPath, 
+                                   model.ID, 
+                                   os.path.join(model.ModelPath, "./AVR_ZC.sdk/ZynqEnv_wrapper_hw_platform_0/system.hdf"),
+                                   os.path.join(model.ModelPath, "./AVR_ZC.sdk/ZynqEnv_wrapper_hw_platform_0/ps7_init.tcl"),
+                                   os.path.join(model.ModelPath, "./AVR_ZC.sdk/InjectorApp/Debug/InjectorApp.elf"),
+                                   0x3E000000)    
+    Injector.verbosity = 0  #silent when multiprocessing is used
 
-    Injector = InjectorHostManager(config.call_dir, model.ModelPath, model.ID)       
+    Injector.configure(Device['TargetId'], Device['PortID'], "AVR_ZC702.xpr", "impl_1")
 
     with lock: print('Evaluating configuration {} on device {}\n\nMetrics: {} \n\n\n'.format(model.ID, str(Device), str(model.Metrics)))
 
-    Injector.attach_device(Device['TargetId'], Device['PortID'])
+
     if config.design_genconf.post_injection_recovery_nodes != None:
-        for i in config.design_genconf.post_injection_recovery_nodes:
-            Injector.RecoveryNodeNames.append(i)
+        Injector.RecoveryNodeNames = config.design_genconf.post_injection_recovery_nodes
+    #remove/force regenerate bitmask file
+    if(os.path.exists(Injector.Output_FrameDescFile)): os.remove(Injector.Output_FrameDescFile)
     check = Injector.check_fix_preconditions()
+
+
     if not check: 
         model.Metrics['Implprop']['VerificationSuccess'] = int(0)
         stat.update('Progress', 'RobustnessAssessment', 'error')
@@ -150,15 +161,15 @@ def estimate_robustness(model, Device, stat, config, lock):
     #Setup Job Parameters
     jdesc = JobDescriptor(model.ID)
     if 'SampleSizeGoal' in model.Metrics and model.Metrics['SampleSizeGoal'] > 0:
-        jdesc.Mode = 2
+        jdesc.Mode = 100
         jdesc.sample_size_goal = int(model.Metrics['SampleSizeGoal'])
         opmode = OperatingModes.SampleExtend
     elif 'ErrorMarginGoal' in model.Metrics and model.Metrics['ErrorMarginGoal'] > 0:
-        jdesc.Mode = 2
+        jdesc.Mode = 100
         jdesc.error_margin_goal = float(model.Metrics['ErrorMarginGoal'])
         opmode = OperatingModes.SampleUntilErrorMargin
     else:
-        jdesc.Mode = 3
+        jdesc.Mode = 100
         opmode = OperatingModes.Exhaustive
 
     with lock: print('\nMODE SELECTED: {}, \n'.format(str(opmode)))
@@ -174,6 +185,10 @@ def estimate_robustness(model, Device, stat, config, lock):
     jdesc.Essential_bits = 1    
     jdesc.CheckRecovery = 10    #check recovery after 10 experiments
     jdesc.LogTimeout = 500
+    jdesc.FaultMultiplicity = 1
+    jdesc.PopulationSize = float(1)*Injector.EssentialBitsPerBlockType[jdesc.Blocktype]
+    jdesc.SamplingWithouRepetition = 1
+
     if 'Injections' in model.Metrics['Implprop']: 
         jdesc.StartIndex =    int(model.Metrics['Implprop']['Injections'])
         jdesc.ExperimentsCompleted =    int(model.Metrics['Implprop']['Injections'])

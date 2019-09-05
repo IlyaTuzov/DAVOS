@@ -102,6 +102,13 @@
 
 
 
+<profiling_rule macrocells = "X_LUT6"
+                case = "INIT_reg"
+                NodeBuilder = "#PATH/INIT_reg#INDEX_1">
+    <index label = "#INDEX_1" dimension = "0-63"/>
+    <Actime index = "#INDEX_1" expression = "#PATH/{ ((concat_range (5 downto 0))(I5 &amp; I4 &amp; I3 &amp; I2 &amp; I1 &amp; I0))}"/>
+</profiling_rule>
+
 
 
 

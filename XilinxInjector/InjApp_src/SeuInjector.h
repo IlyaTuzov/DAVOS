@@ -1,12 +1,14 @@
 /*
- * SeuInjector.h
+ *  SeuInjector.c
  *
- *  Created on: 2 Oct 2018
- *      Author: ILYA Tuzov 
- *              Universidad Politecnica de Valencia
- *  
  *  SEU emulation library for Zynq SoC and 7-Series
  *
+ *  Created on: 2 Oct 2018
+ *      Author: Ilya Tuzov
+ *              Universidad Politecnica de Valencia
+ *
+ *  MIT license
+ *  Latest version available at: https://github.com/IlyaTuzov/DAVOS/tree/master/XilinxInjector
  */
 
 #ifndef SRC_SEUINJECTOR_H_
@@ -24,7 +26,7 @@
 /*-------------------------- PCAP and DevConfig handlers------------------------------- */
 #define FRAME_SIZE			101
 #define MAX_FRAMES 			20000
-#define MAX_EXPERIMENTS		5
+#define MAX_EXPERIMENTS		1
 #define MAX_TRACE_ITEMS		1000
 // Addresses of the Configuration Registers
 #define XHI_CRC				0
@@ -166,6 +168,9 @@ typedef struct{
 	u32 SampleSizeGoal;
 	float ErrorMarginGoal;
 	u32 FaultMultiplicity;
+	u32 FilterFrames;
+	float PopulationSize;
+	u32 SamplingWithoutRepetition;
 } JobDescriptor;
 
 
@@ -181,7 +186,12 @@ typedef struct{
 
 
 typedef struct{
-    XDcfg  DevConigInterface;		// Device Configuration Interface Instance
+    u32 WriteBuffer[FRAME_SIZE*1000] __attribute__ ((aligned (64)));	//For custom bitstream (writeFrame, writeFrames)
+    u32 ReadFrameData[FRAME_SIZE]    __attribute__ ((aligned (64)));	//Readback Frame Data to pass from readFrame
+    u32 WriteFrameData[FRAME_SIZE]	 __attribute__ ((aligned (64)));	//Write Frame Data to pass to writeFrame
+    u32 FrameBuffer[FRAME_SIZE*2]    __attribute__ ((aligned (64)));	//For readFrame intermediate
+
+	XDcfg  DevConigInterface;		// Device Configuration Interface Instance
     XDcfg* DevcI;
     XDcfg_Config *ConfigPtr;
 
@@ -193,10 +203,6 @@ typedef struct{
     u32 LastTargetedFramesCount;
     u32 EssentialBitsPerBlockType[8];
 
-    u32 FrameBuffer[FRAME_SIZE*2];  		//For readFrame intermediate
-    u32 ReadFrameData[FRAME_SIZE];  		//Readback Frame Data to pass from readFrame
-    u32 WriteFrameData[FRAME_SIZE];			//Write Frame Data to pass to writeFrame
-    u32 WriteBuffer[300+FRAME_SIZE*1000];	//For custom bitstream (writeFrame, writeFrames)
     u32 FarItems[MAX_FRAMES] ;      		//valid FAR indexes obtained at profiling (FAR auto-increment mode)
     int FramesCount;						//number of valid FAR indexes
     int BramMaskedIndexes[FRAME_SIZE];
@@ -204,6 +210,7 @@ typedef struct{
 
     int cache_enabled;
     int (*WorkloadRunFunc)(int);
+
 
 } InjectorDescriptor;
 
@@ -219,7 +226,7 @@ typedef struct{
 	double masked_rate;
 	double masked_error_margin;
 	int complete_reconfigurations;
-	int population;
+	float population;
 } InjectionStatistics;
 
 
@@ -273,7 +280,7 @@ u32 get_bit(u32 data, u32 bit_index);
 int getIndexbyFAR(u32 FAR);
 
 
-void sleep(unsigned int microseconds);
+void CustomSleep(unsigned int microseconds);
 void ResetPL(u32 duration_us);
 void ClockThrottle(u32 mask);
 void RunClockCount(u16 clknum);

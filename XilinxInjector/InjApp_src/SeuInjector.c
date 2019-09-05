@@ -1,14 +1,15 @@
 /*
- * SeuInjector.c
+ *  SeuInjector.c
  *
- *  Created on: 2 Oct 2018
- *      Author: ILYA Tuzov 
- *              Universidad Politecnica de Valencia
- *  
  *  SEU emulation library for Zynq SoC and 7-Series
  *
+ *  Created on: 2 Oct 2018
+ *      Author: Ilya Tuzov
+ *              Universidad Politecnica de Valencia
+ *
+ *  MIT license
+ *  Latest version available at: https://github.com/IlyaTuzov/DAVOS/tree/master/XilinxInjector
  */
-
 
 #include "xparameters.h"	// SDK generated parameters
 #include "xsdps.h"
@@ -35,7 +36,7 @@
 
 
 
-InjectionStatistics InjectorRun(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc,  int (*CustomInjectionFlow)(InjectorDescriptor* , JobDescriptor* )){
+InjectionStatistics InjectorRun(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc,  int (*CustomInjectionFlow)()){
 	InjectionStatistics res;
 	int Status;
 
@@ -134,23 +135,23 @@ InjectionStatistics InjectorRun(InjectorDescriptor* InjDesc, JobDescriptor* JobD
 	else printf("Golden Run Verify Trace Vector: success\n");
 	int goldenrun_match = (failure_mode > 0) ? 0 : 1;
 
-
-	//InitInjectionDescriptors();
-	printf("Filtering Frame Descriptors\n");
-	FilterFrameDescriptors(InjDesc, InjDesc->ReferenceFrames, InjDesc->FrameDescriptorsCount, 0, 0);
-	printf("Read Frame Descriptor File: ClbFramesCount = %d, RambFramesCount = %5d\n", InjDesc->ClbFramesCount, InjDesc->RambFramesCount);
-
+	if(JobDesc->FilterFrames){
+		//InitInjectionDescriptors();
+		printf("Filtering Frame Descriptors\n");
+		FilterFrameDescriptors(InjDesc, InjDesc->ReferenceFrames, InjDesc->FrameDescriptorsCount, 0, 0);
+		printf("Read Frame Descriptor File: ClbFramesCount = %d, RambFramesCount = %5d\n", InjDesc->ClbFramesCount, InjDesc->RambFramesCount);
+	}
 
 
 	if(JobDesc->mode == 2){
 		//Sampling mode
 		InjectionStatistics res = RunInSamplingMode(InjDesc, JobDesc, CustomInjectionFlow,  0);
-		printf("Tag_%9d | Injection Result: Injections = %9d of %9d,  Masked: %6d, Masked Rate= %.3f +/- %.3f, Failures = %5d, Failure Rate = %.5f +/- %.5f, FuncVerification = %s\n\n", JobDesc->SyncTag, res.injections, res.population, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin,  goldenrun_match==1 ? "Success" : "Mismatches" );
+		printf("Tag_%9d | Injection Result: Injections = %9d of %.0f,  Masked: %6d, Masked Rate= %.3f +/- %.3f, Failures = %5d, Failure Rate = %.5f +/- %.5f, FuncVerification = %s\n\n", JobDesc->SyncTag, res.injections, res.population, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin,  goldenrun_match==1 ? "Success" : "Mismatches" );
 	}
 	else if(JobDesc->mode == 3){
 		//Exhaustive mode
 	    InjectionStatistics res = RunInExhaustiveMode(InjDesc, JobDesc, NULL, NULL, 0, 0);
-		printf("Tag_%9d | Injection Result: Injections = %9d of %9d,  Masked: %6d, Masked Rate= %.3f +/- %.3f, Failures = %5d, Failure Rate = %.5f +/- %.5f, FuncVerification = %s\n\n", JobDesc->SyncTag, res.injections, res.population, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin,  goldenrun_match==1 ? "Success" : "Mismatches" );	}
+		printf("Tag_%9d | Injection Result: Injections = %9d of %.0f,  Masked: %6d, Masked Rate= %.3f +/- %.3f, Failures = %5d, Failure Rate = %.5f +/- %.5f, FuncVerification = %s\n\n", JobDesc->SyncTag, res.injections, res.population, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin,  goldenrun_match==1 ? "Success" : "Mismatches" );	}
 
 
 	return(res);
@@ -184,8 +185,10 @@ InjectionCoorditates NextRandomInjectionTarget(InjectorDescriptor* InjDesc, JobD
 			if(get_bit(InjDesc->ReferenceFrames[res.FrameIndex].Mask[res.word], res.bit) == 0) continue;
 		}
 		//skip tested bits
-		if(get_bit(InjDesc->ReferenceFrames[res.FrameIndex].Tested[res.word], res.bit) == 1) continue;
-		else set_bit(InjDesc->ReferenceFrames[res.FrameIndex].Tested[res.word], res.bit, 1);
+		if(JobDesc->SamplingWithoutRepetition){
+			if(get_bit(InjDesc->ReferenceFrames[res.FrameIndex].Tested[res.word], res.bit) == 1) continue;
+			else set_bit(InjDesc->ReferenceFrames[res.FrameIndex].Tested[res.word], res.bit, 1);
+		}
 		break;
 	}
 	return(res);
@@ -194,18 +197,22 @@ InjectionCoorditates NextRandomInjectionTarget(InjectorDescriptor* InjDesc, JobD
 
 
 //sample_size=0, max_error_margin=0 to sample complete population
-InjectionStatistics RunInSamplingMode(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc,  int (*CustomInjectionFlow)(InjectorDescriptor* , JobDescriptor* ), int verbose){
+InjectionStatistics RunInSamplingMode(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc,  int (*CustomInjectionFlow)(), int verbose){
 	int errframecnt=0;
 	float N=0.0;
-	if(JobDesc->BlockType >= 2){
+
+	if(JobDesc->PopulationSize > 0){
+		N = JobDesc->PopulationSize;
+	}
+	else if(JobDesc->BlockType >= 2){
 		for(int i=0;i<8;i++) N+= InjDesc->EssentialBitsPerBlockType[i];
 	}
 	else{
 		N=InjDesc->EssentialBitsPerBlockType[JobDesc->BlockType]*1.0;
 	}
 
-	InjectionStatistics res = {.complete_reconfigurations=0, .failure_error_margin=50.0, .failure_rate=0.0, .failures=0, .injections=0, .masked=0, .masked_error_margin=50.0, .masked_rate=0.0, .population = (int) N };
-	printf("Injector RunInSamplingMode: %s, BlockType = %d (%s), PopulationSize = %d, min_sample_size=%d, max_error_margin = %0.5f\n", JobDesc->Essential_bits>0?"Essential bits":"Blind", JobDesc->BlockType,   JobDesc->BlockType==0?"CLB":"BRAM", (u32) N, JobDesc->SampleSizeGoal, JobDesc->ErrorMarginGoal);
+	InjectionStatistics res = {.complete_reconfigurations=0, .failure_error_margin=50.0, .failure_rate=0.0, .failures=0, .injections=0, .masked=0, .masked_error_margin=50.0, .masked_rate=0.0, .population =  N };
+	printf("Injector RunInSamplingMode: %s, BlockType = %d (%s), PopulationSize = %.0f, min_sample_size=%d, max_error_margin = %0.5f\n", JobDesc->Essential_bits>0?"Essential bits":"Blind", JobDesc->BlockType,   JobDesc->BlockType==0?"CLB":"BRAM", N, JobDesc->SampleSizeGoal, JobDesc->ErrorMarginGoal);
 
 	if(JobDesc->StartIndex > 0){
 		res.injections = (int) JobDesc->StartIndex;
@@ -225,7 +232,7 @@ InjectionStatistics RunInSamplingMode(InjectorDescriptor* InjDesc, JobDescriptor
 
 		int failure;
 		if(CustomInjectionFlow != NULL){
-			failure = (*CustomInjectionFlow)(InjDesc, JobDesc);
+			failure = (*CustomInjectionFlow)();
 		}
 		else{	//Default injection flow
 			//select random injection point
@@ -259,7 +266,7 @@ InjectionStatistics RunInSamplingMode(InjectorDescriptor* InjDesc, JobDescriptor
 	    	}
 	    	res.failure_rate *= 100.0; res.masked_rate  *= 100.0; res.failure_error_margin *= 100.0; res.masked_error_margin *= 100.0;
 	    	//printf("Tag_%9d | Injection[%9d] / [%9d] FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %3d,  complete_reconfigurations= %5d | locked_targets= %5d | Masked: %6d, Rate= %.3f +/- %.3f | Failures: %6d, Rate = %.3f +/- %.3f\n", JobDesc->SyncTag,  res.injections, (int) N, Frame.BLOCK, Frame.TOP, Frame.HCLKROW, Frame.MAJOR, Frame.MINOR, InjPoint.word, InjPoint.bit, res.complete_reconfigurations, errframecnt, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin);
-	    	printf("Tag_%9d | Injection[%9d] / [%9d]  complete_reconfigurations= %5d | locked_targets= %5d | Masked: %6d, Rate= %.3f +/- %.3f | Failures: %6d, Rate = %.3f +/- %.3f\n", JobDesc->SyncTag,  res.injections, (int) N,  res.complete_reconfigurations, errframecnt, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin);
+	    	printf("Tag_%9d | Injection[%9d] / [%.0f]  complete_reconfigurations= %5d | locked_targets= %5d | Masked: %6d, Rate= %.3f +/- %.3f | Failures: %6d, Rate = %.3f +/- %.3f\n", JobDesc->SyncTag,  res.injections,  N,  res.complete_reconfigurations, errframecnt, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin);
 	    }
 
 
@@ -550,66 +557,7 @@ u32 CheckFrameWordIsInjectable(InjectorDescriptor* InjDesc, FarFields FC, u32 wo
 
 
 
-int XDcfg_GetConfigReg(InjectorDescriptor* InjDesc, u32 ConfigReg, u32 *RegData){
-	u32 IntrStsReg;
-	u32 StatusReg;
-	unsigned int CmdIndex;
-	unsigned int CmdBuf[18];
 
-	// Clear the interrupt status bits
-	XDcfg_IntrClear(InjDesc->DevcI, (XDCFG_IXR_PCFG_DONE_MASK | XDCFG_IXR_D_P_DONE_MASK | XDCFG_IXR_DMA_DONE_MASK));
-	// Check if DMA command queue is full
-	StatusReg = XDcfg_ReadReg(InjDesc->DevcI->Config.BaseAddr, XDCFG_STATUS_OFFSET);
-	if ((StatusReg & XDCFG_STATUS_DMA_CMD_Q_F_MASK) == XDCFG_STATUS_DMA_CMD_Q_F_MASK) {
-		printf("Read Config Reg failure: DMA full");
-		return XST_FAILURE;
-	}
-	// Register Readback in non secure mode. Create the data to be written to read back the Configuration Registers from PL Region
-	CmdIndex = 0;
-	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
-	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
-	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
-	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
-	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
-	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
-	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
-	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
-	CmdBuf[CmdIndex++] = XHI_BUS_WTH_PACKET; 	/* Bus Width Sync Word */
-	CmdBuf[CmdIndex++] = XHI_BUS_DET_PACKET; 	/* Bus Width Detect */
-	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
-	CmdBuf[CmdIndex++] = XHI_SYNC_PACKET; 	/* Sync Word */
-	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
-	CmdBuf[CmdIndex++] = Type1_Packet(1, ConfigReg, 0x1);
-	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
-	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
-
-	XDcfg_Transfer(InjDesc->DevcI, (&CmdBuf[0]), CmdIndex, RegData, 1, XDCFG_PCAP_READBACK);
-	// Poll IXR_DMA_DONE
-	IntrStsReg = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	while ((IntrStsReg & XDCFG_IXR_DMA_DONE_MASK) != XDCFG_IXR_DMA_DONE_MASK) {
-		IntrStsReg = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	}
-	// Poll IXR_D_P_DONE
-	while ((IntrStsReg & XDCFG_IXR_D_P_DONE_MASK) != XDCFG_IXR_D_P_DONE_MASK) {
-		IntrStsReg = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	}
-
-	CmdIndex = 0;
-	CmdBuf[CmdIndex++] = Type1_Packet(2, XHI_CMD, 0x1);	// P1 write CMD REG
-	CmdBuf[CmdIndex++] = XHI_CMD_DESYNCH;				// Desync
-	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
-	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
-	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
-	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
-
-	XDcfg_InitiateDma(InjDesc->DevcI, (u32)(&CmdBuf[0]), XDCFG_DMA_INVALID_ADDRESS, CmdIndex, 0);
-	/* Poll IXR_DMA_DONE */
-	IntrStsReg = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	while ((IntrStsReg & XDCFG_IXR_DMA_DONE_MASK) != XDCFG_IXR_DMA_DONE_MASK) IntrStsReg = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	/* Poll IXR_D_P_DONE */
-	while ((IntrStsReg & XDCFG_IXR_D_P_DONE_MASK) != XDCFG_IXR_D_P_DONE_MASK) IntrStsReg = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	return XST_SUCCESS;
-}
 
 
 
@@ -737,6 +685,11 @@ void listdir(const TCHAR* path){
 
 
 
+
+
+
+
+
 //When mask == 0 : flips target.bit of target.word in Frame target.FAR
 //When mask != 0 : applies bitwise XOR to target.word in Frame target.FAR
 //returns: 0 - success, 1 - memory modification not applied (error)
@@ -761,7 +714,7 @@ int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask,
 	else{
 		InjDesc->WriteFrameData[target.word] = (InjDesc->WriteFrameData[target.word]) ^ (1 << target.bit);
 	}
-	MaskFrameData(InjDesc, FC, &(InjDesc->WriteFrameData[0]));
+	//MaskFrameData(InjDesc, FC, &(InjDesc->WriteFrameData[0]));
 	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]));
 
 	saveInjectionTarget(InjDesc, target.FrameIndex);
@@ -784,6 +737,8 @@ int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask,
 }
 
 
+
+
 void saveInjectionTarget(InjectorDescriptor* InjDesc, u32 TargetedFrameIndex){
 	for(int i=0;i<InjDesc->LastTargetedFramesCount;i++){
 		if(InjDesc->LastTargetedFrames[i]==TargetedFrameIndex) return; //this frame already present in recovery frame list
@@ -799,7 +754,7 @@ int recover_bitstream(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int R
 		int FrameIndex = InjDesc->LastTargetedFrames[i];
 		FrameDescriptor* desc = &InjDesc->ReferenceFrames[FrameIndex];
 		stuck = WriteVerifyFrame(InjDesc, desc->FAR, &(desc->Data[0]));
-        if(stuck) break;
+        //if(stuck) break;
     	FarFields FC = parseFAR(desc->FAR);
     	//recover ALL CLB minor frames in this Major Frame: 30 to 35
     	if(FC.BLOCK==0 && FC.MINOR >= 30 ){
@@ -809,12 +764,15 @@ int recover_bitstream(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int R
 	};
 	InjDesc->LastTargetedFramesCount=0;
 
+	if(RecoverFrameList) writeFrames(InjDesc, 0, InjDesc->RecoveryFarCount, &(InjDesc->RecoveryDescriptorList[0]));
+	/*
 	if(!stuck){
 		if(RecoverFrameList) writeFrames(InjDesc, 0, InjDesc->RecoveryFarCount, &(InjDesc->RecoveryDescriptorList[0]));
 	}
 	else{
 		ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
 	}
+	*/
     return(stuck);
 }
 
@@ -826,7 +784,11 @@ int ReloadCompleteBitstream(XDcfg *Instance, u32 StartAddress, u32 WordLength)
 	// Clear DMA and PCAP Done Interrupts
 	XDcfg_IntrClear(Instance, (XDCFG_IXR_DMA_DONE_MASK | XDCFG_IXR_D_P_DONE_MASK));
 	// Transfer bitstream from DDR into fabric in non secure mode
+	Xil_DCacheFlush();
+	Xil_DCacheInvalidate();
 	Status = XDcfg_Transfer(Instance, (u32 *) StartAddress, WordLength, (u32 *) XDCFG_DMA_INVALID_ADDRESS, 0, XDCFG_NON_SECURE_PCAP_WRITE);
+	Xil_DCacheFlush();
+	Xil_DCacheInvalidate();
 	if (Status != XST_SUCCESS) return Status;
 	// Poll DMA Done Interrupt
 	while ((IntrStsReg & XDCFG_IXR_DMA_DONE_MASK) != XDCFG_IXR_DMA_DONE_MASK) IntrStsReg = XDcfg_IntrGetStatus(Instance);
@@ -836,54 +798,69 @@ int ReloadCompleteBitstream(XDcfg *Instance, u32 StartAddress, u32 WordLength)
 }
 
 
-/*
-//FC - frame address into which fault has been injected
-int recover_bitstream(InjectorDescriptor* InjDesc, int FrameIndex, int RecoverFrameList){
-	u32 FAR = InjDesc->ReferenceFrames[FrameIndex].FAR;
-	FarFields FC = parseFAR(FAR);
-	//recover ALL CLB minor frames in this Major Frame: 30 to 35
-	if(FC.BLOCK==0 && FC.MINOR >= 30 ){
-		int startIndex = FrameIndex - (FC.MINOR - 30);
-		writeFrames(InjDesc, startIndex, 6, &(InjDesc->ReferenceFrames[0]));
+int XDcfg_GetConfigReg(InjectorDescriptor* InjDesc, u32 ConfigReg, u32 *RegData){
+	u32 IntrStsReg;
+	u32 StatusReg;
+	unsigned int CmdIndex;
+	unsigned int CmdBuf[18];
+
+	// Clear the interrupt status bits
+	XDcfg_IntrClear(InjDesc->DevcI, (XDCFG_IXR_PCFG_DONE_MASK | XDCFG_IXR_D_P_DONE_MASK | XDCFG_IXR_DMA_DONE_MASK));
+	// Check if DMA command queue is full
+	StatusReg = XDcfg_ReadReg(InjDesc->DevcI->Config.BaseAddr, XDCFG_STATUS_OFFSET);
+	if ((StatusReg & XDCFG_STATUS_DMA_CMD_Q_F_MASK) == XDCFG_STATUS_DMA_CMD_Q_F_MASK) {
+		printf("Read Config Reg failure: DMA full");
+		return XST_FAILURE;
+	}
+	// Register Readback in non secure mode. Create the data to be written to read back the Configuration Registers from PL Region
+	CmdIndex = 0;
+	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
+	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
+	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
+	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
+	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
+	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
+	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
+	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
+	CmdBuf[CmdIndex++] = XHI_BUS_WTH_PACKET; 	/* Bus Width Sync Word */
+	CmdBuf[CmdIndex++] = XHI_BUS_DET_PACKET; 	/* Bus Width Detect */
+	CmdBuf[CmdIndex++] = XHI_DUMMY_PACKET;
+	CmdBuf[CmdIndex++] = XHI_SYNC_PACKET; 	/* Sync Word */
+	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
+	CmdBuf[CmdIndex++] = Type1_Packet(1, ConfigReg, 0x1);
+	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
+	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
+	Xil_DCacheFlush();
+	Xil_DCacheInvalidate();
+	XDcfg_Transfer(InjDesc->DevcI, (&CmdBuf[0]), CmdIndex, RegData, 1, XDCFG_PCAP_READBACK);
+	Xil_DCacheFlush();
+	Xil_DCacheInvalidate();
+	// Poll IXR_DMA_DONE
+	IntrStsReg = XDcfg_IntrGetStatus(InjDesc->DevcI);
+	while ((IntrStsReg & XDCFG_IXR_DMA_DONE_MASK) != XDCFG_IXR_DMA_DONE_MASK) {
+		IntrStsReg = XDcfg_IntrGetStatus(InjDesc->DevcI);
+	}
+	// Poll IXR_D_P_DONE
+	while ((IntrStsReg & XDCFG_IXR_D_P_DONE_MASK) != XDCFG_IXR_D_P_DONE_MASK) {
+		IntrStsReg = XDcfg_IntrGetStatus(InjDesc->DevcI);
 	}
 
-	if(RecoverFrameList){
-		writeFrames(InjDesc, 0, InjDesc->RecoveryFarCount, &(InjDesc->RecoveryDescriptorList[0]));
-	}
-	return(0);
+	CmdIndex = 0;
+	CmdBuf[CmdIndex++] = Type1_Packet(2, XHI_CMD, 0x1);	// P1 write CMD REG
+	CmdBuf[CmdIndex++] = XHI_CMD_DESYNCH;				// Desync
+	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
+	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
+	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
+	CmdBuf[CmdIndex++] = XHI_NOOP_PACKET;
+
+	XDcfg_InitiateDma(InjDesc->DevcI, (u32)(&CmdBuf[0]), XDCFG_DMA_INVALID_ADDRESS, CmdIndex, 0);
+	/* Poll IXR_DMA_DONE */
+	IntrStsReg = XDcfg_IntrGetStatus(InjDesc->DevcI);
+	while ((IntrStsReg & XDCFG_IXR_DMA_DONE_MASK) != XDCFG_IXR_DMA_DONE_MASK) IntrStsReg = XDcfg_IntrGetStatus(InjDesc->DevcI);
+	/* Poll IXR_D_P_DONE */
+	while ((IntrStsReg & XDCFG_IXR_D_P_DONE_MASK) != XDCFG_IXR_D_P_DONE_MASK) IntrStsReg = XDcfg_IntrGetStatus(InjDesc->DevcI);
+	return XST_SUCCESS;
 }
-
-*/
-
-
-/*
-int FlipBits(InjectorDescriptor* InjDesc, u32 FAR, u32 word, u32 mask, int verbose){
-	int Status;
-	FarFields FC = parseFAR(FAR);
-	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]));
-	for(int k=0;k<FRAME_SIZE;k++){ InjDesc->WriteFrameData[k] = InjDesc->ReadFrameData[k]; }
-	for(int k=0;k<FRAME_SIZE;k++){ InjDesc->BackupFrame[k] = InjDesc->ReadFrameData[k]; }
-	InjDesc->WriteFrameData[word] = (InjDesc->ReadFrameData[word]) ^ mask;
-	MaskFrameData(InjDesc, FC, &(InjDesc->WriteFrameData[0]));
-	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]));
-	//read again to check that faulty value has been written
-	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]));
-	int match = 1;
-	for(u32 k=0;k<FRAME_SIZE;k++){
-		if(InjDesc->WriteFrameData[k] != InjDesc->ReadFrameData[k]){
-			match = 0;
-			break;
-		}
-	}
-	if(match == 0){
-		if(verbose>0) for(u32 k=0;k<FRAME_SIZE;k++) printf("FlipBits Error: Written[%3d] = %08x | Read[%3d] = %08x\n", k, InjDesc->WriteFrameData[k], k, InjDesc->ReadFrameData[k]);
-		return(1);
-	}
-	return(0);
-}
-
-*/
-
 
 
 
@@ -910,99 +887,174 @@ int WriteVerifyFrame(InjectorDescriptor* InjDesc, u32 FAR, u32* WriteData){
 }
 
 
-int readFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow, long MajorFrame, long MinorFrame, u32 *FrameData){
-	u32 Status;
-	u32 CmdBuf[256]={0x20000000};
-	u32 Index = 0;
-	u32 FAR = FarSetup(Block, Top, HClkRow,  MajorFrame, MinorFrame);
-	// DUMMY and SYNC
-	CmdBuf[Index++] = XHI_DUMMY_PACKET;
-	CmdBuf[Index++] = XHI_BUS_WTH_PACKET;
-	CmdBuf[Index++] = XHI_BUS_DET_PACKET;
-	CmdBuf[Index++] = XHI_DUMMY_PACKET;
-	CmdBuf[Index++] = XHI_SYNC_PACKET;
-	CmdBuf[Index++] = XHI_NOOP_PACKET;
-	//CmdBuf[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
-	//CmdBuf[Index++] = XHI_SHUTDOWN_PACKET;
-	//CmdBuf[Index++] = XHI_NOOP_PACKET;
-	// Reset CRC
-	CmdBuf[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
-	CmdBuf[Index++] = XHI_CMD_RCRC;
-	CmdBuf[Index++] = XHI_NOOP_PACKET;
-	CmdBuf[Index++] = XHI_NOOP_PACKET;
-	//GLUTMASK_B
-	CmdBuf[Index++] = Type1_Packet(2, XHI_MASK, 0x1);
-	CmdBuf[Index++] = 0x00000100;
-	CmdBuf[Index++] = Type1_Packet(2, XHI_CTL, 0x1);
-	CmdBuf[Index++] = 0x00000100;
-	// Setup CMD register to read configuration
-	CmdBuf[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
-	CmdBuf[Index++] = XHI_CMD_RCFG;
-	CmdBuf[Index++] = XHI_NOOP_PACKET;
-	// Setup FAR register
-	CmdBuf[Index++] = Type1_Packet(2, XHI_FAR, 0x1);
-	CmdBuf[Index++] = FAR;
-	// Create Type one packet
-	CmdBuf[Index++] = Type1_Packet(1, XHI_FDRO, 0);
-	CmdBuf[Index++] = Type2_Packet(1, FRAME_SIZE << 1 );
-	for(int i = 0; i < 32; i++) CmdBuf[Index++] = XHI_NOOP_PACKET;
-	while(Index % 16 != 0) CmdBuf[Index++] = XHI_NOOP_PACKET;
-	//for(int i=0;i<Index;i++)printf("Cmd[%2d] = %08x\n", i, CmdBuf[i]);
-	//Enable the pcap clock
-	Status = Xil_In32(SLCR_PCAP_CLK_CTRL);
-	if (!(Status & SLCR_PCAP_CLK_CTRL_EN_MASK)) {
-		Xil_Out32(SLCR_UNLOCK, SLCR_UNLOCK_VAL);
-		Xil_Out32(SLCR_PCAP_CLK_CTRL, (Status | SLCR_PCAP_CLK_CTRL_EN_MASK));
-		Xil_Out32(SLCR_UNLOCK, SLCR_LOCK_VAL);
-	}
-	// Select PCAP interface for partial reconfiguration
-	XDcfg_EnablePCAP(InjDesc->DevcI);
 
-	XDcfg_SetControlRegister(InjDesc->DevcI, XDCFG_CTRL_PCAP_MODE_MASK);
-	// Clear the interrupt status bits
-	XDcfg_IntrClear(InjDesc->DevcI, (XDCFG_IXR_PCFG_DONE_MASK | XDCFG_IXR_D_P_DONE_MASK | XDCFG_IXR_DMA_DONE_MASK) );
-	// Check if DMA command queue is full
-	Status = XDcfg_ReadReg(InjDesc->DevConigInterface.Config.BaseAddr, XDCFG_STATUS_OFFSET);
-	if ((Status & XDCFG_STATUS_DMA_CMD_Q_F_MASK) == XDCFG_STATUS_DMA_CMD_Q_F_MASK) return XST_FAILURE;
-	//Write the data to the FIFO and initiate the transfer of data present in the FIFO to the ICAP device
-	Status = XDcfg_Transfer(InjDesc->DevcI,
-			(u32 *)CmdBuf, Index,
-			InjDesc->FrameBuffer, FRAME_SIZE << 1,
-			XDCFG_PCAP_READBACK);
-	if (Status != XST_SUCCESS) printf("Read Frame: XDcfg_Transfer failed \r\n");
+double GetDurationUseconds(XTime StartTime){
+	XTime CurrentTime;
+	double tickusec = COUNTS_PER_MICROSECOND;
+	XTime_GetTime(&CurrentTime);
+	double res = (CurrentTime - StartTime) / tickusec;
+	return( res );
+}
+
+
+int waitPcapDone(InjectorDescriptor* InjDesc, int waitQueueEmpty,  u32 TimeoutUseconds){
+	XTime StartTime;
+	int Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
+
 	/* Poll IXR_DMA_DONE */
-	Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	while ((Status & XDCFG_IXR_DMA_DONE_MASK) != XDCFG_IXR_DMA_DONE_MASK) Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
+	XTime_GetTime(&StartTime);
+	while ((Status & XDCFG_IXR_DMA_DONE_MASK) != XDCFG_IXR_DMA_DONE_MASK){
+		Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
+		if(GetDurationUseconds(StartTime) > TimeoutUseconds)return(1);
+	}
 	/* Poll IXR_D_P_DONE */
-	while ((Status & XDCFG_IXR_D_P_DONE_MASK) != XDCFG_IXR_D_P_DONE_MASK) Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	/* Check if DMA command queue is full after transfer */
-	Status = XDcfg_ReadReg(InjDesc->DevConigInterface.Config.BaseAddr, XDCFG_STATUS_OFFSET);
-	if ((Status & XDCFG_STATUS_DMA_CMD_Q_F_MASK) == XDCFG_STATUS_DMA_CMD_Q_F_MASK) return XST_FAILURE;
-	Index = 0;
-	CmdBuf[Index++] = Type1_Packet(2, XHI_MASK, 0x1);
-	CmdBuf[Index++] = 0X00000100;
-	CmdBuf[Index++] = Type1_Packet(2, XHI_CTL, 0x1);
-	CmdBuf[Index++] = 0X00000000;
-	CmdBuf[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
-	CmdBuf[Index++] = XHI_CMD_RCRC;
-	CmdBuf[Index++] = Type1_Packet(2, XHI_CMD, 0x1);	// P1 write CMD REG
-	CmdBuf[Index++] = XHI_CMD_DESYNCH;					// Desync
-	CmdBuf[Index++] = XHI_NOOP_PACKET;
-	while(Index % 16 != 0) CmdBuf[Index++] = XHI_NOOP_PACKET;
-	XDcfg_InitiateDma(InjDesc->DevcI, (u32)(&CmdBuf[0]), XDCFG_DMA_INVALID_ADDRESS, Index, 0);
-	/* Poll IXR_DMA_DONE */
-	Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	while ((Status & XDCFG_IXR_DMA_DONE_MASK) != XDCFG_IXR_DMA_DONE_MASK) Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	/* Poll IXR_D_P_DONE */
-	while ((Status & XDCFG_IXR_D_P_DONE_MASK) != XDCFG_IXR_D_P_DONE_MASK) Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	/* Wait till DMA command queue is empty*/
-	Status = XDcfg_ReadReg(InjDesc->DevConigInterface.Config.BaseAddr, XDCFG_STATUS_OFFSET);
-	while((Status & XDCFG_STATUS_DMA_CMD_Q_E_MASK) != XDCFG_STATUS_DMA_CMD_Q_E_MASK) Status = XDcfg_ReadReg(InjDesc->DevConigInterface.Config.BaseAddr, XDCFG_STATUS_OFFSET);
-	memcpy(&FrameData[0], &(InjDesc->FrameBuffer[FRAME_SIZE]), FRAME_SIZE*sizeof(u32));
-		//mask BRAM Frame
-	MaskFrameData(InjDesc, parseFAR(FAR), &FrameData[0]);
-	//for(int i=0;i<FRAME_SIZE;i++) FrameData[i] = FrameBuffer[i+FRAME_SIZE];
-	return XST_SUCCESS;
+	XTime_GetTime(&StartTime);
+	while ((Status & XDCFG_IXR_D_P_DONE_MASK) != XDCFG_IXR_D_P_DONE_MASK){
+		Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
+		if(GetDurationUseconds(StartTime) > TimeoutUseconds) return(1);
+	}
+
+	if(waitQueueEmpty){
+		XTime_GetTime(&StartTime);
+		/* Wait till DMA command queue is empty*/
+		Status = XDcfg_ReadReg(InjDesc->DevConigInterface.Config.BaseAddr, XDCFG_STATUS_OFFSET);
+		while((Status & XDCFG_STATUS_DMA_CMD_Q_E_MASK) != XDCFG_STATUS_DMA_CMD_Q_E_MASK){
+			Status = XDcfg_ReadReg(InjDesc->DevConigInterface.Config.BaseAddr, XDCFG_STATUS_OFFSET);
+			if(GetDurationUseconds(StartTime) > TimeoutUseconds) return(1);
+		}
+	}
+
+	return(0);
+}
+
+
+int readFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow, long MajorFrame, long MinorFrame, u32 *FrameData){
+	for(int attempts = 0; attempts < 5; attempts++){
+		u32 Status;
+		u32 Index = 0;
+		u32 FAR = FarSetup(Block, Top, HClkRow,  MajorFrame, MinorFrame);
+		// DUMMY and SYNC
+		InjDesc->WriteBuffer[Index++] = XHI_DUMMY_PACKET;
+		InjDesc->WriteBuffer[Index++] = XHI_BUS_WTH_PACKET;
+		InjDesc->WriteBuffer[Index++] = XHI_BUS_DET_PACKET;
+		InjDesc->WriteBuffer[Index++] = XHI_DUMMY_PACKET;
+		InjDesc->WriteBuffer[Index++] = XHI_SYNC_PACKET;
+		InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		//InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
+		//InjDesc->WriteBuffer[Index++] = XHI_SHUTDOWN_PACKET;
+		//InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		// Reset CRC
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
+		InjDesc->WriteBuffer[Index++] = XHI_CMD_RCRC;
+		InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+
+			// ID register
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_IDCODE, 0x1);
+		InjDesc->WriteBuffer[Index++] = 0x03727093; //InjDesc->DevcI->Config.DeviceId & 0x0FFFFFFF;
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
+		InjDesc->WriteBuffer[Index++] = 0x00000000;
+
+		//GLUTMASK_B
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_MASK, 0x1);
+		InjDesc->WriteBuffer[Index++] = 0x00000500;
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CTL, 0x1);
+		InjDesc->WriteBuffer[Index++] = 0x00000500;
+
+
+		// GCAPT
+		//InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
+		//InjDesc->WriteBuffer[Index++] = 0xC;
+		//InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		//InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+
+
+
+		// Setup CMD register to read configuration
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
+		InjDesc->WriteBuffer[Index++] = XHI_CMD_RCFG;
+		InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		// Setup FAR register
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_FAR, 0x1);
+		InjDesc->WriteBuffer[Index++] = FAR;
+		// Create Type one packet
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(1, XHI_FDRO, 0);
+		InjDesc->WriteBuffer[Index++] = Type2_Packet(1, FRAME_SIZE << 1 );
+		for(int i = 0; i < 32; i++) InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		while(Index % 16 != 0) InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		//for(int i=0;i<Index;i++)printf("Cmd[%2d] = %08x\n", i, InjDesc->WriteBuffer[i]);
+		//Enable the pcap clock
+		Status = Xil_In32(SLCR_PCAP_CLK_CTRL);
+		if (!(Status & SLCR_PCAP_CLK_CTRL_EN_MASK)) {
+			Xil_Out32(SLCR_UNLOCK, SLCR_UNLOCK_VAL);
+			Xil_Out32(SLCR_PCAP_CLK_CTRL, (Status | SLCR_PCAP_CLK_CTRL_EN_MASK));
+			Xil_Out32(SLCR_UNLOCK, SLCR_LOCK_VAL);
+		}
+		// Select PCAP interface for partial reconfiguration
+		XDcfg_EnablePCAP(InjDesc->DevcI);
+
+		XDcfg_SetControlRegister(InjDesc->DevcI, XDCFG_CTRL_PCAP_MODE_MASK);
+		// Clear the interrupt status bits
+		XDcfg_IntrClear(InjDesc->DevcI, (XDCFG_IXR_PCFG_DONE_MASK | XDCFG_IXR_D_P_DONE_MASK | XDCFG_IXR_DMA_DONE_MASK) );
+		// Check if DMA command queue is full
+		Status = XDcfg_ReadReg(InjDesc->DevConigInterface.Config.BaseAddr, XDCFG_STATUS_OFFSET);
+		if ((Status & XDCFG_STATUS_DMA_CMD_Q_F_MASK) == XDCFG_STATUS_DMA_CMD_Q_F_MASK) return XST_FAILURE;
+		//Write the data to the FIFO and initiate the transfer of data present in the FIFO to the ICAP device
+
+		Xil_DCacheFlush();
+		Xil_DCacheInvalidate();
+		Status = XDcfg_Transfer(InjDesc->DevcI,
+				(u32 *)InjDesc->WriteBuffer, Index,
+				InjDesc->FrameBuffer, FRAME_SIZE << 1,
+				XDCFG_PCAP_READBACK);
+		if (Status != XST_SUCCESS) printf("Read Frame: XDcfg_Transfer failed \r\n");
+		//printf("ReadFrame: XDcfg_Transfer finished\n");
+		Xil_DCacheFlush();
+		Xil_DCacheInvalidate();
+
+		//XTime StartTime;
+		//XTime_GetTime(&StartTime);
+		//while(GetDurationUseconds(StartTime) < 10000);
+
+		if(waitPcapDone(InjDesc, 1, 10000) > 0){
+			printf("ReadFrame: timeout retry\n");
+			continue; //Timeout - retry
+		}
+
+
+/*
+		Status = XDcfg_ReadReg(InjDesc->DevConigInterface.Config.BaseAddr, XDCFG_STATUS_OFFSET);
+		if ((Status & XDCFG_STATUS_DMA_CMD_Q_F_MASK) == XDCFG_STATUS_DMA_CMD_Q_F_MASK) return XST_FAILURE;
+	*/
+
+		Index = 0;
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_MASK, 0x1);
+		InjDesc->WriteBuffer[Index++] = 0X00000100;
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CTL, 0x1);
+		InjDesc->WriteBuffer[Index++] = 0X00000000;
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
+		InjDesc->WriteBuffer[Index++] = XHI_CMD_RCRC;
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);	// P1 write CMD REG
+		InjDesc->WriteBuffer[Index++] = XHI_CMD_DESYNCH;					// Desync
+		InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		while(Index % 16 != 0) InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		XDcfg_InitiateDma(InjDesc->DevcI, (u32)(&InjDesc->WriteBuffer[0]), XDCFG_DMA_INVALID_ADDRESS, Index, 0);
+
+
+		if(waitPcapDone(InjDesc, 1, 10000) > 0){
+			printf("ReadFrame: timeout retry\n");
+			continue; //Timeout - retry
+		}
+
+		memcpy(&FrameData[0], &(InjDesc->FrameBuffer[FRAME_SIZE]), FRAME_SIZE*sizeof(u32));
+			//mask BRAM Frame
+		MaskFrameData(InjDesc, parseFAR(FAR), &FrameData[0]);
+		//for(int i=0;i<FRAME_SIZE;i++) FrameData[i] = FrameBuffer[i+FRAME_SIZE];
+		return XST_SUCCESS;
+	}
+
+	return(1); //PCAP hang
+
 }
 
 
@@ -1120,18 +1172,17 @@ int writeFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow,
 	Status = XDcfg_ReadReg(InjDesc->DevConigInterface.Config.BaseAddr, XDCFG_STATUS_OFFSET);
 	if ((Status & XDCFG_STATUS_DMA_CMD_Q_F_MASK) == XDCFG_STATUS_DMA_CMD_Q_F_MASK) return XST_FAILURE;
 	//Write the data to the FIFO and initiate the transfer of data present in the FIFO to the ICAP device
+	Xil_DCacheFlush();
+	Xil_DCacheInvalidate();
 	Status = XDcfg_Transfer(InjDesc->DevcI,
 			(u32 *)InjDesc->WriteBuffer, Index,
 			(u32 *)XDCFG_DMA_INVALID_ADDRESS, 0,
 			XDCFG_NON_SECURE_PCAP_WRITE);
 	if (Status != XST_SUCCESS) printf("Write Frame: XDcfg_Transfer failed \r\n");
-	Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	while ((Status & XDCFG_IXR_DMA_DONE_MASK) != XDCFG_IXR_DMA_DONE_MASK) Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	/* Poll IXR_D_P_DONE */
-	while ((Status & XDCFG_IXR_D_P_DONE_MASK) != XDCFG_IXR_D_P_DONE_MASK) Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	/* Wait till DMA command queue is empty*/
-	//Status = XDcfg_ReadReg(InjDesc->DevcI->Config.BaseAddr, XDCFG_STATUS_OFFSET);
-	//while((Status & XDCFG_STATUS_DMA_CMD_Q_E_MASK) != XDCFG_STATUS_DMA_CMD_Q_E_MASK) Status = XDcfg_ReadReg(InjDesc->DevConigInterface->Config.BaseAddr, XDCFG_STATUS_OFFSET);
+	Xil_DCacheFlush();
+	Xil_DCacheInvalidate();
+	waitPcapDone(InjDesc, 1, 10000);
+
 	return XST_SUCCESS;
 }
 
@@ -1220,20 +1271,17 @@ int writeFrames(InjectorDescriptor* InjDesc, int StartIndex, u32 FrameCount, Fra
 	Status = XDcfg_ReadReg(InjDesc->DevcI->Config.BaseAddr, XDCFG_STATUS_OFFSET);
 	if ((Status & XDCFG_STATUS_DMA_CMD_Q_F_MASK) == XDCFG_STATUS_DMA_CMD_Q_F_MASK) return XST_FAILURE;
 	//Write the data to the FIFO and initiate the transfer of data present in the FIFO to the ICAP device
+	Xil_DCacheFlush();
+	Xil_DCacheInvalidate();
 	Status = XDcfg_Transfer(InjDesc->DevcI,
 			(u32 *)InjDesc->WriteBuffer, Index,
 			(u32 *)XDCFG_DMA_INVALID_ADDRESS, 0,
 			XDCFG_NON_SECURE_PCAP_WRITE);
-
-
 	if (Status != XST_SUCCESS) printf("Write Frame: XDcfg_Transfer failed \r\n");
-	Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	while ((Status & XDCFG_IXR_DMA_DONE_MASK) != XDCFG_IXR_DMA_DONE_MASK) Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	/* Poll IXR_D_P_DONE */
-	while ((Status & XDCFG_IXR_D_P_DONE_MASK) != XDCFG_IXR_D_P_DONE_MASK) Status = XDcfg_IntrGetStatus(InjDesc->DevcI);
-	/* Wait till DMA command queue is empty*/
-	//Status = XDcfg_ReadReg(InjDesc->DevcI->Config.BaseAddr, XDCFG_STATUS_OFFSET);
-	//while((Status & XDCFG_STATUS_DMA_CMD_Q_E_MASK) != XDCFG_STATUS_DMA_CMD_Q_E_MASK) Status = XDcfg_ReadReg(InjDesc->DevcI->Config.BaseAddr, XDCFG_STATUS_OFFSET);
+	Xil_DCacheFlush();
+	Xil_DCacheInvalidate();
+	waitPcapDone(InjDesc, 1, 1000000);
+
 	return XST_SUCCESS;
 }
 
@@ -1282,7 +1330,7 @@ u32 Type2_Packet(u32 Opcode, u32 WordCnt){
 
 void MaskFrameData(InjectorDescriptor* InjDesc, FarFields FC, u32 *FrameData){
 	if(FC.BLOCK == 1){
-		for(int i=0;i<InjDesc->BramMaskedCount;i++) FrameData[InjDesc->BramMaskedIndexes[i]] = FrameData[InjDesc->BramMaskedIndexes[i]]  & 0xFF00FFFF;
+		for(int i=0;i<InjDesc->BramMaskedCount;i++) FrameData[InjDesc->BramMaskedIndexes[i]] = FrameData[InjDesc->BramMaskedIndexes[i]]  & 0xFFFDFFFF;
 	}
 }
 
@@ -1320,7 +1368,7 @@ u32 get_bit(u32 data, u32 bit_index){
 
 
 void print_job_desc(JobDescriptor* JobDesc){
-	printf("Job Descriptor: \n\tBitstreamId=%08d \n\tBitstreamAddr=%08x \n\tBitstreamSize=%08x \n\tBitmaskAddr=  %08x \n\tBitmaskSize=  %08x \n\tUpdateBitstream=%d \n\tmode=%d \n\tBlockType=%d \n\tEssential_bits=%d \n\tCheckRecovery=%d \n\tLogTimeout=%d \n\tStartIndex=%d \n\tExperimentsCompleted=%d \n\tCurrentFailureCount=%d \n\tCurrentMaskedCount=%d \n\tCurrentLatentCount=%d \n\tCurrentSDCCount=%d \n\tSampleSizeGoal=%d \n\tErrorMarginGoal=%.3f\n\n", JobDesc->BitstreamId, JobDesc->BitstreamAddr, JobDesc->BitstreamSize, JobDesc->BitmaskAddr, JobDesc->BitmaskSize, JobDesc->UpdateBitstream, JobDesc->mode, JobDesc->BlockType, JobDesc->Essential_bits, JobDesc->CheckRecovery, JobDesc->LogTimeout, JobDesc->StartIndex, JobDesc->ExperimentsCompleted, JobDesc->CurrentFailureCount, JobDesc->CurrentMaskedCount, JobDesc->CurrentLatentCount, JobDesc->CurrentSDCCount, JobDesc->SampleSizeGoal, JobDesc->ErrorMarginGoal);
+	printf("Job Descriptor: \n\tBitstreamId=%08d \n\tBitstreamAddr=%08x \n\tBitstreamSize=%08x \n\tBitmaskAddr=  %08x \n\tBitmaskSize=  %08x \n\tUpdateBitstream=%d \n\tmode=%d \n\tBlockType=%d \n\tEssential_bits=%d \n\tCheckRecovery=%d \n\tLogTimeout=%d \n\tStartIndex=%d \n\tExperimentsCompleted=%d \n\tCurrentFailureCount=%d \n\tCurrentMaskedCount=%d \n\tCurrentLatentCount=%d \n\tCurrentSDCCount=%d \n\tSampleSizeGoal=%d \n\tErrorMarginGoal=%.3f \n\tFaultMultiplicity=%d \n\tPopulationSize=%.0f \n\tSamplingWithoutRepetition = %d \n\n", JobDesc->BitstreamId, JobDesc->BitstreamAddr, JobDesc->BitstreamSize, JobDesc->BitmaskAddr, JobDesc->BitmaskSize, JobDesc->UpdateBitstream, JobDesc->mode, JobDesc->BlockType, JobDesc->Essential_bits, JobDesc->CheckRecovery, JobDesc->LogTimeout, JobDesc->StartIndex, JobDesc->ExperimentsCompleted, JobDesc->CurrentFailureCount, JobDesc->CurrentMaskedCount, JobDesc->CurrentLatentCount, JobDesc->CurrentSDCCount, JobDesc->SampleSizeGoal, JobDesc->ErrorMarginGoal, JobDesc->FaultMultiplicity, JobDesc->PopulationSize, JobDesc->SamplingWithoutRepetition);
 }
 
 
@@ -1397,7 +1445,7 @@ void list_reference_frames(InjectorDescriptor * InjDesc){
 
 
 
-void sleep(unsigned int microseconds)
+void CustomSleep(unsigned int microseconds)
 {
   XTime tEnd, tCur;
   XTime_GetTime(&tCur);
@@ -1415,9 +1463,9 @@ void ResetPL(u32 duration_us){
     /* SLCR Enabling Level shifting */
     Xil_Out32(SLCR_LVL_SHFTR_EN_ADDR, SLCR_LVL_SHFTR_EN_VALUE);
     /* SLCR clearing PL Reset */
-    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0x0);
-    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0xf);
-    sleep(duration_us);
+    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0x0);	//rstN = 1
+    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0xf);	//rstN = 0 - default
+    CustomSleep(duration_us);
     Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0x0);
     /* SLCR lock */
     Xil_Out32(SLCR_LOCK_ADDR, SLCR_LOCK_KEY_VALUE);
@@ -1519,7 +1567,7 @@ int FaultInjectionTest(InjectorDescriptor * InjDesc, FarFields Adr, int byteInde
 void readback_manual_test(InjectorDescriptor * InjDesc, JobDescriptor* JobDesc){
 	FarFields FC;
 	u32 read_frame_data[FRAME_SIZE];
-    ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, JobDesc->BitstreamSize >> 2);
+  //  ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, JobDesc->BitstreamSize >> 2);
 	while(1){
 		printf("Input Block:\n");
 		FC.BLOCK=input_int();
@@ -1532,13 +1580,41 @@ void readback_manual_test(InjectorDescriptor * InjDesc, JobDescriptor* JobDesc){
 		printf("Input MINOR:\n");
 		FC.MINOR = input_int();
 		readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, read_frame_data);
+		MaskFrameData(InjDesc, FC, read_frame_data);
 		printf("\n");
 		for(int i=0;i<FRAME_SIZE;i++) printf("%08x ", read_frame_data[i]);
-		printf("\nWrite Value:\n");
-		read_frame_data[1] =  input_int();
-		if(read_frame_data[1] > 0){
-			printf("Writing %08x\n", read_frame_data[1]);
+		printf("\nalter cell:\n");
+		u32 k =  input_int();
+		if(k > 0){
+			read_frame_data[k] = read_frame_data[k]^0x1;
+			printf("Writing %08x\n", read_frame_data[k]);
 			writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, read_frame_data);
+		}
+	}
+}
+
+
+
+void list_minor_frames(InjectorDescriptor * InjDesc){
+	FarFields FC;
+	u32 read_frame_data[FRAME_SIZE];
+	while(1){
+		printf("Input Block:\n");
+		FC.BLOCK=input_int();
+		printf("Input Top:\n");
+		FC.TOP = input_int();
+		printf("Input HCLKROW:\n");
+		FC.HCLKROW = input_int();
+		printf("Input MAJOR:\n");
+		FC.MAJOR = input_int();
+		printf("\n");
+		for(int i=0;i<FRAME_SIZE;i++) printf("%8d ", i);
+		printf("\n");
+		for(FC.MINOR = 0; FC.MINOR < 127; FC.MINOR++){
+			readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, read_frame_data);
+			MaskFrameData(InjDesc, FC, read_frame_data);
+			printf("\n");
+			for(int i=0;i<FRAME_SIZE;i++) printf("%08x ", read_frame_data[i]);
 		}
 	}
 }
@@ -1556,6 +1632,7 @@ void FarIncrTest(InjectorDescriptor * InjDesc, JobDescriptor* JobDesc, int verbo
 		FAR = e;
 		FC = parseFAR(FAR);
 		while(FC.BLOCK <= 1){
+			//printf("FAR[%5d] =  %5d, %5d, %5d, %5d, %5d\n", InjDesc->FramesCount,  FC.BLOCK, FC.TOP, FC.HCLKROW, FC.MAJOR, FC.MINOR);
 			if(InjDesc->FramesCount==0 || InjDesc->FramesCount>0 && InjDesc->FarItems[InjDesc->FramesCount-1]!=FAR) InjDesc->FarItems[InjDesc->FramesCount++] = FAR;
 			readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]));
 			XDcfg_GetConfigReg(InjDesc, XHI_FAR, &FAR);
@@ -1566,53 +1643,8 @@ void FarIncrTest(InjectorDescriptor * InjDesc, JobDescriptor* JobDesc, int verbo
 	qsort(InjDesc->FarItems, InjDesc->FramesCount, sizeof(u32), cmpfuncInt);
 	for(int i=0;i<InjDesc->FramesCount;i++){
 		FarFields FC = parseFAR(InjDesc->FarItems[i]);
-		//printf("FAR[%5d] = %08x| %5d, %5d, %5d, %5d, %5d\n", i, FarItems[i], FC.BLOCK, FC.TOP, FC.HCLKROW, FC.MAJOR, FC.MINOR);
 		if(verbose) printf("%08x\n", InjDesc->FarItems[i]);
 	}
 }
 
 
-/*
-void time_profiling(InjectorDescriptor * InjDesc){
-	u32 TraceVectorInj[TraceVectorItems];
-    XTime tStart, tEnd;
-    double tworkload, ttrace, tbitstreamrecovery, tcompleteconfig;
-    double tickusec = COUNTS_PER_MICROSECOND;
-    XTime_GetTime(&tStart);
-    ReRunWorkload();
-    XTime_GetTime(&tEnd);
-    tworkload = (tEnd - tStart)/tickusec;
-    XTime_GetTime(&tStart);
-    CaptureTraceVector(&TraceVectorInj[0]);
-    XTime_GetTime(&tEnd);
-    ttrace = (tEnd - tStart)/tickusec;
-    FarFields FC; FC.BLOCK=0; FC.TOP=1; FC.HCLKROW=1; FC.MAJOR=49; FC.MINOR=34;
-    u32 FAR = FarSetup(FC.BLOCK, FC.TOP, FC.HCLKROW, FC.MAJOR, FC.MINOR);
-    int Index = -1;
-    for(int i=0;i<FrameDescriptorsCount;i++){
-    	if(ReferenceFrames[i].FAR==FAR){
-    		Index = i;
-    		break;
-    	}
-    }
-    XTime_GetTime(&tStart);
-    recover_bitstream(Index, 1);
-    XTime_GetTime(&tEnd);
-    tbitstreamrecovery = (tEnd - tStart)/tickusec;
-    XTime_GetTime(&tStart);
-    ReloadCompleteBitstream(&DevConigInterface, JobDesc.BitstreamAddr, (JobDesc.BitstreamSize >> 2));
-    XTime_GetTime(&tEnd);
-    tcompleteconfig = (tEnd - tStart)/tickusec;
-    printf("Time measurements: \n\tWorkload: %.1f us\n\tTrace: %.1f us\n\tBitstream Recovery: %.1f us\n\tComplete Reconfiguration: %.1f us\n", tworkload, ttrace, tbitstreamrecovery, tcompleteconfig);
-}
-*/
-
-
-/*
-int getIndexbyFAR(u32 FAR){
-	for(int i=0;i<FrameDescriptorsCount;i++){
-		if(ReferenceFrames[i].FAR == FAR) return(i);
-	}
-	return(-1);
-}
-*/
