@@ -18,13 +18,21 @@ from XilinxInjector.InjHostLib import *
 
 if __name__ == "__main__":
 
-    proj_path = 'C:/Projects/ETC/AVR_ZC'
+    proj_path = 'C:/Projects/GENETIC/Microblaze/MicZC'
     Injector = InjectorHostManager(proj_path, 
                                    0, 
-                                   os.path.join(proj_path, "./AVR_ZC.sdk/ZynqEnv_wrapper_hw_platform_0/system.hdf"),
-                                   os.path.join(proj_path, "./AVR_ZC.sdk/ZynqEnv_wrapper_hw_platform_0/ps7_init.tcl"),
-                                   os.path.join(proj_path, "./AVR_ZC.sdk/InjectorApp/Debug/InjectorApp.elf"),
+                                   os.path.join(proj_path, "./MicZC.sdk/BD_wrapper_hw_platform_0/system.hdf"),
+                                   os.path.join(proj_path, "./MicZC.sdk/BD_wrapper_hw_platform_0/ps7_init.tcl"),
+                                   os.path.join(proj_path, "./MicZC.sdk/InjectorApp/Debug/InjectorApp.elf"),
                                    0x3E000000)
+
+    #Setup nodes to force recover after each injection (BRAMs as ROM)
+    Injector.RecoveryNodeNames = ['ramloop']
+
+#    Injector.attachMemConfig(   os.path.join(proj_path, "./MicZC.sdk/BD_wrapper_hw_platform_0/BD_wrapper.mmi"), 
+#                                os.path.join(proj_path, "./MicZC.sdk/AppM/Debug/AppM.elf"), 
+#                                'BD_i/microblaze_0' )
+
     #raw_input('Hello')
     #Select Zynq device
     devconfig = [{'TargetId':'2', 'PortID':'COM3'}] 
@@ -41,8 +49,6 @@ if __name__ == "__main__":
     if raw_input('Clean the cache before running: Y/N: ').lower().startswith('y'):                                   
         Injector.cleanup_platform()
 
-    #Setup nodes to force recover after each injection (BRAMs as ROM)
-    Injector.RecoveryNodeNames = ['prog_mem_even_inst', 'prog_mem_odd_inst']
     
     #remove/force regenerate bitmask file
     if(os.path.exists(Injector.Output_FrameDescFile)): os.remove(Injector.Output_FrameDescFile)
@@ -51,21 +57,23 @@ if __name__ == "__main__":
     check = Injector.check_fix_preconditions()    
 
     print("Essential bits per type: "+str(Injector.EssentialBitsPerBlockType))
-    
+    #raw_input('Preconditions fixed....')
+
+
     if check:
         #raw_input("Preconditions fixed, press any key to run the injector >")
         jdesc = JobDescriptor(1)
-        jdesc.UpdateBitstream = 0
+        jdesc.UpdateBitstream = 1
         jdesc.Blocktype = 0
         jdesc.Essential_bits = 1
         jdesc.CheckRecovery = 1
-        jdesc.LogTimeout = 500
+        jdesc.LogTimeout = 100
         jdesc.StartIndex = 0
         jdesc.Masked = 0
         jdesc.Failures = 0
         jdesc.sample_size_goal = 5000
         jdesc.error_margin_goal = float(0.5) 
-        jdesc.FaultMultiplicity = 3
+        jdesc.FaultMultiplicity = 1
         jdesc.PopulationSize = float(14000)*Injector.EssentialBitsPerBlockType[jdesc.Blocktype]
         jdesc.SamplingWithouRepetition = 0  #disable tracking of tested targets
         jdesc.Mode = 100    #Very custom injection mode (without callbacks)

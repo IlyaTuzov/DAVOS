@@ -206,17 +206,18 @@ class InjectorHostManager:
         #Create a job descriptor object (to be used at runtime)
         self.jdesc = None 
         self.verbosity = 1      #0 - small log (only errors and results), 1 - detailed log
-
+        self.MemConfig = []
 
     def configure(self, targetid, portname, VivadoProjectFile = '', ImplementationRun=''):
         self.targetid = targetid                        #Target CPU id on Xilinx HW server
         self.portname =  portname                       #Serial port name to interact with the target App (monitor the injection statistics, etc.)
         self.serialport = None                          #Serial port connection (established later at App startup)
         #Provide Vivado project file to generate intstream/bitmask/bells files
-        self.VivadoProjectFile = VivadoProjectFile if VivadoProjectFile != '' else glob.glob(os.path.join(self.targetDir,'*.xpr'))[0]
+        self.VivadoProjectFile = VivadoProjectFile if VivadoProjectFile != '' else (lambda l: l[0] if l is not None and len(l)>0 else '')(glob.glob(os.path.join(self.targetDir,'*.xpr')))
         self.ImplementationRun = ImplementationRun if ImplementationRun != '' else '-filter {CURRENT_STEP == route_design || CURRENT_STEP == write_bitstream}'
 
-
+    def attachMemConfig(self, meminfo, elf, proc):
+         self.MemConfig.append({'meminfo':meminfo, 'elf':elf, 'proc':proc})
 
 
     def get_devices(self, device_tag = 'Cortex-A9 MPCore #0'):
@@ -332,8 +333,10 @@ class InjectorHostManager:
             # bit/bin/edc/ebd/ll: Write bitstream files
             set_property BITSTREAM.SEU.ESSENTIALBITS YES [current_design]
             write_bitstream -force -logic_location_file $exportdir/Bitstream.bit 
+            {3}
             write_cfgmem -force -format BIN -interface SMAPx32 -disablebitswap -loadbit  \"up 0x0 $exportdir/Bitstream.bit\" -file $exportdir/Bitstream.bin
-        """.format(self.VivadoProjectFile, self.ImplementationRun, self.targetDir)
+        """.format(self.VivadoProjectFile, self.ImplementationRun, self.targetDir,
+                   '' if len(self.MemConfig)==0 else 'exec updatemem -force -meminfo {0} -bit $exportdir/Bitstream.bit -data {1} -proc {2} -out $exportdir/Bitstream.bit'.format(self.MemConfig[0]['meminfo'], self.MemConfig[0]['elf'], self.MemConfig[0]['proc']))
         os.chdir(self.targetDir)
         for i in [self.Input_BitstreamFile, self.Input_EBCFile, self.Input_EBDFile, self.Input_LLFile, self.Input_CellDescFile]:
             if not os.path.exists(i):
@@ -486,9 +489,9 @@ class InjectorHostManager:
             self.jdesc.BitmaskSize = os.stat(self.Output_FrameDescFile).st_size
         self.jdesc.ExportToFile(self.JobDescFile)
         if self.jdesc.UpdateBitstream > 0:
-            self.logtimeout = 120   #more time for responce if bitstream is uploaded
+            self.logtimeout = 180   #more time for responce if bitstream is uploaded
         else:
-            self.logtimeout = 30
+            self.logtimeout = 120
 
     def export_devrun_script(self):
         script = """
@@ -592,6 +595,7 @@ class InjectorHostManager:
                     if line.find('ERROR: Golden Run') >= 0:
                         last_msg_time = time.time()
                         self.jdesc.InjectorError, self.jdesc.VerificationSuccess = False, False
+                        self.logfile.write(line+'\n')
                         break
                     if(self.verbosity>0): self.logfile.write('[{0:5d}] seconds: {1}'.format(int(time.time() - start_time), line))
                     if line.find('not found in cache') >= 0:

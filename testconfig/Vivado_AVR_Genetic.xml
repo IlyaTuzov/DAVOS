@@ -10,7 +10,7 @@
         
 
         <ExperimentalDesign
-            max_proc = "2"
+            max_proc = "6"
             retry_attempts = "2"            
             overwrite_existing = "off"            
             build_factorial_design = "off"
@@ -95,8 +95,8 @@
                     <Constraint
                         placeholder = "#CONSTRAINT"
                         goal = "max"
-                        start_value = "20"
-                        adjust_step = "10"
+                        start_value = "70"
+                        adjust_step = "5"
                         return_to_phase = "Synthesis"
                         check_handler = "VivadoCheckTimingSatisfied" />
 						

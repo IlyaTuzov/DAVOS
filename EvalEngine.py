@@ -53,10 +53,18 @@ class JobManager:
         self.proc_num = proc_num
         self.DeviceList =  [{'TargetId':'2', 'PortID':'COM3'}]  #[{'TargetId':'2', 'PortID':'COM3'},{'TargetId':'6', 'PortID':'COM5'}] 
         if len(self.DeviceList) == 0:
-            self.DeviceList = get_devices('Cortex-A9 MPCore #0')       
+            self.DeviceList = get_devices('Cortex-A9 MPCore #0')      
+        DAVOS_PATH = 'C:/GitHub/DAVOS' 
         if raw_input('Clean the cache before running: Y/N: ').lower().startswith('y'):                                   
             for i in self.DeviceList:   #cleanup (cache, ...) each platform
-                cleanup_platform(i['TargetId'], i['PortID'])
+                Injector = InjectorHostManager(DAVOS_PATH, 
+                                               0, 
+                                               os.path.join(DAVOS_PATH, "./XilinxInjector/InjApp_build/system.hdf"),
+                                               os.path.join(DAVOS_PATH, "./XilinxInjector/InjApp_build/ps7_init.tcl"),
+                                               os.path.join(DAVOS_PATH, "./XilinxInjector/InjApp_build/InjectorApp.elf"),
+                                               0x3E000000)
+                Injector.configure(i['TargetId'], i['PortID'], "", "")
+                Injector.cleanup_platform()
         self.manager = multiprocessing.Manager()
         self.console_lock = self.manager.Lock()
         self.queue_implement = self.manager.Queue()
@@ -81,7 +89,7 @@ def worker_Implement(idx, queue_i, queue_o, lock):
         config = item[2]
         with lock: print('worker_Implement {0} :: Implementing {1}'.format(id_proc, model.Label))           
           
-        ImplementationTool.implement_model(config, model, False, stat, False)
+        ImplementationTool.implement_model(config, model, True, stat, False)
         #dummy_implement(config, model, True, stat)
 
         model.Metrics['Error'] = ''
@@ -132,15 +140,20 @@ def estimate_robustness(model, Device, stat, config, lock):
     for k,v in model.Metrics['EvalTime'].iteritems():
         stat.update(str(k), '{} sec'.format(v), 'ok')
     
+
     Injector = InjectorHostManager(model.ModelPath, 
                                    model.ID, 
-                                   os.path.join(model.ModelPath, "./AVR_ZC.sdk/ZynqEnv_wrapper_hw_platform_0/system.hdf"),
-                                   os.path.join(model.ModelPath, "./AVR_ZC.sdk/ZynqEnv_wrapper_hw_platform_0/ps7_init.tcl"),
-                                   os.path.join(model.ModelPath, "./AVR_ZC.sdk/InjectorApp/Debug/InjectorApp.elf"),
+                                   os.path.join(model.ModelPath,  "./MicZC.sdk/BD_wrapper_hw_platform_0/system.hdf"),
+                                   os.path.join(model.ModelPath, "./MicZC.sdk/BD_wrapper_hw_platform_0/ps7_init.tcl"),
+                                   os.path.join(model.ModelPath, "./MicZC.sdk/InjectorApp/Debug/InjectorApp.elf"),
                                    0x3E000000)    
-    Injector.verbosity = 0  #silent when multiprocessing is used
+    Injector.verbosity = 1  #silent when multiprocessing is used
 
-    Injector.configure(Device['TargetId'], Device['PortID'], "AVR_ZC702.xpr", "impl_1")
+#    Injector.attachMemConfig(   os.path.join(model.ModelPath, "./MicZC.sdk/BD_wrapper_hw_platform_0/BD_wrapper.mmi"), 
+#                                os.path.join(model.ModelPath, "./MicZC.sdk/AppM/Debug/AppM.elf"), 
+#                                'BD_i/microblaze_0' )
+
+    Injector.configure(Device['TargetId'], Device['PortID'], "MicZC.xpr", "ImplementationPhase")
 
     with lock: print('Evaluating configuration {} on device {}\n\nMetrics: {} \n\n\n'.format(model.ID, str(Device), str(model.Metrics)))
 
@@ -183,7 +196,7 @@ def estimate_robustness(model, Device, stat, config, lock):
            
     jdesc.Blocktype = 0         #CLB only
     jdesc.Essential_bits = 1    
-    jdesc.CheckRecovery = 10    #check recovery after 10 experiments
+    jdesc.CheckRecovery = 1    #check recovery after 10 experiments
     jdesc.LogTimeout = 500
     jdesc.FaultMultiplicity = 1
     jdesc.PopulationSize = float(1)*Injector.EssentialBitsPerBlockType[jdesc.Blocktype]
@@ -215,7 +228,7 @@ def estimate_robustness(model, Device, stat, config, lock):
         model.Metrics['Implprop']['FIT'] = EvalEngineParameters.FIT_DEVICE * model.Metrics['Implprop']['EssentialBits'] * (model.Metrics['Implprop']['FailureRate'] / 100.0)
         model.Metrics['Implprop']['FITMargin'] = EvalEngineParameters.FIT_DEVICE * model.Metrics['Implprop']['EssentialBits'] * (model.Metrics['Implprop']['FailureRateMargin'] / 100.0)
         model.Metrics['Implprop']['Lambda'] = model.Metrics['Implprop']['FIT']/float(1000000000)
-        model.Metrics['Implprop']['MTTF'] = 1.0 / model.Metrics['Implprop']['Lambda']
+        model.Metrics['Implprop']['MTTF'] = 0.0 if model.Metrics['Implprop']['Lambda'] == 0 else (1.0 / model.Metrics['Implprop']['Lambda'])
     #timetaken = str(datetime.datetime.now().replace(microsecond=0) - timestart)        
     for k, v in model.Metrics['Implprop'].iteritems():
         stat.update(k, str(v), 'res')

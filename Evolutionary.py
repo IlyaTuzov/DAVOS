@@ -19,8 +19,10 @@ import ImplementationTool
 from EvalEngine import *
 from itertools import combinations
 import math
+from FactorialDesignBuilder import *
 
-POPULATION_SIZE = int(12)
+
+POPULATION_SIZE = int(18)
 SELECTION_SIZE  = int(6)
 SAMPLE_INCREMENT = 10000
 
@@ -224,6 +226,7 @@ def log_results(iteration, timemark, selected, rest):
             f.write('\n{0};{1};{2};{3};{4:.4f};{5:d};{6:d};{7:d};{8:.4f};{9:.4f};{10:.4f};{11:.4f};{12:.4f};{13};{14};{15};{16}'.format(iteration, str(int(timemark)), i.Label, 'Selected', i.Metrics['Implprop']['FREQUENCY'], i.Metrics['Implprop']['EssentialBits'], i.Metrics['Implprop']['Injections'], i.Metrics['Implprop']['Failures'], i.Metrics['Implprop']['FailureRate'], i.Metrics['Implprop']['FailureRateMargin'], i.Metrics['Implprop']['FIT'], i.Metrics['Implprop']['FITMargin'], i.Metrics['Implprop']['MTTF'], i.Metrics['Error'], str(i.Metrics['EvalTime']['Synthesis']), str(i.Metrics['EvalTime']['Implementation']), str(i.Metrics['EvalTime']['RobustnessAssessment']) ) )
             for l in labels: f.write(';{0:d}'.format(i.get_factor_by_name(l).FactorVal))
         for i in rest:
+            if not 'RobustnessAssessment' in i.Metrics['EvalTime']: i.Metrics['EvalTime']['RobustnessAssessment']=int(0)
             f.write('\n{0};{1};{2};{3};{4:.4f};{5:d};{6:d};{7:d};{8:.4f};{9:.4f};{10:.4f};{11:.4f};{12:.4f};{13};{14};{15};{16}'.format(iteration, str(int(timemark)), i.Label, '-', i.Metrics['Implprop']['FREQUENCY'], i.Metrics['Implprop']['EssentialBits'], i.Metrics['Implprop']['Injections'], i.Metrics['Implprop']['Failures'], i.Metrics['Implprop']['FailureRate'], i.Metrics['Implprop']['FailureRateMargin'], i.Metrics['Implprop']['FIT'], i.Metrics['Implprop']['FITMargin'], i.Metrics['Implprop']['MTTF'], i.Metrics['Error'], str(i.Metrics['EvalTime']['Synthesis']), str(i.Metrics['EvalTime']['Implementation']), str(i.Metrics['EvalTime']['RobustnessAssessment']) ) )
             for l in labels: f.write(';{0:d}'.format(i.get_factor_by_name(l).FactorVal))
         with open(os.path.join(config.design_genconf.tool_log_dir, 'MODELS.xml'), 'w') as f: 
@@ -343,7 +346,8 @@ def GeneticSearch_AdaptiveRanking(config, JM, datamodel, starting_population, co
             population.append(i)
     else:
         #Build initial random population    
-        population = init_from_file(datamodel, config)    
+        #population = init_from_file(datamodel, config)    
+        pass
     while len(population) < POPULATION_SIZE:
         print 'INternally generating random configuration'
         ind = get_random_individual(datamodel, config)
@@ -362,7 +366,7 @@ def GeneticSearch_AdaptiveRanking(config, JM, datamodel, starting_population, co
         while len(children) < new_ind_cnt:            
             if len(parents) > 1:
                 chromosomes = crossover_exhaustive(parents, CrossoverTypes.Uniform)              
-                chromosomes = mutate(chromosomes, config, 50)
+                chromosomes = mutate(chromosomes, config, 50, False)
                 for ch in chromosomes:
                     if len(children) < new_ind_cnt:
                         child = create_individual(ch, datamodel)    #select inviduals with matching chromosomes from DB, otherwise create new ones to be evaluated(implemented)
@@ -418,7 +422,7 @@ if __name__ == '__main__':
 
     #Build Worker processes
     JM = JobManager(config.max_proc)
-    random.seed(123)
+    random.seed(100)
     #GeneticSearch_PresiceRanking(config, JM, datamodel)
     c_population = []
     #for i in datamodel.HdlModel_lst:
@@ -426,6 +430,12 @@ if __name__ == '__main__':
     #       if i.ModelPath == '': i.ModelPath = os.path.abspath(os.path.join(config.design_genconf.design_dir, i.Label))
     #       c_population.append(i)
 
+
+    #DefConf = CreateDefaultConfig(datamodel, config)
+    #DefConf.Metrics['SampleSizeGoal']=300000
+    #DefConf.Metrics['ErrorMarginGoal']=float(0.001)
+    #evaluate([DefConf], config, JM, datamodel, False)
+    
     GeneticSearch_AdaptiveRanking(config, JM, datamodel, [], 0)
 
     datamodel.SaveHdlModels()

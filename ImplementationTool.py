@@ -158,7 +158,7 @@ def implement_model(config, model, adjust_constraints, stat, ForceReimplement = 
                         break
                     else:    
                         saved_constraint = phase.constraint_to_adjust.current_value - phase.constraint_to_adjust.adjust_step           
-                        phase.constraint_to_adjust.current_value = 2.0
+                        phase.constraint_to_adjust.current_value = 15.0
                         impl_test = True
                         phase = phase.constraint_to_adjust.return_to_phase
                         log.write('\n{0}\tImplementation test started'.format(str(timestart)))

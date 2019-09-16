@@ -5,8 +5,8 @@
         DesignBuilder = "on"
         FaultInjection = "off"
         DecisionSupport = "on"
-        report_dir = "#RUNDIR/../../../Projects/GENETIC/AVR"        
-        dbfile = "AVR_Genetic.db"  >
+        report_dir = "#RUNDIR/../../../Projects/GENETIC/Microblaze"        
+        dbfile = "Microblaze_Genetic.db"  >
         
 
         <ExperimentalDesign
@@ -25,18 +25,18 @@
             
             <generic            
                 custom_parameters = "{ 
-                &apos;SynthesisScriptTemplate&apos;:&apos;SynthesisPhase.tcl&apos;, 
-                &apos;ImplementationScriptTemplate&apos;:&apos;ImplementationPhase.tcl&apos;,
-                &apos;GenBitstreamScriptTemplate&apos;:&apos;GenBitstreamPhase.tcl&apos;
+                'SynthesisScriptTemplate' : 'SynthesisPhase.tcl', 
+                'ImplementationScriptTemplate' : 'ImplementationPhase.tcl',
+                'GenBitstreamScriptTemplate' : 'GenBitstreamPhase.tcl'
                 }"                      
-                design_label = "AVR_Zynq_"
-                design_dir = "../../Projects/GENETIC/AVR"
-                template_dir = "AVR_Template"
+                design_label = "Microblaze_Zynq_"
+                design_dir = "../../Projects/GENETIC/Microblaze"
+                template_dir = "MicZC"
                 log_dir = "./log"
                 netlist_dir = "./netgen"
                 constraint_file = ""    
-                uut_root   = "cpu_core_0"   
-                post_injection_recovery_nodes = "['prog_mem_even_inst', 'prog_mem_odd_inst']"
+                uut_root   = "microblaze_0"   
+                post_injection_recovery_nodes = "['ramloop']"
             />        
 
             
@@ -78,7 +78,7 @@
                     script_builder = "VivadoBuildScript"
                     result_handler = "VivadoRetrieveResults"
                     postcondition_handler = "XilinxCheckPostcondition"
-                    next = "GenBitstream">
+                    next = "">
                 
                     <option name = "strategy" default = "Vivado Implementation Defaults" />
                     <option name = "STEPS.OPT_DESIGN.IS_ENABLED" default = "true" />
@@ -95,21 +95,14 @@
                     <Constraint
                         placeholder = "#CONSTRAINT"
                         goal = "max"
-                        start_value = "70"
-                        adjust_step = "5"
+                        start_value = "140"
+                        adjust_step = "10"
                         return_to_phase = "Synthesis"
                         check_handler = "VivadoCheckTimingSatisfied" />
 						
                 </phase>
 
-                <phase 
-                    name =  "GenBitstream"
-                    script_builder = "VivadoBuildScript"
-                    result_handler = "VivadoRetrieveResults"
-                    postcondition_handler = "XilinxCheckPostcondition"
-                    next = "">
-                  
-                </phase>    
+ 
 
                    
                 
@@ -117,7 +110,7 @@
             
 
             <!-- design types:  Fractional, Doptimal -->
-            <factorial_design table_of_factors = "C:/Projects/GENETIC/AVR/RandomConf.csv" design_type = "" resolution = "" >
+            <factorial_design table_of_factors = "C:/Projects/GENETIC/Microblaze/RandomConf.csv" design_type = "" resolution = "" >
 
         
 
