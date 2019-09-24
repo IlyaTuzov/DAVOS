@@ -375,7 +375,7 @@ class Table:
     def __init__(self, name, ilabels = []):
         self.name = name
         self.columns = []
-        self.labels = ilabels
+        self.labels = ilabels[:]
         for i in ilabels: self.columns.append([])
   
     def rownum(self):
@@ -523,6 +523,13 @@ class Table:
             if row[column_align : column_align+len(value_sequence)] == value_sequence:
                 return row_index, row
 
+    def search_rows(self, value_sequence, column_align=0):
+        res = []
+        for row_index in range(self.rownum()):
+            row = [self.columns[i][row_index] for i in range(self.colnum())]
+            if row[column_align : column_align+len(value_sequence)] == value_sequence:
+                res.append(row)
+        return(res)
 
 class HtmlTableCell:
     def __init__(self):

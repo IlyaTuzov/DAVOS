@@ -18,16 +18,26 @@ from XilinxInjector.InjHostLib import *
 
 if __name__ == "__main__":
 
-    proj_path = 'C:/Projects/GENETIC/Microblaze/MicZC'
+    #proj_path = 'C:/Projects/GENETIC/Microblaze/MicZC'
+    #Injector = InjectorHostManager(proj_path, 
+    #                               0, 
+    #                               os.path.join(proj_path, "./MicZC.sdk/BD_wrapper_hw_platform_0/system.hdf"),
+    #                               os.path.join(proj_path, "./MicZC.sdk/BD_wrapper_hw_platform_0/ps7_init.tcl"),
+    #                               os.path.join(proj_path, "./MicZC.sdk/InjectorApp/Debug/InjectorApp.elf"),
+    #                               0x3E000000)
+    ##Setup nodes to force recover after each injection (BRAMs as ROM)
+    #Injector.RecoveryNodeNames = ['ramloop']
+
+    proj_path = 'C:/Projects/Profiling/Models/MC8051_ZC'
     Injector = InjectorHostManager(proj_path, 
                                    0, 
-                                   os.path.join(proj_path, "./MicZC.sdk/BD_wrapper_hw_platform_0/system.hdf"),
-                                   os.path.join(proj_path, "./MicZC.sdk/BD_wrapper_hw_platform_0/ps7_init.tcl"),
-                                   os.path.join(proj_path, "./MicZC.sdk/InjectorApp/Debug/InjectorApp.elf"),
+                                   os.path.join(proj_path, "./MC8051.sdk/design_1_wrapper_hw_platform_0/system.hdf"),
+                                   os.path.join(proj_path, "./MC8051.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"),
+                                   os.path.join(proj_path, "./MC8051.sdk/InjectorApp/Debug/InjectorApp.elf"),
                                    0x3E000000)
-
     #Setup nodes to force recover after each injection (BRAMs as ROM)
-    Injector.RecoveryNodeNames = ['ramloop']
+    Injector.RecoveryNodeNames = ['i_mc8051_rom']
+    Injector.CustomLutMask = True
 
 #    Injector.attachMemConfig(   os.path.join(proj_path, "./MicZC.sdk/BD_wrapper_hw_platform_0/BD_wrapper.mmi"), 
 #                                os.path.join(proj_path, "./MicZC.sdk/AppM/Debug/AppM.elf"), 

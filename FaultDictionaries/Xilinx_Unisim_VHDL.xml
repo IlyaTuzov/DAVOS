@@ -13,6 +13,10 @@
 			<port name = "Q" />
 		</macrocell>
         
+		<macrocell name = "FDCE"  >
+			<port name = "Q" />
+		</macrocell>
+		
 		<macrocell name = "SIGNAL"  >
 			
 		</macrocell>   
@@ -24,6 +28,8 @@
 	<register_reconstruction>
 
         <macrocell name = "FDRE" outport = "Q"/>	
+        <macrocell name = "FDCE" outport = "Q"/>	
+		
 		<macrocell name = "SIGNAL" outport = ""/>	
         
 	</register_reconstruction>
@@ -70,7 +76,7 @@
 
 	
 <fdesc 	model = "bit_flip" 
-		macrocells = "FDRE" >
+		macrocells = "FDRE, FDCE" >
 	<injection_rule
 		code_pattern = "
 			set cv [examine {#PATH/#NODE_1}]#; 
@@ -104,9 +110,9 @@
 
 <profiling_rule macrocells = "X_LUT6"
                 case = "INIT_reg"
-                NodeBuilder = "#PATH/INIT_reg#INDEX_1">
+                NodeBuilder = "{#PATH/INIT_reg#INDEX_1}">
     <index label = "#INDEX_1" dimension = "0-63"/>
-    <Actime index = "#INDEX_1" expression = "#PATH/{ ((concat_range (5 downto 0))(I5 &amp; I4 &amp; I3 &amp; I2 &amp; I1 &amp; I0))}"/>
+    <Actime index = "#INDEX_1" expression = "{ ((concat_range (5 downto 0))(I5 &amp; I4 &amp; I3 &amp; I2 &amp; I1 &amp; I0))}"/>
 </profiling_rule>
 
 

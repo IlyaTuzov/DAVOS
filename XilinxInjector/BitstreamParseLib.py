@@ -9,6 +9,14 @@ class ByteOrder:
 class CLB_LUTS:
     EA, EB, EC, ED, OA, OB, OC, OD  = range(8)
 
+    @staticmethod
+    def from_coord(Xcoord, ABCD):
+        if Xcoord%2 == 0:
+            res = CLB_LUTS.EA if ABCD=='A' else CLB_LUTS.EB if ABCD=='B' else CLB_LUTS.EC if ABCD=='C' else CLB_LUTS.ED
+        else:
+            res = CLB_LUTS.OA if ABCD=='A' else CLB_LUTS.OB if ABCD=='B' else CLB_LUTS.OC if ABCD=='C' else CLB_LUTS.OD
+        return(res)
+
 class FrameDesc:
     def __init__(self, FAR=None):
         if FAR != None:
@@ -17,6 +25,7 @@ class FrameDesc:
             self.BlockType, self.Top, self.Row, self.Major, self.Minor = 0, 0, 0, 0, 0
         self.data = []
         self.mask = []
+        self.custom_mask = []
         self.flags = 0x00000000
         self.EssentialBitsCount = 0
 
@@ -54,7 +63,8 @@ class FrameDesc:
         if verbosity > 1:
             res += '\nIndex: ' + ' '.join(['{0:8d}'.format(i) for i in range(len(self.data))])
             res += '\nData : ' + ' '.join(['{0:08x}'.format(i) for i in self.data])
-            res += '\nMask : ' + ' '.join(['{0:08x}'.format(i) for i in self.mask])            
+            res += '\nMask : ' + ' '.join(['{0:08x}'.format(i) for i in self.mask])   
+            res += '\nCMask: ' + ' '.join(['{0:08x}'.format(i) for i in self.custom_mask])                        
         return(res)
 
 
@@ -197,17 +207,40 @@ def ExtractLUT_INIT(SwBox_top, SwBox_row, SwBox_major, SwBox_minor, LUTCOORD, BI
             else:
                 F1, F2, F3, F4 = BIN_FrameList[i+32], BIN_FrameList[i+33], BIN_FrameList[i+34], BIN_FrameList[i+35], 
             offset = SwBox_minor*2
+            if offset >= 50: offset+=1
+            #print('{}\n\n{}\n\n{}\n\n{}'.format(F1.to_string(2), F2.to_string(2), F3.to_string(2), F4.to_string(2)))
             if LUTCOORD in [CLB_LUTS.OA, CLB_LUTS.EA]:
                 W1, W2, W3, W4 = F1.data[offset] & 0xFFFF, F2.data[offset] & 0xFFFF, F3.data[offset] & 0xFFFF, F4.data[offset] & 0xFFFF
             elif LUTCOORD in [CLB_LUTS.OB, CLB_LUTS.EB]:
                 W1, W2, W3, W4 = (F1.data[offset] & 0xFFFF0000)>>16, (F2.data[offset] & 0xFFFF0000)>>16, (F3.data[offset] & 0xFFFF0000)>>16, (F4.data[offset] & 0xFFFF0000)>>16
             elif LUTCOORD in [CLB_LUTS.OC, CLB_LUTS.EC]:
                 W1, W2, W3, W4 = F1.data[offset+1] & 0xFFFF, F2.data[offset+1] & 0xFFFF, F3.data[offset+1] & 0xFFFF, F4.data[offset+1] & 0xFFFF
-            elif LUTCOORD in [CLB_LUTS.OC, CLB_LUTS.EC]:
+            elif LUTCOORD in [CLB_LUTS.OD, CLB_LUTS.ED]:
                 W1, W2, W3, W4 = (F1.data[offset+1] & 0xFFFF0000)>>16, (F2.data[offset+1] & 0xFFFF0000)>>16, (F3.data[offset+1] & 0xFFFF0000)>>16, (F4.data[offset+1] & 0xFFFF0000)>>16
             #INIT = (W4 << 48) | (W3 << 32) | (W2 << 16) | W1
             INIT = (W1<<48)|(W2<<32)|(W3<<16)|W4
             return(INIT)
             
                 
-          
+
+def SetCustomLutMask(SwBox_top, SwBox_row, SwBox_major, SwBox_minor, LUTCOORD, BIN_FrameList, lutmap):
+    for i in range(len(BIN_FrameList)):
+        f = BIN_FrameList[i]
+        if f.BlockType == 0 and f.Top == SwBox_top and f.Row == SwBox_row and f.Major == SwBox_major:
+            if LUTCOORD in [CLB_LUTS.OA, CLB_LUTS.OB, CLB_LUTS.OC, CLB_LUTS.OD]:
+                F = [BIN_FrameList[i+26+k] for k in range(4)] 
+            else:
+                F = [BIN_FrameList[i+32+k] for k in range(4)] 
+            offset = SwBox_minor*2
+            if offset >= 50: offset+=1  #word 50 is reserved for clk configuration
+            if LUTCOORD in [CLB_LUTS.OC, CLB_LUTS.EC, CLB_LUTS.OD, CLB_LUTS.ED]: offset += 1
+            (Rshift, bitmask) = (0, 0xFFFF) if LUTCOORD in [CLB_LUTS.OA, CLB_LUTS.EA, CLB_LUTS.OC, CLB_LUTS.EC] else (16, 0xFFFF0000)
+            INIT = (((F[0].data[offset] & bitmask) >> Rshift) << 48) | (((F[1].data[offset] & bitmask) >> Rshift) << 32) | (((F[2].data[offset] & bitmask) >> Rshift) << 16) | ((F[3].data[offset] & bitmask) >> Rshift)
+            for frame in F: 
+                if frame.custom_mask == []: frame.custom_mask = [0x00000000]*FrameSize
+            for item in lutmap:
+                for i in item:
+                    quarter = i/16
+                    bit_index = i%16 if LUTCOORD in[CLB_LUTS.OA, CLB_LUTS.EA, CLB_LUTS.OC, CLB_LUTS.EC] else (i%16) + 16 
+                    F[3-quarter].custom_mask[offset] |= (0x1 << bit_index)
+            return(INIT)     
