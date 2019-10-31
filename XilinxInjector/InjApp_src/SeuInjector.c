@@ -123,14 +123,14 @@ InjectionStatistics InjectorRun(InjectorDescriptor* InjDesc, JobDescriptor* JobD
 	//Program FPGA (Initial) with Complete Bitstream
 	ClockThrottle(0x1);
 	Status = ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
-	if (Status != XST_SUCCESS) { xil_printf("ReloadCompleteBitstream ERROR \n\r");}
-	printf("Bitstream loaded\n");
 
+	//ResetPL(1000);
 
-	//list_reference_frames(InjDesc);
 
 	//Check the golden run trace (fault-free run)
-	int failure_mode = (*InjDesc->WorkloadRunFunc)(0);
+	int failure_mode = 0; //(*InjDesc->WorkloadRunFunc)(0);
+	//SaveCheckpoint(InjDesc);
+
 	if(failure_mode > 0) printf("ERROR: Golden Run mismatch\n");
 	else printf("Golden Run Verify Trace Vector: success\n");
 	int goldenrun_match = (failure_mode > 0) ? 0 : 1;
@@ -195,6 +195,24 @@ InjectionCoorditates NextRandomInjectionTarget(InjectorDescriptor* InjDesc, JobD
 }
 
 
+InjectionCoorditates GetTargetFromInjectionList(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int index, FaultListItem * item){
+	InjectionCoorditates res;
+	FaultListItem *adr = JobDesc->FaultListAdr + index*sizeof(FaultListItem);
+
+	*(item)  = *(adr);
+	res.FAR  = item->FAR;
+	res.word = item->word;
+	res.bit  = item->bit;
+
+	for(int i=0;i<InjDesc->FrameDescriptorsCount;i++){
+		if(InjDesc->ReferenceFrames[i].FAR == res.FAR){
+			res.FrameIndex = i;
+			break;
+		}
+	}
+	return(res);
+}
+
 
 //sample_size=0, max_error_margin=0 to sample complete population
 InjectionStatistics RunInSamplingMode(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc,  int (*CustomInjectionFlow)(), int verbose){
@@ -239,7 +257,7 @@ InjectionStatistics RunInSamplingMode(InjectorDescriptor* InjDesc, JobDescriptor
 			InjectionCoorditates InjPoint = NextRandomInjectionTarget(InjDesc, JobDesc);
 			failure = 0;
 			//flip selected bit and check that flip was effective
-			int err = FlipBits(InjDesc, InjPoint, 0, 0);
+			int err = FlipBits(InjDesc, InjPoint, 0, 0, 0);
 			FarFields Frame = parseFAR(InjPoint.FAR);
 			if(err > 0){
 				errframecnt++;
@@ -333,7 +351,7 @@ InjectionStatistics RunInExhaustiveMode(InjectorDescriptor* InjDesc, JobDescript
 				//if tuple {FrameIndex, Word, bit} satisfies all the conditions - proceed to injection
 				int failure = 0;
 				InjectionCoorditates InjPoint = {.FAR = FAR, .FrameIndex = FrameIndex, .word = Word, .bit = bit};
-				int err = FlipBits(InjDesc, InjPoint, 0, 0);
+				int err = FlipBits(InjDesc, InjPoint, 0, 0, 0);
 
 				FarFields Frame = parseFAR(InjPoint.FAR);
 				if(err > 0){
@@ -477,6 +495,25 @@ void InitInjectorFromDesignDescriptionFile(InjectorDescriptor* InjDesc, JobDescr
 			}
 		}
 	}
+
+	InjDesc->RegisterFramesNum = 14;
+	InjDesc->RegisterFramesCaptured[0].FAR =  0x0000099f;
+	InjDesc->RegisterFramesCaptured[1].FAR =  0x00000a1f;
+	InjDesc->RegisterFramesCaptured[2].FAR =  0x00000a9f;
+	InjDesc->RegisterFramesCaptured[3].FAR =  0x00000b9f;
+	InjDesc->RegisterFramesCaptured[4].FAR =  0x00000c1f;
+	InjDesc->RegisterFramesCaptured[5].FAR =  0x00000d1f;
+	InjDesc->RegisterFramesCaptured[6].FAR =  0x00000d9f;
+	InjDesc->RegisterFramesCaptured[7].FAR =  0x00000e1f;
+	InjDesc->RegisterFramesCaptured[8].FAR =  0x00000e9f;
+	InjDesc->RegisterFramesCaptured[9].FAR =  0x00000f1f;
+	InjDesc->RegisterFramesCaptured[10].FAR = 0x00000f9f;
+	InjDesc->RegisterFramesCaptured[11].FAR = 0x0000101f;
+	InjDesc->RegisterFramesCaptured[12].FAR = 0x0000111f;
+	InjDesc->RegisterFramesCaptured[13].FAR = 0x0000119f;
+
+
+
 	//for(int i=0;i<RecoveryFarCount;i++) print_frame(&RecoveryDescriptorList[i]);
 }
 
@@ -511,11 +548,11 @@ void FilterFrameDescriptors(InjectorDescriptor* InjDesc, FrameDescriptor* FrameD
 BitArray GetInjectableWords(InjectorDescriptor* InjDesc, FarFields FC){
 	BitArray res = BitArrayNew(FRAME_SIZE);
 	int Status;
-	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]));
+	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]), 0);
 	for(int k=0;k<FRAME_SIZE;k++){ InjDesc->WriteFrameData[k] = ~InjDesc->ReadFrameData[k]; };
 	MaskFrameData(InjDesc, FC, &(InjDesc->WriteFrameData[0]));
-	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]));
-	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR,  (u32 *) &(InjDesc->ReadFrameData[0] ));
+	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]), 0);
+	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR,  (u32 *) &(InjDesc->ReadFrameData[0] ), 0);
 	for(u32 word=0;word<FRAME_SIZE;word++){
 		if(InjDesc->WriteFrameData[word] == InjDesc->ReadFrameData[word]){
 			BitArray_SetBit(&res, word, IsMaskableWordIndex(InjDesc, FC, word) == 0);
@@ -526,7 +563,7 @@ BitArray GetInjectableWords(InjectorDescriptor* InjDesc, FarFields FC){
 	}
 	for(int k=0;k<FRAME_SIZE;k++){ InjDesc->WriteFrameData[k] = ~InjDesc->WriteFrameData[k]; };
 	MaskFrameData(InjDesc, FC, &(InjDesc->WriteFrameData[0]));
-	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]));
+	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]), 0);
 	return(res);
 }
 
@@ -536,12 +573,12 @@ BitArray GetInjectableWords(InjectorDescriptor* InjDesc, FarFields FC){
 u32 CheckFrameWordIsInjectable(InjectorDescriptor* InjDesc, FarFields FC, u32 word){
 	int Status;
 	int match=1;
-	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]));
+	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]), 0);
 	for(int k=0;k<FRAME_SIZE;k++){ InjDesc->WriteFrameData[k] = InjDesc->ReadFrameData[k]; };
 	InjDesc->WriteFrameData[word] = ~(InjDesc->ReadFrameData[word]);
 	MaskFrameData(InjDesc, FC, &(InjDesc->WriteFrameData[0]));
-	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]));
-	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]));
+	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]), 0);
+	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]), 0);
 	for(int k=0;k<FRAME_SIZE;k++){
 		if(InjDesc->WriteFrameData[k] != InjDesc->ReadFrameData[k]){
 			match = 0;
@@ -550,7 +587,7 @@ u32 CheckFrameWordIsInjectable(InjectorDescriptor* InjDesc, FarFields FC, u32 wo
 	}
 	InjDesc->WriteFrameData[word] = ~(InjDesc->WriteFrameData[word]);
 	MaskFrameData(InjDesc, FC, &(InjDesc->WriteFrameData[0]));
-	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]));
+	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]), 0);
 	if(match) return(1);
 	return(0);
 }
@@ -583,7 +620,7 @@ int ProfileFarMap(InjectorDescriptor* InjDesc, u32* FarDesc, u32 BlockType, u32 
 			FAR_MINOR 	= (FAR  	  & 0x0000007F) | e;
 			if(FAR_BLOCK != BlockType)break;
 
-			Status = readFrame(InjDesc, FAR_TOP, FAR_BLOCK, FAR_HCLKROW, FAR_MAJOR, FAR_MINOR, (u32 *) &(InjDesc->ReadFrameData[0]));
+			Status = readFrame(InjDesc, FAR_TOP, FAR_BLOCK, FAR_HCLKROW, FAR_MAJOR, FAR_MINOR, (u32 *) &(InjDesc->ReadFrameData[0]), 0);
 				if (Status != XST_SUCCESS) {
 					printf("readFrame failure: %d \r\n", Status);
 					return XST_FAILURE;
@@ -689,39 +726,38 @@ void listdir(const TCHAR* path){
 
 
 
-
+//CellType = 0 - non-changeable CMEM (LUTs, switchboxes, etc), 1 - FF, 2 - BRAM
 //When mask == 0 : flips target.bit of target.word in Frame target.FAR
 //When mask != 0 : applies bitwise XOR to target.word in Frame target.FAR
 //returns: 0 - success, 1 - memory modification not applied (error)
-int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask, int verbose){
+int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask, int CellType, int verbose){
 	int Status;
 	FarFields FC = parseFAR(target.FAR);
-	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]));
+
+	//Readback-capture and write back Frames with FFs
+	int capture_restore = CellType>0 ? 1 : 0;
+
+
+
+	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]), capture_restore);
 	memcpy(&(InjDesc->WriteFrameData[0]), &(InjDesc->ReadFrameData[0]), FRAME_SIZE*sizeof(u32));
 
-	/*
-	for(u32 k=0;k<FRAME_SIZE;k++){
-		if(InjDesc->WriteFrameData[k] != InjDesc->ReferenceFrames[target.FrameIndex].Data[k]){
-			printf("Mismatch FAR=(%5d, %5d, %5d, %5d, %5d): %4d:  %08x <> %08x\n", FC.BLOCK, FC.TOP, FC.HCLKROW, FC.MAJOR, FC.MINOR, k, InjDesc->WriteFrameData[k], InjDesc->ReferenceFrames[target.FrameIndex].Data[k]);
-		}
-	}
-	 */
 
-	//memcpy(&(InjDesc->WriteFrameData[0]), &(InjDesc->ReferenceFrames[target.FrameIndex].Data[0]), FRAME_SIZE*sizeof(u32));
 	if(mask != 0){
 		InjDesc->WriteFrameData[target.word] = (InjDesc->WriteFrameData[target.word]) ^ mask;
 	}
 	else{
 		InjDesc->WriteFrameData[target.word] = (InjDesc->WriteFrameData[target.word]) ^ (1 << target.bit);
 	}
-	//MaskFrameData(InjDesc, FC, &(InjDesc->WriteFrameData[0]));
-	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]));
+
+
+	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]), capture_restore);
 
 	saveInjectionTarget(InjDesc, target.FrameIndex);
 
 
 	//read again to check that faulty value has been written
-	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]));
+	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]), 0);
 	int match = 1;
 	for(u32 k=0;k<FRAME_SIZE;k++){
 		if(InjDesc->WriteFrameData[k] != InjDesc->ReadFrameData[k]){
@@ -733,6 +769,7 @@ int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask,
 		if(verbose>0) for(u32 k=0;k<FRAME_SIZE;k++) printf("FlipBits Error: Written[%3d] = %08x | Read[%3d] = %08x\n", k, InjDesc->WriteFrameData[k], k, InjDesc->ReadFrameData[k]);
 		return(1);
 	}
+
 	return(0);
 }
 
@@ -754,7 +791,10 @@ int recover_bitstream(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int R
 		int FrameIndex = InjDesc->LastTargetedFrames[i];
 		FrameDescriptor* desc = &InjDesc->ReferenceFrames[FrameIndex];
 		stuck = WriteVerifyFrame(InjDesc, desc->FAR, &(desc->Data[0]));
-        //if(stuck) break;
+        if(stuck) {
+        	//printf("recover_bitstream: stuck\n");
+        	break;
+        }
     	FarFields FC = parseFAR(desc->FAR);
     	//recover ALL CLB minor frames in this Major Frame: 30 to 35
     	if(FC.BLOCK==0 && FC.MINOR >= 30 ){
@@ -869,8 +909,8 @@ int XDcfg_GetConfigReg(InjectorDescriptor* InjDesc, u32 ConfigReg, u32 *RegData)
 int WriteVerifyFrame(InjectorDescriptor* InjDesc, u32 FAR, u32* WriteData){
 	int Status;
 	FarFields FC = parseFAR(FAR);
-	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(WriteData[0]));
-	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]));
+	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(WriteData[0]), 0);
+	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]), 0);
 	int match = 1;
 	for(u32 k=0;k<FRAME_SIZE;k++){
 		if(WriteData[k] != InjDesc->ReadFrameData[k]){
@@ -928,7 +968,7 @@ int waitPcapDone(InjectorDescriptor* InjDesc, int waitQueueEmpty,  u32 TimeoutUs
 }
 
 
-int readFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow, long MajorFrame, long MinorFrame, u32 *FrameData){
+int readFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow, long MajorFrame, long MinorFrame, u32 *FrameData, int Capture){
 	for(int attempts = 0; attempts < 5; attempts++){
 		u32 Status;
 		u32 Index = 0;
@@ -962,12 +1002,18 @@ int readFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow, 
 		InjDesc->WriteBuffer[Index++] = 0x00000500;
 
 
-		// GCAPT
-		//InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
-		//InjDesc->WriteBuffer[Index++] = 0xC;
-		//InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
-		//InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		// GCAPTURE
+		if(Capture>0){
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
+		InjDesc->WriteBuffer[Index++] = XHI_CMD_GCAPTURE;
+		InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
 
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
+		InjDesc->WriteBuffer[Index++] = XHI_CMD_RCAP;
+		InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		}
 
 
 		// Setup CMD register to read configuration
@@ -1059,7 +1105,7 @@ int readFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow, 
 
 
 
-int writeFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow, long MajorFrame, long MinorFrame, u32 *FrameData){
+int writeFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow, long MajorFrame, long MinorFrame, u32 *FrameData, int restore){
 	int Status;
 	u32 Index = 0;
 	u32 FAR = FarSetup(Block, Top, HClkRow,  MajorFrame, MinorFrame);
@@ -1120,18 +1166,17 @@ int writeFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow,
 	for(int i=0;i<FRAME_SIZE;i++) InjDesc->WriteBuffer[Index++] = FrameData[i];
 		//Append the pad frame
 	for(int i=0;i<FRAME_SIZE;i++) InjDesc->WriteBuffer[Index++] = 0xFFFFFFFF;
-		//GRESTORE Q-2
-	//InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
-	//InjDesc->WriteBuffer[Index++] = 0X0000000A;
-	//InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
-		//Deassert GHIGH_B signal - activate all interconnects Q-3
-	//InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
-	//InjDesc->WriteBuffer[Index++] = 0x00000003;
-	//for(int i=0;i<100;i++) InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
-		//GRESTORE
-	//InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
-	//InjDesc->WriteBuffer[Index++] = 0x0000000A;
-	//InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+		//Set-Reset FFs
+	if(restore>0){
+		//printf("GRESTORE toggled\n");
+		InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
+		InjDesc->WriteBuffer[Index++] = XHI_CMD_GRESTORE;
+		InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+			//Deassert GHIGH_B signal - activate all interconnects
+		//InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CMD, 0x1);
+		//InjDesc->WriteBuffer[Index++] = 0x00000003;
+		//for(int i=0;i<100;i++) InjDesc->WriteBuffer[Index++] = XHI_NOOP_PACKET;
+	}
 	InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_MASK, 0x1);
 	InjDesc->WriteBuffer[Index++] = 0X00000100;
 	InjDesc->WriteBuffer[Index++] = Type1_Packet(2, XHI_CTL, 0x1);
@@ -1368,7 +1413,7 @@ u32 get_bit(u32 data, u32 bit_index){
 
 
 void print_job_desc(JobDescriptor* JobDesc){
-	printf("Job Descriptor: \n\tBitstreamId=%08d \n\tBitstreamAddr=%08x \n\tBitstreamSize=%08x \n\tBitmaskAddr=  %08x \n\tBitmaskSize=  %08x \n\tUpdateBitstream=%d \n\tmode=%d \n\tBlockType=%d \n\tEssential_bits=%d \n\tCheckRecovery=%d \n\tLogTimeout=%d \n\tStartIndex=%d \n\tExperimentsCompleted=%d \n\tCurrentFailureCount=%d \n\tCurrentMaskedCount=%d \n\tCurrentLatentCount=%d \n\tCurrentSDCCount=%d \n\tSampleSizeGoal=%d \n\tErrorMarginGoal=%.3f \n\tFaultMultiplicity=%d \n\tPopulationSize=%.0f \n\tSamplingWithoutRepetition = %d \n\n", JobDesc->BitstreamId, JobDesc->BitstreamAddr, JobDesc->BitstreamSize, JobDesc->BitmaskAddr, JobDesc->BitmaskSize, JobDesc->UpdateBitstream, JobDesc->mode, JobDesc->BlockType, JobDesc->Essential_bits, JobDesc->CheckRecovery, JobDesc->LogTimeout, JobDesc->StartIndex, JobDesc->ExperimentsCompleted, JobDesc->CurrentFailureCount, JobDesc->CurrentMaskedCount, JobDesc->CurrentLatentCount, JobDesc->CurrentSDCCount, JobDesc->SampleSizeGoal, JobDesc->ErrorMarginGoal, JobDesc->FaultMultiplicity, JobDesc->PopulationSize, JobDesc->SamplingWithoutRepetition);
+	printf("Job Descriptor: \n\tBitstreamId=%08d \n\tBitstreamAddr=%08x \n\tBitstreamSize=%08x \n\tBitmaskAddr=  %08x \n\tBitmaskSize=  %08x \n\tFaultListAdr=  %08x \n\tFaultListItems=  %08x \n\tUpdateBitstream=%d \n\tmode=%d \n\tBlockType=%d \n\tEssential_bits=%d \n\tCheckRecovery=%d \n\tLogTimeout=%d \n\tStartIndex=%d \n\tExperimentsCompleted=%d \n\tCurrentFailureCount=%d \n\tCurrentMaskedCount=%d \n\tCurrentLatentCount=%d \n\tCurrentSDCCount=%d \n\tSampleSizeGoal=%d \n\tErrorMarginGoal=%.3f \n\tFaultMultiplicity=%d \n\tPopulationSize=%.0f \n\tSamplingWithoutRepetition = %d \n\n", JobDesc->BitstreamId, JobDesc->BitstreamAddr, JobDesc->BitstreamSize, JobDesc->BitmaskAddr, JobDesc->BitmaskSize, JobDesc->FaultListAdr, JobDesc->FaultListItems, JobDesc->UpdateBitstream, JobDesc->mode, JobDesc->BlockType, JobDesc->Essential_bits, JobDesc->CheckRecovery, JobDesc->LogTimeout, JobDesc->StartIndex, JobDesc->ExperimentsCompleted, JobDesc->CurrentFailureCount, JobDesc->CurrentMaskedCount, JobDesc->CurrentLatentCount, JobDesc->CurrentSDCCount, JobDesc->SampleSizeGoal, JobDesc->ErrorMarginGoal, JobDesc->FaultMultiplicity, JobDesc->PopulationSize, JobDesc->SamplingWithoutRepetition);
 }
 
 
@@ -1456,20 +1501,41 @@ void CustomSleep(unsigned int microseconds)
 }
 
 
+void SleepNS(unsigned int nanoseconds)
+{
+  XTime tEnd, tCur;
+  XTime_GetTime(&tCur);
+  tEnd  = tCur + (((XTime) nanoseconds) * COUNTS_PER_MICROSECOND)/1000;
+  do{
+    XTime_GetTime(&tCur);
+  } while (tCur < tEnd);
+}
+
+
+
 
 void ResetPL(u32 duration_us){
-	/* SLCR unlock */
+	Xil_DCacheFlush();
+	Xil_DCacheInvalidate();
+
 	Xil_Out32(SLCR_UNLOCK_ADDR, SLCR_UNLOCK_KEY_VALUE);
-    /* SLCR Enabling Level shifting */
     Xil_Out32(SLCR_LVL_SHFTR_EN_ADDR, SLCR_LVL_SHFTR_EN_VALUE);
-    /* SLCR clearing PL Reset */
-    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0x0);	//rstN = 1
-    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0xf);	//rstN = 0 - default
-    CustomSleep(duration_us);
+
     Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0x0);
-    /* SLCR lock */
+    Xil_DCacheFlush();
+
+    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0xf);	//rstN = 0 - default
+    Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 0);
+    Xil_Out32(SLCR_CLK0_THROTTLE_CNT_ADR, duration_us);
+    Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 1);
+    Xil_DCacheFlush();
+    while((Xil_In32(SLCR_CLK0_THROTTLE_STA_ADR) & 0xFFFF));
+    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0x0);
+    Xil_DCacheFlush();
+
     Xil_Out32(SLCR_LOCK_ADDR, SLCR_LOCK_KEY_VALUE);
 }
+
 
 
 void ClockThrottle(u32 mask){
@@ -1486,16 +1552,14 @@ void ClockThrottle(u32 mask){
 
 
 void RunClockCount(u16 clknum){
-	/* SLCR unlock */
 	Xil_Out32(SLCR_UNLOCK_ADDR, SLCR_UNLOCK_KEY_VALUE);
     /* SLCR Enabling Level shifting */
     Xil_Out32(SLCR_LVL_SHFTR_EN_ADDR, SLCR_LVL_SHFTR_EN_VALUE);
-    //init clock counter
-    Xil_Out32(SLCR_CLK0_THROTTLE_CNT_ADR, clknum);
-    //clock starts on rising edge of ctrl (0->1)
     Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 0);
+    Xil_Out32(SLCR_CLK0_THROTTLE_CNT_ADR, clknum);
     Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 1);
-    /* SLCR lock */
+    //while((Xil_In32(SLCR_CLK0_THROTTLE_STA_ADR) & 0xFFFF) <= 1);
+    Xil_DCacheFlush();
     Xil_Out32(SLCR_LOCK_ADDR, SLCR_LOCK_KEY_VALUE);
 }
 
@@ -1512,7 +1576,7 @@ int FaultInjectionTest(InjectorDescriptor * InjDesc, FarFields Adr, int byteInde
 	int Status;
 	// 1. Read one frame from configuration memory
 	if(verbose > 0) printf("\n\n\nFault injection Test Phase-1: Read (BLOCK=%2d, TOP=%2d, ROW=%2d, MAJOR=%2d, MINOR=%2d)\n", Adr.BLOCK, Adr.TOP, Adr.HCLKROW, Adr.MAJOR, Adr.MINOR );
-	Status = readFrame(InjDesc, Adr.TOP, Adr.BLOCK, Adr.HCLKROW, Adr.MAJOR, Adr.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]));
+	Status = readFrame(InjDesc, Adr.TOP, Adr.BLOCK, Adr.HCLKROW, Adr.MAJOR, Adr.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]), 0);
 		if (Status != XST_SUCCESS) {
 			printf("Failed to Read Frame: %d \r\n", Status);
 			return XST_FAILURE;
@@ -1529,7 +1593,7 @@ int FaultInjectionTest(InjectorDescriptor * InjDesc, FarFields Adr, int byteInde
 	InjDesc->WriteFrameData[byteIndexToFlip]= ~(InjDesc->ReadFrameData[byteIndexToFlip]);
 	// 3. Write back modified frame (same frame coordinates)
 	if(verbose > 0) printf("\nFault injection Test Phase-3: Write back modified frame (BLOCK=%2d, TOP=%2d, ROW=%2d, MAJOR=%2d, MINOR=%2d)", Adr.BLOCK, Adr.TOP, Adr.HCLKROW, Adr.MAJOR, Adr.MINOR );
-	Status = writeFrame(InjDesc, Adr.TOP, Adr.BLOCK, Adr.HCLKROW, Adr.MAJOR, Adr.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]));
+	Status = writeFrame(InjDesc, Adr.TOP, Adr.BLOCK, Adr.HCLKROW, Adr.MAJOR, Adr.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]), 0);
 		if (Status != XST_SUCCESS) {
 			printf("Failed to write Frame: %d \r\n", Status);
 			return XST_FAILURE;
@@ -1537,7 +1601,7 @@ int FaultInjectionTest(InjectorDescriptor * InjDesc, FarFields Adr, int byteInde
 
 	// 4. Read the same frame again to check that changes were applied
 	if(verbose > 0) printf("\nFault injection Test Phase-4: Readback after injection (BLOCK=%2d, TOP=%2d, ROW=%2d, MAJOR=%2d, MINOR=%2d)\n", Adr.BLOCK, Adr.TOP, Adr.HCLKROW, Adr.MAJOR, Adr.MINOR );
-	Status = readFrame(InjDesc, Adr.TOP, Adr.BLOCK, Adr.HCLKROW, Adr.MAJOR, Adr.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]));
+	Status = readFrame(InjDesc, Adr.TOP, Adr.BLOCK, Adr.HCLKROW, Adr.MAJOR, Adr.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]), 0);
 		if (Status != XST_SUCCESS) {
 			printf("Failed to Read Frame: %d \r\n", Status);
 			return XST_FAILURE;
@@ -1579,7 +1643,7 @@ void readback_manual_test(InjectorDescriptor * InjDesc, JobDescriptor* JobDesc){
 		FC.MAJOR = input_int();
 		printf("Input MINOR:\n");
 		FC.MINOR = input_int();
-		readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, read_frame_data);
+		readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, read_frame_data, 0);
 		MaskFrameData(InjDesc, FC, read_frame_data);
 		printf("\n");
 		for(int i=0;i<FRAME_SIZE;i++) printf("%08x ", read_frame_data[i]);
@@ -1588,7 +1652,7 @@ void readback_manual_test(InjectorDescriptor * InjDesc, JobDescriptor* JobDesc){
 		if(k > 0){
 			read_frame_data[k] = read_frame_data[k]^0x1;
 			printf("Writing %08x\n", read_frame_data[k]);
-			writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, read_frame_data);
+			writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, read_frame_data, 0);
 		}
 	}
 }
@@ -1611,7 +1675,7 @@ void list_minor_frames(InjectorDescriptor * InjDesc){
 		for(int i=0;i<FRAME_SIZE;i++) printf("%8d ", i);
 		printf("\n");
 		for(FC.MINOR = 0; FC.MINOR < 127; FC.MINOR++){
-			readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, read_frame_data);
+			readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, read_frame_data, 0);
 			MaskFrameData(InjDesc, FC, read_frame_data);
 			printf("\n");
 			for(int i=0;i<FRAME_SIZE;i++) printf("%08x ", read_frame_data[i]);
@@ -1634,7 +1698,7 @@ void FarIncrTest(InjectorDescriptor * InjDesc, JobDescriptor* JobDesc, int verbo
 		while(FC.BLOCK <= 1){
 			//printf("FAR[%5d] =  %5d, %5d, %5d, %5d, %5d\n", InjDesc->FramesCount,  FC.BLOCK, FC.TOP, FC.HCLKROW, FC.MAJOR, FC.MINOR);
 			if(InjDesc->FramesCount==0 || InjDesc->FramesCount>0 && InjDesc->FarItems[InjDesc->FramesCount-1]!=FAR) InjDesc->FarItems[InjDesc->FramesCount++] = FAR;
-			readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]));
+			readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]), 0);
 			XDcfg_GetConfigReg(InjDesc, XHI_FAR, &FAR);
 			FAR = FAR | e;
 			FC = parseFAR(FAR);
@@ -1645,6 +1709,60 @@ void FarIncrTest(InjectorDescriptor * InjDesc, JobDescriptor* JobDesc, int verbo
 		FarFields FC = parseFAR(InjDesc->FarItems[i]);
 		if(verbose) printf("%08x\n", InjDesc->FarItems[i]);
 	}
+}
+
+
+
+//Update content of LUT BEL (INIT) located by coordinates: Top, HClkRow, CLB Column, SliceX, SliceY, ABCD= 1-4 (A-D)
+void UpdateLutINIT(InjectorDescriptor* InjDesc, long Top, long HClkRow, long Column, long SliceX, long SliceY, u32 ABCD, u64 INIT){
+	u32 FrameBuffer [FRAME_SIZE * 2];
+	u32 minor= (SliceX%2==0) ? 32 : 26;
+	u32 word = (SliceY%50)*2;
+	if(word>=50)word++;
+	if(ABCD>1) word++; //LUT C or D
+	u32 halfword = (ABCD==1 || ABCD==3) ? 1 : 0;
+
+
+	for(int i=0;i<4;i++){
+		readFrame(InjDesc, Top,  0, HClkRow, Column, minor+i, &(FrameBuffer[0]), 0);
+
+		u32 data = FrameBuffer[word];
+		u32 INIT_Fragment = (INIT >> ((3-i)*16))&0x0000FFFF;
+		if(halfword==0) data = (data&0xFFFF0000) |  INIT_Fragment;
+		else data = (data&0x0000FFFF) | (INIT_Fragment<<16);
+		FrameBuffer[word] = data;
+
+		writeFrame(InjDesc, Top,  0, HClkRow, Column, minor+i, &(FrameBuffer[0]), 0);
+	};
+}
+
+void SaveCheckpoint(InjectorDescriptor* InjDesc){
+	for(int i=0;i<InjDesc->RegisterFramesNum;i++){
+		FarFields x = parseFAR(InjDesc->RegisterFramesCaptured[i].FAR);
+		readFrame(InjDesc, x.TOP, x.BLOCK, x.HCLKROW, x.MAJOR, x.MINOR, &(InjDesc->RegisterFramesCaptured[i].Data[0]), 1);
+	}
+	printf("Checkpoint saved\n");
+}
+
+void restoreCheckpoint(InjectorDescriptor* InjDesc){
+	for(int i=0;i<InjDesc->RegisterFramesNum;i++){
+		FarFields x = parseFAR(InjDesc->RegisterFramesCaptured[i].FAR);
+		writeFrame(InjDesc, x.TOP, x.BLOCK, x.HCLKROW, x.MAJOR, x.MINOR, &(InjDesc->RegisterFramesCaptured[i].Data[0]), 1);
+	}
+}
+
+
+int CountCheckpointMismatches(InjectorDescriptor* InjDesc){
+	int res = 0;
+	u32 trace[FRAME_SIZE];
+	for(int i=0;i<InjDesc->RegisterFramesNum;i++){
+		FarFields x = parseFAR(InjDesc->RegisterFramesCaptured[i].FAR);
+		readFrame(InjDesc, x.TOP, x.BLOCK, x.HCLKROW, x.MAJOR, x.MINOR, &(trace[0]), 1);
+		for(int word=0;word<FRAME_SIZE;word++){
+			if(InjDesc->RegisterFramesCaptured[i].Data[word] != trace[word]) res++;
+		}
+	}
+	return(res);
 }
 
 

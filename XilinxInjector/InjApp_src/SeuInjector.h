@@ -145,6 +145,12 @@ typedef struct{
 	InjectionDetail* InjResult[MAX_EXPERIMENTS];
 } FrameDescriptor;
 
+typedef struct{
+	u32  FAR;
+	u32  Data[FRAME_SIZE];
+} FrameDescriptorCompact;
+
+
 
 typedef struct{
 	u32 BitstreamId;
@@ -153,6 +159,8 @@ typedef struct{
 	u32 BitstreamSize;
 	u32 BitmaskAddr;
 	u32 BitmaskSize;
+	u32 FaultListAdr;
+	u32 FaultListItems;
 	u32 UpdateBitstream;
 	u32 mode;				//0 handshake and exit, 1- cleanup (SD card cache) and exit, 2 - SEU injection sampling, 3 - SEU  injection exhaustive, 4 - profiling
 	u32 BlockType;			//0 - CLB, 1 - BRAM, >=2 Any
@@ -182,11 +190,18 @@ typedef struct{
 } InjectionCoorditates;
 
 
-
+typedef struct{
+	u32 ID;
+	u32 FAR;
+	u32 word;
+	u32 bit;
+	float actime;
+	u32 injres;
+} FaultListItem;
 
 
 typedef struct{
-    u32 WriteBuffer[FRAME_SIZE*1000] __attribute__ ((aligned (64)));	//For custom bitstream (writeFrame, writeFrames)
+    u32 WriteBuffer[FRAME_SIZE*MAX_FRAMES] __attribute__ ((aligned (64)));	//For custom bitstream (writeFrame, writeFrames)
     u32 ReadFrameData[FRAME_SIZE]    __attribute__ ((aligned (64)));	//Readback Frame Data to pass from readFrame
     u32 WriteFrameData[FRAME_SIZE]	 __attribute__ ((aligned (64)));	//Write Frame Data to pass to writeFrame
     u32 FrameBuffer[FRAME_SIZE*2]    __attribute__ ((aligned (64)));	//For readFrame intermediate
@@ -199,6 +214,10 @@ typedef struct{
     u32 FrameDescriptorsCount, ClbFramesCount, RambFramesCount;
     FrameDescriptor RecoveryDescriptorList[MAX_FRAMES];			//FRAMES to recover after each injection (e.g. ROM frames)
     u32 RecoveryFarCount;
+    FrameDescriptorCompact RegisterFramesCaptured[MAX_FRAMES];
+    u32 RegisterFramesNum;
+
+
     u32 LastTargetedFrames[MAX_FRAMES];		//List of frames (indexes in ReferenceFrames list) targeted since last recovery
     u32 LastTargetedFramesCount;
     u32 EssentialBitsPerBlockType[8];
@@ -220,11 +239,14 @@ void PrintInjectorInfo(InjectorDescriptor* InjDesc);
 typedef struct{
 	int failures;
 	int masked;
+	int latent;
 	int injections;
 	double failure_rate;
 	double failure_error_margin;
 	double masked_rate;
 	double masked_error_margin;
+	double latent_rate;
+	double latent_error_margin;
 	int complete_reconfigurations;
 	float population;
 } InjectionStatistics;
@@ -247,8 +269,8 @@ u32 Type1_Packet(u32 Opcode, u32 RegAdr, u32 WordCnt);
 u32 Type2_Packet(u32 Opcode, u32 WordCnt);
 FarFields parseFAR(u32 FAR);
 int XDcfg_GetConfigReg(InjectorDescriptor* InjDesc, u32 ConfigReg, u32 *RegData);
-int readFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow, long MajorFrame, long MinorFrame, u32 *FrameData);
-int writeFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow, long MajorFrame, long MinorFrame, u32 *FrameData);
+int readFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow, long MajorFrame, long MinorFrame, u32 *FrameData, int Capture);
+int writeFrame(InjectorDescriptor* InjDesc, long Top,  long Block, long HClkRow, long MajorFrame, long MinorFrame, u32 *FrameData, int restore);
 int writeFrames(InjectorDescriptor* InjDesc, int StartIndex, u32 FrameCount, FrameDescriptor* FrameArray);
 int ProfileFarMap(InjectorDescriptor* InjDesc, u32* FarDesc, u32 BlockType, u32 Top);
 void ReadbackTest(int blocktype);
@@ -257,7 +279,7 @@ int IsExcluded(u32 item);
 void RetrieveInjectableFrames();
 void MaskFrameData(InjectorDescriptor* InjDesc, FarFields FC, u32 *FrameData);
 int IsMaskableWordIndex(InjectorDescriptor* InjDesc, FarFields FC, u32 index);
-int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask, int verbose);
+int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask, int CellType, int verbose);
 int WriteVerifyFrame(InjectorDescriptor* InjDesc, u32 FAR, u32* WriteData);
 void print_frame(FrameDescriptor* Frame);
 
@@ -290,6 +312,14 @@ void RunClockCount(u16 clknum);
 int input_int();
 void readconsole(char readbuf[]);
 int GetFileList(FILINFO FileDesc[]);
+
+InjectionCoorditates GetTargetFromInjectionList(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int index, FaultListItem * item);
+void UpdateLutINIT(InjectorDescriptor* InjDesc, long Top, long HClkRow, long Column, long SliceX, long SliceY, u32 ABCD, u64 INIT);
+
+void SaveCheckpoint(InjectorDescriptor* InjDesc);
+void restoreCheckpoint(InjectorDescriptor* InjDesc);
+int CountCheckpointMismatches(InjectorDescriptor* InjDesc);
+
 
 
 #endif /* SRC_SEUINJECTOR_H_ */
