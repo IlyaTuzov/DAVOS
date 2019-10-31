@@ -1,4 +1,4 @@
-# Initialization module requried to set-up the fault injection experiments
+﻿# Initialization module requried to set-up the fault injection experiments
 # 1. Extracts the fault injection taregets from the set of input models
 #    according to fault dictionary and parameters from <Initializatio> tag of config.xml
 # 2. Accomplished Model Matching, both Implementation-to-Implementation and Implementation-to-RTL
@@ -28,7 +28,7 @@ def InitializeHDLModels(config, toolconf):
     timestamp = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d_%H-%M-%S')
 
     #Append Sampling/finish flag if not present
-    if config.genconf.finish_flag == '':
+    if config.genconf.finish_flag == '' and config.injector.compile_project:
         sampl = toolconf.finish_flag.split('/')
         for c in config.parconf:
             with open(os.path.join(c.work_dir, '_fit_sampling.vhd'), 'w') as f:
@@ -90,14 +90,15 @@ def InitializeHDLModels(config, toolconf):
             cdata = ConfigInitNodes(c.label)
             cdata.export_folder = c.work_dir
             configs_inj_targets.append(cdata)
-            print('\n\tCOMPILING: ' + c.label)
-            #Compile the design
-            create_folder(c.work_dir, toolconf.code_dir)
             os.chdir(c.work_dir)
-            compile_script = "vsim -c -do \"do " + config.genconf.compile_script + " " + c.compile_options + " ;quit\" > compile_log.txt"
-            proc = subprocess.Popen(compile_script, shell=True)
-            print "RUN: " + compile_script
-            proc.wait()
+            create_folder(c.work_dir, toolconf.code_dir)
+            #Compile the design
+            if config.injector.compile_project:
+                print('\n\tCOMPILING: ' + c.label)
+                compile_script = "vsim -c -do \"do " + config.genconf.compile_script + " " + c.compile_options + " ;quit\" > compile_log.txt"
+                proc = subprocess.Popen(compile_script, shell=True)
+                print "RUN: " + compile_script
+                proc.wait()
             #2.1. extract all entities from the design tree for each injection scope
             for i in injection_unit_paths:
                 print('\n\t'+c.label+': Parsing Injection Scope: ' + i)
@@ -119,13 +120,13 @@ def InitializeHDLModels(config, toolconf):
                         for s in content:
                             #s = s.replace('[','(').replace(']',')')
                             x = DesignNode()
-                            wl = s.split(' ')
+                            #wl = s.split(' ')
                             if config.genconf.design_type == 'netlist':
-                                wt = re.findall(nodetype_regexp, wl.pop())
+                                wt = re.findall('(.*)\s\((.*?)\)$', s)
                                 if len(wt) > 0:
-                                    x.type = wt[0].lower()
-                                    x.name = ''.join(wl) #include weird spaces valid in Modelsim
-                                    #x.name = re.findall(nodename_regexp, s)[0]                                
+                                    x.type = wt[0][-1].lower()
+                                    x.name = wt[0][0]
+                                    #x.name = re.findall(nodename_regexp, s)[0]                             
                                 else: #string does not match the pattern for netlist
                                     continue
                             elif config.genconf.design_type == 'rtl':
@@ -239,7 +240,7 @@ def InitializeHDLModels(config, toolconf):
         if config.genconf.finish_flag == '':
             GenericInternalObservationContent += '\n#Sampling (finish) flag\n\tadd list -label FinishFlag Sampling/FinishFlag'
         else:
-            GenericInternalObservationContent += '\n#Sampling (finish) flag\n\tadd list -label FinishFlag ' + finish_flag
+            GenericInternalObservationContent += '\n#Sampling (finish) flag\n\tadd list -label FinishFlag ' + config.genconf.finish_flag
         # signal
         for c in config.initializer.generic_observation_nodes.signals:
             content = "\n# " + c.comment
@@ -299,12 +300,12 @@ def InitializeHDLModels(config, toolconf):
                         for s in content:
                             #s = s.replace('[','(').replace(']',')')
                             x = DesignNode()
-                            wl = s.split(' ')
+                            #wl = s.split(' ')
                             if config.genconf.design_type == 'netlist':
-                                wt = re.findall(nodetype_regexp, wl.pop())
+                                wt = re.findall('(.*)\s\((.*?)\)$', s)
                                 if len(wt) > 0:
-                                    x.type = wt[0].lower()
-                                    x.name = ''.join(wl) 
+                                    x.type = wt[0][-1].lower()
+                                    x.name = wt[0][0]
                                 else: #string does not match the pattern for netlist
                                     continue
                             elif config.genconf.design_type == 'rtl':

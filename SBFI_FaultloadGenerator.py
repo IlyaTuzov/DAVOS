@@ -1,4 +1,4 @@
-# Generates a set of fault simulation scripts (currently for ModelSim)
+﻿# Generates a set of fault simulation scripts (currently for ModelSim)
 # using fault dictionary and configuration of fault models from XML config file
 # TODO: analysis of profiling metrics, including refactoring of existing ones from previous version
 # Author: Ilya Tuzov, Universitat Politecnica de Valencia
@@ -95,15 +95,15 @@ def GenerateInjectionScripts_SamplingMode(config, modelconf, toolconf, faultdict
                 inj_script += "\nset ExecTime {0}ns".format( str(int(config.genconf.std_workload_time*scale_factor)-int(checkpoint_linked)) if fconfig.trigger_expression == '' else str(int(config.genconf.std_workload_time*scale_factor)))
                 for i in range(fconfig.multiplicity):
                     if fconfig.trigger_expression == '':    #time-driven injection                        
-                        inj_script += "\n\twhen \"\\$now >= {0}ns\" {{\n\t\tputs \"Time: $::now: Injection of {1}\"\n\t{2}\n\t}}\n".format(str(int(inj_time[i])-int(checkpoint_linked)), fconfig.model, c[i][1])
+                        inj_script += "\n\twhen \"\\$now >= {0}ns\" {{\n\t\tputs \"Time: $::now: Injection of {1}\"\n\t{2}\n\t}}\n".format(str(int(inj_time[i])-int(checkpoint_linked)), fconfig.model, c[i][2])
                         fname = "fault_" + str_index + "__checkpoint_" + str(checkpoint_linked) + ".do"                                             
                     else:       #event-driven injection (on trigger expression)
-                        inj_script += "" +  + "\n\nwhen {0} {{\n\twhen \"\\$now >= {1}ns\" {{\n\t\tputs \"Time: $::now: Injection of {2}\"\n\t{3}\n\t}}\n}}".format(fconfig.trigger_expression, str(int(inj_time[i])), fconfig.model, c[1])
+                        inj_script += "" +  + "\n\nwhen {0} {{\n\twhen \"\\$now >= {1}ns\" {{\n\t\tputs \"Time: $::now: Injection of {2}\"\n\t{3}\n\t}}\n}}".format(fconfig.trigger_expression, str(int(inj_time[i])), fconfig.model, c[2])
                         fname = "fault_" + str_index + "__checkpoint_0" + ".do"
                 inj_script += ("\nwhen \"\$now >= $ExecTime && {0}'event && {1} == 1\"".format(config.genconf.clk_signal, config.genconf.clk_signal)  if config.genconf.clk_signal != '' else "\nwhen \"\$now >= $ExecTime\"") + " { force -freeze "+ (toolconf.finish_flag if config.genconf.finish_flag == '' else config.genconf.finish_flag) + " 1 }"
                 if config.injector.checkpont_mode == CheckpointModes.ColdRestore:
                     inj_script += "\n\ndo " + toolconf.list_init_file
-                inj_script +=  "\nrun [scaleTime $ExecTime 1.05]"
+                inj_script +=  "\nrun [scaleTime $ExecTime 1.01]"
                 dumpfilename = "dump_" + str_index + "_nodename.lst"
                 inj_script += "\nwrite list " + toolconf.result_dir + '/' + dumpfilename
                 if config.injector.checkpont_mode == CheckpointModes.ColdRestore:
@@ -112,9 +112,9 @@ def GenerateInjectionScripts_SamplingMode(config, modelconf, toolconf, faultdict
                 robust_file_write(fname, inj_script)
                 sys.stdout.write('Stored script: %6d\r' % (script_index))
                 sys.stdout.flush() 
-                fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0][0] + ";" + instance.type + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(fconfig.duration) + ";" + str(inj_time[0]) + ";" + str(int(config.genconf.std_workload_time*scale_factor)-int(inj_time[0])) 
-                if c[0][2] != None:
-                    fdesclog_content += ';{0:.2f};{1:d};{2:s};'.format(c[0][2].total_time, c[0][2].effective_switches, c[0][2].profiled_value)
+                fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0][0] + ";" + instance.type + ";" + c[1] + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(fconfig.duration) + ";" + str(inj_time[0]) + ";" + str(int(config.genconf.std_workload_time*scale_factor)-int(inj_time[0])) 
+                if c[0][3] != None:
+                    fdesclog_content += ';{0:.2f};{1:d};{2:s};'.format(c[0][3].total_time, c[0][3].effective_switches, c[0][3].profiled_value)
                 else:
                     fdesclog_content += ';None;None;None;'
                 script_index += 1
@@ -133,7 +133,7 @@ def generate_injection_scripts(config, modelconf, toolconf, faultdict):
     checkpointlist = get_checkpoints(os.path.join(modelconf.work_dir, toolconf.checkpoint_dir))
 
     script_index = 0
-    fdesclog_content = "sep=;\nINDEX;DUMPFILE;TARGET;INSTANCE_TYPE;FAULT_MODEL;FORCED_VALUE;DURATION;TIME_INSTANCE;OBSERVATION_TIME;MAX_ACTIVITY_DURATION;EFFECTIVE_SWITHES;PROFILED_VALUE;ON_TRIGGER;"
+    fdesclog_content = "sep=;\nINDEX;DUMPFILE;TARGET;INSTANCE_TYPE;INJECTION_CASE;FAULT_MODEL;FORCED_VALUE;DURATION;TIME_INSTANCE;OBSERVATION_TIME;MAX_ACTIVITY_DURATION;EFFECTIVE_SWITHES;PROFILED_VALUE;ON_TRIGGER;"
     scale_factor = float(modelconf.clk_period) / float(config.genconf.std_clk_period)
     for fconfig in config.injector.fault_model:
         #Select macrocells(targets) of the types specified in the faultload configuration
@@ -194,7 +194,7 @@ def generate_injection_scripts(config, modelconf, toolconf, faultdict):
                         for t in inj_time:
                              inj_script += str(int(t)-int(checkpoint_linked)) + "ns "
                         inj_script += "}"
-                        inj_script += "\n\nforeach i $InjTime {\n\twhen \"\\$now >= $i\" {\n\t\tputs \"Time: $::now: Injection of " + fconfig.model + "\"\n\t\t" + c[1] + "\n\t}\n}"
+                        inj_script += "\n\nforeach i $InjTime {\n\twhen \"\\$now >= $i\" {\n\t\tputs \"Time: $::now: Injection of " + fconfig.model + "\"\n\t\t" + c[2] + "\n\t}\n}"
                         fname = "fault_" + str_index + "__checkpoint_" + str(checkpoint_linked) + ".do"
                     else:       #event-driven injection (on trigger expression)
                         inj_script += "\nset ExecTime " + str(int(config.genconf.std_workload_time*scale_factor)) + "ns"
@@ -202,12 +202,12 @@ def generate_injection_scripts(config, modelconf, toolconf, faultdict):
                         for t in inj_time:
                              inj_script += str(int(t)) + "ns "
                         inj_script += "}"
-                        inj_script += "\n\nwhen {" + fconfig.trigger_expression + "} {\n\tforeach i $InjTime {\n\t\twhen \"\\$now >= $i\" {\n\t\t\tputs \"Time: $::now: Injection of " + fconfig.model  +"\"\n\t\t\t" + c[1] + "\n\t\t}\n\t}\n}"
+                        inj_script += "\n\nwhen {" + fconfig.trigger_expression + "} {\n\tforeach i $InjTime {\n\t\twhen \"\\$now >= $i\" {\n\t\t\tputs \"Time: $::now: Injection of " + fconfig.model  +"\"\n\t\t\t" + c[2] + "\n\t\t}\n\t}\n}"
                         fname = "fault_" + str_index + "__checkpoint_0" + ".do"
                     inj_script += ("\nwhen \"\$now >= $ExecTime && {0}'event && {1} == 1\"".format(config.genconf.clk_signal, config.genconf.clk_signal)  if config.genconf.clk_signal != '' else "\nwhen \"\$now >= $ExecTime\"") + " { force -freeze "+ (toolconf.finish_flag if config.genconf.finish_flag == '' else config.genconf.finish_flag) + " 1 }"
                     if config.injector.checkpont_mode == CheckpointModes.ColdRestore:
                         inj_script += "\n\ndo " + toolconf.list_init_file
-                    inj_script +=  "\nrun [scaleTime $ExecTime 1.05]"
+                    inj_script +=  "\nrun [scaleTime $ExecTime 1.01]"
                     dumpfilename = "dump_" + str_index + "_nodename.lst"
                     inj_script += "\nwrite list " + toolconf.result_dir + '/' + dumpfilename
                     if config.injector.checkpont_mode == CheckpointModes.ColdRestore:
@@ -216,9 +216,9 @@ def generate_injection_scripts(config, modelconf, toolconf, faultdict):
                     robust_file_write(fname, inj_script)
                     sys.stdout.write('Stored script: %6d\r' % (script_index))
                     sys.stdout.flush() 
-                    fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0] + ";" + instance.type + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(fconfig.duration) + ";" + str(inj_time[0]) + ";" + str(int(config.genconf.std_workload_time*scale_factor)-int(inj_time[0])) 
-                    if c[2] != None:
-                        fdesclog_content += ';{0:.2f};{1:d};{2:s};'.format(c[2].total_time, c[2].effective_switches, c[2].profiled_value)
+                    fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0] + ";" + instance.type + ";" + c[1] + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(fconfig.duration) + ";" + str(inj_time[0]) + ";" + str(int(config.genconf.std_workload_time*scale_factor)-int(inj_time[0])) 
+                    if c[3] != None:
+                        fdesclog_content += ';{0:.2f};{1:d};{2:s};'.format(c[3].total_time, c[3].effective_switches, c[3].profiled_value)
                     else:
                         fdesclog_content += ';None;None;None;'
                     script_index += 1
@@ -234,7 +234,7 @@ def generate_injection_scripts(config, modelconf, toolconf, faultdict):
 #----------------------------------------------------------------------------------------------------------------------------------
 # Returns the list of fault injection scripts for each injection case in the dictionary applicable to tuple {INSTANCE, FCONFIG}
 #-----------------------------------------------------------------------------------------------------------------------------------
-
+#tuple [target, injection_case, injection_code, switching_activity]
 def get_injection_code_all(instance, faultdict, fconfig, scale_factor, PresimRes = None):
     res = []
     duration = fconfig.duration * scale_factor
@@ -268,8 +268,8 @@ def get_injection_code_all(instance, faultdict, fconfig, scale_factor, PresimRes
                     inj_code = inj_code.replace(node.placeholder, node.nodename_pattern)
                 #
                 if len(indset) == 0:
-                    res.append((instance.name + "/" + injection_case.label, inj_code, None))
+                    res.append((instance.name, injection_case.label, inj_code, None))
                 else:
                     for index in indset:
-                        res.append((instance.name + "/" + injection_case.label + index[0], inj_code.replace('#DIM', index[0]), index[1]))
+                        res.append((instance.name, injection_case.label + index[0], inj_code.replace('#DIM', index[0]), index[1]))
     return(res)

@@ -92,7 +92,7 @@ def generate_reference_script(config, toolconfig):
         reference_script += ("\nwhen \"\$now >= $ExecTime && {0}'event && {1} == 1\"".format(config.genconf.clk_signal, config.genconf.clk_signal)  if config.genconf.clk_signal != '' else "\nwhen \"\$now >= $ExecTime\"") + " { force -freeze "+ (toolconf.finish_flag if config.genconf.finish_flag == '' else config.genconf.finish_flag) + " 1 }"
         if config.injector.checkpont_mode == CheckpointModes.ColdRestore:
             reference_script += "\ndo " + toolconfig.list_init_file
-        reference_script += "\nrun [scaleTime $ExecTime 1.05]"
+        reference_script += "\nrun [scaleTime $ExecTime 1.01]"
         reference_script += "\nwrite list " + toolconfig.result_dir + "/" + toolconfig.reference_file
         if config.injector.checkpont_mode == CheckpointModes.ColdRestore:
             reference_script += "\nquit\n"        
@@ -284,7 +284,7 @@ def RunSBFI(datamodel, config, toolconf):
         
                 #3.7. Faultload generator: Instantiate, Connect and Run in a new thread
                 if config.injector.create_injection_scripts:
-                    GenerateInjectionScripts_SamplingMode(config, conf, toolconf, fault_dict)
+                    generate_injection_scripts(config, conf, toolconf, fault_dict)
 
                 #3.8. Execute scripts (simulate - on Selected platform)
                 if config.injector.run_faultinjection:

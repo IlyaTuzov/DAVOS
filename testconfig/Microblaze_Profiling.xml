@@ -2,18 +2,18 @@
 <data>
 
     <DAVOS
-        DesignBuilder = "on"
-        FaultInjection = "off"
-        DecisionSupport = "on"
-        report_dir = "#RUNDIR/../../../Projects/Controllers/GeneticAdaptive"        
-        dbfile = "MC8051_Doptimal.db"  >
+        DesignBuilder = "off"
+        FaultInjection = "on"
+        DecisionSupport = "off"
+        report_dir = "#RUNDIR/../../Projects/Profiling/Models/Microblaze_ZC"        
+        dbfile = "MC8051.db"  >
         
 
         <ExperimentalDesign
             max_proc = "6"
             retry_attempts = "2"            
             overwrite_existing = "off"            
-            build_factorial_design = "on"
+            build_factorial_design = "off"
             implement_design = "on"
             implement_default_config = "off"
             build_testbench_random_inputs = "off"		
@@ -25,18 +25,18 @@
             
             <generic            
                 custom_parameters = "{ 
-                &apos;SynthesisScriptTemplate&apos;:&apos;SynthesisPhase.tcl&apos;, 
-                &apos;ImplementationScriptTemplate&apos;:&apos;ImplementationPhase.tcl&apos;,
-                &apos;GenBitstreamScriptTemplate&apos;:&apos;GenBitstreamPhase.tcl&apos;
+                'SynthesisScriptTemplate' : 'SynthesisPhase.tcl', 
+                'ImplementationScriptTemplate' : 'ImplementationPhase.tcl',
+                'GenBitstreamScriptTemplate' : 'GenBitstreamPhase.tcl'
                 }"                      
-                design_label = "Zynq_MC8051_"
-                design_dir = "../../../Projects/Controllers/GeneticAdaptive"
+                design_label = "Zynq_Microblaze_"
+                design_dir = "../../Projects/Profiling/Models/Microblaze_ZC"
                 template_dir = "Zync_Template"
                 log_dir = "./log"
                 netlist_dir = "./netgen"
                 constraint_file = ""    
-                uut_root   = "mc8051_top_0"   
-                post_injection_recovery_nodes = "['design_1_i/mc8051_top_0/U0/i_mc8051_rom/outreg_reg']"
+                uut_root   = "/BD_wrapper/BD_i/microblaze_0"   
+                post_injection_recovery_nodes = "['ramloop']"
             />        
 
             
@@ -52,7 +52,7 @@
                     <option name = "strategy" default = "Vivado Synthesis Defaults" />    
                     <option name = "steps.synth_design.args.directive" default = "Default" />                                                                                                                   
                     <option name = "STEPS.SYNTH_DESIGN.ARGS.FLATTEN_HIERARCHY" default = "rebuilt" />                                                           
-                    <option name = "STEPS.SYNTH_DESIGN.ARGS.GATED_CLOCK_CONVERSION" default = "auto" />                                                            
+                    <option name = "STEPS.SYNTH_DESIGN.ARGS.GATED_CLOCK_CONVERSION" default = "off" />                                                            
                     <option name = "STEPS.SYNTH_DESIGN.ARGS.BUFG" default = "12" />                                       
                     <option name = "STEPS.SYNTH_DESIGN.ARGS.FANOUT_LIMIT" default = "10000" />                                       
                     <option name = "STEPS.SYNTH_DESIGN.ARGS.RETIMING" default = "false" />
@@ -85,8 +85,8 @@
                     <option name = "STEPS.OPT_DESIGN.ARGS.DIRECTIVE" default = "Default" />
                     <option name = "STEPS.POWER_OPT_DESIGN.IS_ENABLED"  default = "false" />
                     <option name = "STEPS.PLACE_DESIGN.ARGS.DIRECTIVE" default = "Default" />
-                    <option name = "STEPS.POST_PLACE_POWER_OPT_DESIGN.IS_ENABLED"  default = "true" />                          
-                    <option name = "STEPS.PHYS_OPT_DESIGN.IS_ENABLED"  default = "true" />                          
+                    <option name = "STEPS.POST_PLACE_POWER_OPT_DESIGN.IS_ENABLED"  default = "false" />                          
+                    <option name = "STEPS.PHYS_OPT_DESIGN.IS_ENABLED"  default = "false" />                          
                     <option name = "STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE"  default = "Default" />                                                               
                     <option name = "STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE"  default = "Default" />      
                     <option name = "STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED"  default = "false" />      
@@ -116,7 +116,7 @@
             
 
             <!-- design types:  Fractional, Doptimal -->
-            <factorial_design table_of_factors = "C:/Projects/Controllers/MC8051_Genetic_RF/RandomConf.csv" design_type = "" resolution = "" >
+            <factorial_design table_of_factors = "" design_type = "Doptimal" resolution = "4" >
 
         
 
@@ -368,9 +368,9 @@
         -->
         <FaultInjection
             platform = "Multicore"
-            initializer_phase = "on"    
+            initializer_phase = "off"    
             profiler_phase = "off"
-            injector_phase = "off"
+            injector_phase = "on"
             reportbuilder_phase = "on"    
             >
               <!-- 
@@ -380,15 +380,17 @@
                 library_specification: leave it blank if design_type = RTL
             -->
             <Generic
-                design_type = "RTL"
-                library_specification = "./FaultDictionaries/Vivado_Simprim_VHDL.xml"
-                compile_script = "../rtl_compile.do"
-                run_script = "../rtl_run.do"	
-                std_clk_period = "19.0"
+                design_type = "NETLIST"
+                library_specification = "./FaultDictionaries/Xilinx_Simprim_Ver.xml"
+                compile_script = "./par_compile.do"
+                run_script = "./par_run.do"	
+				trace_script = ""
+                std_clk_period = "17.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
-                std_workload_time = "9000"
-                finish_flag = ""
+                std_workload_time = "800000"
+				std_trace_time =     "0"
+                finish_flag = "/BD_wrapper/BD_i/FinishFlag"
             />
             
 
@@ -400,7 +402,7 @@
             -->
             
             <Initializer
-                    virtual_register_reconstruction = "on"				
+                    virtual_register_reconstruction = "off"				
                     observe_outputs = "notrigger"                
                     build_injection_list   = "on"
                     build_dump_init_script = "on"		
@@ -409,16 +411,14 @@
                 
                     
             <!-- unit path: withing the design scope-->            
-                <InjectionScope node_prefix = ""   unit_path = "/tb_mc8051_top/i_mc8051_top/i_mc8051_core/" />
+                <InjectionScope node_prefix = ""   unit_path = "/BD_wrapper/BD_i/microblaze_0" />
 
-                <ObservationScope node_prefix = "" unit_path = "/tb_mc8051_top/i_mc8051_top/i_mc8051_core/" label_prefix = "core_" sampling_options = "-notrigger"/>
+                <ObservationScope node_prefix = "" unit_path = "/BD_wrapper/BD_i/microblaze_0" label_prefix = "" sampling_options = "-notrigger"/>
 
                     
                     <!-- location: INTERNALS / OUTPUTS -->            
                 <GenericObservationNodes>
-                   <memarray 	location = "INTERNALS" 	options = "" 		label = "RAM" 		path= "sim:/i_mc8051_top/i_mc8051_ram/gpram"  low_address = "0" high_address = "127" comment="Onchip Memory" />					
-                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "XRAM" 		path= "sim:/i_mc8051_top/i_mc8051_ramx/gpram" low_address = "0" high_address = "11" comment="External Memory" />		
-                   <signal 	    location = "OUTPUTS" 	options = "" 		label = "PORT_A" 	path= "sim:/tb_mc8051_top/i_mc8051_top/p1_o"  comment="PORT_A" />						
+                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "/BD_wrapper/BD_i/ResultArray" low_address = "0" high_address = "19" comment="External Memory" />		
                 </GenericObservationNodes>
             </Initializer>
 
@@ -426,10 +426,10 @@
 
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
-                    checkpont_mode = "WarmRestore"
-                    maxproc = "8"
+                    checkpont_mode = "ColdRestore"
+                    maxproc = "4"
                     workload_split_factor = "10"			
-                    campaign_label = "MC8051_RTL"		
+                    campaign_label = "Microblaze"		
                     cleanup_folders="off"
                     compile_project = "off"
                     create_scripts="off"
@@ -437,7 +437,7 @@
                     create_precise_checkpoints = "off"
                     create_injection_scripts = "off"
                     run_faultinjection="off"
-                    remove_par_lib_after_checkpoint_stored = "on"
+                    remove_par_lib_after_checkpoint_stored = "off"
                     cancel_pending_tasks = "off"
                     
                     sim_time_checkpoints = "16:00:00"
@@ -456,15 +456,15 @@
 
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
                 <fault_model
-                    model = "bit_flip"
-                    target_logic = "SIGNAL"
+                    model = "upset_cmem"
+                    target_logic = "lut1, lut2, lut3, lut4, lut5, lut6"
                     faults_per_target = "1"
                     time_mode = "Relative"
                     injection_time_start = "0.0"            
-                    injection_time_end = "1.0"
+                    injection_time_end = "0.0"
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
-                    sample_size = "1000"
+                    sample_size = "0"
                     rand_seed	= "2"					
                 />	
         
@@ -472,7 +472,7 @@
                 
 
             <Analyzer
-                report_dir = "#RUNDIR/../../HTWEB/DEMO"
+                report_dir = "#RUNDIR/../../HTWEB/Profiling"
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
                 error_flag_signal = ""
@@ -512,11 +512,11 @@
             
             
             <config
-                work_dir = "../../Projects/Controllers/MC8051/MC8051_RTL"
+                work_dir = "../../Projects/Profiling/Models/Microblaze_ZC"
                 label = "MC8051_RTL"
                 compile_options = ""
                 run_options = ""
-                clk_period = "16.0"
+                clk_period = "17.0"
                 start_from = ""
                 stop_at = ""
             />

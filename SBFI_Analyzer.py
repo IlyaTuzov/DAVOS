@@ -1,4 +1,4 @@
-# Multithreaded analysis of observation dumps (from toolconf.result_dir)
+﻿# Multithreaded analysis of observation dumps (from toolconf.result_dir)
 # Interacts with datamodel
 # With respect to SQL database - fills the table 'Injections'
 # Renames dumps according to global unique key, stores them into zip package
@@ -42,6 +42,8 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
         InjDesc.InjectionTime = item.injection_time
         InjDesc.InjectionDuration = item.duration
         InjDesc.ObservationTime = item.observation_time
+        InjDesc.Node = item.target
+        InjDesc.InjCase = item.injection_case
         inj_dump = simDump()
         inj_dump.set_labels_copy(datamodel.reference.initial_internal_labels, datamodel.reference.initial_output_labels)
         if inj_dump.build_vectors_from_file(os.path.join(conf.work_dir, toolconf.result_dir, item.dumpfile)) == None:
@@ -139,9 +141,15 @@ def process_dumps(config, toolconf, conf, datamodel):
     desctable.build_from_csv_file(os.path.normpath(os.path.join(conf.work_dir, toolconf.result_dir, toolconf.exp_desc_file)), "Other")
     #desctable.normalize_targets()        
 
+    print('Processing simulation traces')
     #Append all targets in main thread, so assigned Target.ID (primary key) will be the same for any tool run (with any number of threads)
+    progress = 0
     for i in desctable.items:
         target = datamodel.GetOrAppendTarget(i.target, i.instance_type, i.injection_case)
+        progress+=1
+        if progress%100 == 0: 
+            sys.stdout.write('Targets appended: {0:06d}\r'.format(progress))
+
     #Prepare multithreaded analysis of dumps
     ExpDescIdCnt = datamodel.GetMaxKey(DataDescriptors.InjectionExp) + 1    
     threadlist = []
@@ -153,6 +161,7 @@ def process_dumps(config, toolconf, conf, datamodel):
         else:
             items = desctable.items[index:]             
         baseindex = ExpDescIdCnt + index
+        print('Starting analysis thread: {0} + {1}'.format(str(baseindex), str(len(items))))
         t = Thread(target = process_dumps_in_linst, args = (config, toolconf, conf, datamodel, items, baseindex))
         threadlist.append(t)
         index += step
@@ -178,6 +187,15 @@ def process_dumps(config, toolconf, conf, datamodel):
     shutil.rmtree(packdir)
     if os.path.exists(os.path.join(conf.work_dir, dumppack)):
         shutil.move(os.path.join(conf.work_dir, dumppack), os.path.join(config.report_dir, dumppack))
-        
+    
+    T = Table('SummaryFaultSim', ['Node', 'InjCase','FailureMode'])
+    injsummary = datamodel.LaunchedInjExp_dict.values()
+    for i in range(len(injsummary)):
+        T.add_row()
+        T.put(i,T.labels.index('Node'),injsummary[i].Node)
+        T.put(i,T.labels.index('InjCase'),injsummary[i].InjCase)
+        T.put(i,T.labels.index('FailureMode'),injsummary[i].FailureMode)
+    with open(os.path.join(conf.work_dir, 'SummaryFaultSim.csv'), 'w') as f:
+        f.write(T.to_csv())
     datamodel.LaunchedInjExp_dict.clear()    
     print('\n\nAnalysys completed, time taken: ' + str(time_to_seconds(datetime.datetime.now().replace(microsecond=0) - timestart)))

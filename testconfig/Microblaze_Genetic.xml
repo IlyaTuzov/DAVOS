@@ -5,7 +5,7 @@
         DesignBuilder = "on"
         FaultInjection = "off"
         DecisionSupport = "on"
-        report_dir = "#RUNDIR/../../../Projects/GENETIC/Microblaze"        
+        report_dir = "#RUNDIR/../../../PSPL/MicZC"        
         dbfile = "Microblaze_Genetic.db"  >
         
 
@@ -30,7 +30,7 @@
                 'GenBitstreamScriptTemplate' : 'GenBitstreamPhase.tcl'
                 }"                      
                 design_label = "Microblaze_Zynq_"
-                design_dir = "../../Projects/GENETIC/Microblaze"
+                design_dir = "../../Projects/PSPL/MicZC"
                 template_dir = "MicZC"
                 log_dir = "./log"
                 netlist_dir = "./netgen"
@@ -506,8 +506,8 @@
             
             
             <config
-                work_dir = "../../Projects/Controllers/MC8051/MC8051_RTL"
-                label = "MC8051_RTL"
+                work_dir = "../../Projects/PSPL/MicZC"
+                label = "Microblaze_0"
                 compile_options = ""
                 run_options = ""
                 clk_period = "16.0"

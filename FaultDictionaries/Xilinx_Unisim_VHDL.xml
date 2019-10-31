@@ -36,40 +36,7 @@
 
 	
 	
-<fdesc 	model = "stuck_at" 
-		macrocells = "SIGNAL" >
-	<injection_rule
-		code_pattern = "force -freeze #PATH #FORCEDVALUE 0" >
 
-        <injectioncase label = "" nodes = "" />        
-	</injection_rule>
-</fdesc>	
-
-
-<fdesc 	model = "bit_flip" 
-		macrocells = "SIGNAL" >
-	<injection_rule
-		code_pattern = "
-			set cv [examine #PATH]#;
-			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
-			force -deposit #PATH $nv 0#;" >
-        
-        <injectioncase label = "" nodes = "" />
-	</injection_rule>
-</fdesc>	   
-	   
-
-<fdesc 	model = "pulse" 
-		macrocells = "SIGNAL" >
-	<injection_rule
-		code_pattern = "
-			set cv [examine #PATH]#; 
-			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
-			force -freeze #PATH $nv 0 -cancel #DURATION#;" >
-
-            <injectioncase label = "" nodes = "" />            
-	</injection_rule>
-</fdesc>	
 	
 	
 
@@ -103,6 +70,139 @@
 			  nodes = "#NODE_1=TDP/RAMB18E1_TDP_inst/prcs_clk/mem#DIM"/>
 	</injection_rule>
 </fdesc>   
+
+
+
+
+
+<fdesc 	model = "upset_cmem" 
+		macrocells = "LUT6" >
+
+	<instrumentation_rule>
+		<redefine_node  name = "INIT_reg"  modifier_to = "signal" 	basetype_to = ""	inline_to = "" />
+		<extend_sensitivity_list	process_name = "X_LUT6P"	nodes = "INIT_reg"	 />
+	</instrumentation_rule>
+		
+		
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH/#NODE_1]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			change #PATH/#NODE_1 $nv 0#;">
+			
+		<injectioncase 
+			label = "INIT_reg" 
+			dimensions = "0-63" 
+			nodes = "#NODE_1=INIT_reg#DIM">			
+		</injectioncase>	  
+	</injection_rule>
+</fdesc>
+
+
+
+
+
+<fdesc 	model = "upset_cmem" 
+		macrocells = "LUT5" >
+
+	<instrumentation_rule>
+		<redefine_node  name = "INIT_reg"  modifier_to = "signal" 	basetype_to = ""	inline_to = "" />
+		<extend_sensitivity_list	process_name = "X_LUT6P"	nodes = "INIT_reg"	 />
+	</instrumentation_rule>
+		
+		
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH/#NODE_1]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			change #PATH/#NODE_1 $nv 0#;">
+			
+		<injectioncase 
+			label = "INIT_reg" 
+			dimensions = "0-31" 
+			nodes = "#NODE_1=INIT_reg#DIM">			
+		</injectioncase>	  
+	</injection_rule>
+</fdesc>
+
+
+
+
+<fdesc 	model = "upset_cmem" 
+		macrocells = "LUT4" >
+
+	<instrumentation_rule>
+		<redefine_node  name = "INIT_reg"  modifier_to = "signal" 	basetype_to = ""	inline_to = "" />
+		<extend_sensitivity_list	process_name = "X_LUT6P"	nodes = "INIT_reg"	 />
+	</instrumentation_rule>
+		
+		
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH/#NODE_1]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			change #PATH/#NODE_1 $nv 0#;">
+			
+		<injectioncase 
+			label = "INIT_reg" 
+			dimensions = "0-15" 
+			nodes = "#NODE_1=INIT_reg#DIM">			
+		</injectioncase>	  
+	</injection_rule>
+</fdesc>
+
+
+
+
+
+
+<fdesc 	model = "upset_cmem" 
+		macrocells = "LUT3" >
+
+	<instrumentation_rule>
+		<redefine_node  name = "INIT_reg"  modifier_to = "signal" 	basetype_to = ""	inline_to = "" />
+		<extend_sensitivity_list	process_name = "X_LUT6P"	nodes = "INIT_reg"	 />
+	</instrumentation_rule>
+		
+		
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH/#NODE_1]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			change #PATH/#NODE_1 $nv 0#;">
+			
+		<injectioncase 
+			label = "INIT_reg" 
+			dimensions = "0-7" 
+			nodes = "#NODE_1=INIT_reg#DIM">			
+		</injectioncase>	  
+	</injection_rule>
+</fdesc>
+
+
+
+<fdesc 	model = "upset_cmem" 
+		macrocells = "LUT2" >
+
+	<instrumentation_rule>
+		<redefine_node  name = "INIT_reg"  modifier_to = "signal" 	basetype_to = ""	inline_to = "" />
+		<extend_sensitivity_list	process_name = "X_LUT6P"	nodes = "INIT_reg"	 />
+	</instrumentation_rule>
+		
+		
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH/#NODE_1]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			change #PATH/#NODE_1 $nv 0#;">
+			
+		<injectioncase 
+			label = "INIT_reg" 
+			dimensions = "0-3" 
+			nodes = "#NODE_1=INIT_reg#DIM">			
+		</injectioncase>	  
+	</injection_rule>
+</fdesc>
 
 
 

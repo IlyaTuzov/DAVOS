@@ -1,4 +1,4 @@
-# Library defining data structes/classes and related logic, used by DAVOS modules
+﻿# Library defining data structes/classes and related logic, used by DAVOS modules
 # Covers:
 # 1. Configuration management (parsing/exporting of XML formatted confgirations),
 # 2. Observation dumps (pasring, tracing, etc.)
@@ -37,6 +37,7 @@ class RenameItem:
 
 
 val_pattern = re.compile("[0-9a-zA-Z\.\+\-\*]+")
+vect_start_ptn = re.compile('^\s*?[0-9]+')
 
 def find_between( s, first, last ):
     try:
@@ -200,17 +201,20 @@ class simDump:
         self.caption = fname
         with open(fname, 'r') as dumpfile:
             lines = dumpfile.readlines()
+        timeunit = re.findall('\s*(.*?)\s+',lines[0])[0]
         for l in lines:
-            if re.match('^\s*?[0-9]+', l.replace('{','').replace('}','')):
+            if re.match(vect_start_ptn, l.replace('{','').replace('}','')):
                 v = SimVector()
                 v.build_from_string(len(self.internal_labels), len(self.output_labels), l)
+                if   timeunit=='ps': v.time = v.time/1000.0
+                elif timeunit=='fs': v.time = v.time/1000000.0
                 self.vectors.append(v)
         if(len(self.vectors) == 0):
             with open('error_log.txt','a') as err_log:
                 err_log.write('\nEmpty list file: '+ fname)
             return(None)
         else:
-            self.normalize(True)            
+            #self.normalize(True)            
             return(self)
     
     def remove_vector(self, index):
@@ -480,3 +484,47 @@ class simDump:
         else:
             return ""
 
+    def get_activity_time(self, colnum_main, maxtime, colnum_complementary = None):
+        trace = dict()
+        for i in range(len(self.vectors)):
+            if colnum_complementary == None:
+                value = self.vectors[i].internals[colnum_main]
+            else:
+                value = (self.vectors[i].internals[colnum_main], self.vectors[i].internals[colnum_complementary])
+            if value not in trace: trace[value]= (float(0.0), int(0))   #Actime, SwitchingEvents
+            if i < len(self.vectors)-1:
+                trace[value] = (trace[value][0] + (float(self.vectors[i+1].time) - float(self.vectors[i].time)) , trace[value][1] + 1)
+            else:
+                trace[value] = (trace[value][0] + (float(maxtime) - float(self.vectors[i].time)), trace[value][1] + 1)
+        
+        actime = dict()
+        switch_count = dict()
+        if colnum_complementary == None:
+            for k,v in trace.items():
+                for x1 in resolve_indetermination(k):
+                    value = int(x1, 2)
+                    if value not in actime: actime[value] = float(0.0)
+                    if value not in switch_count: switch_count[value] = int(0)
+                    actime[value] += v[0]
+                    switch_count[value] += v[1]
+        else:
+            for k,v in trace.items():
+                for x1 in resolve_indetermination(k[0]):
+                    for x2 in resolve_indetermination(k[1]):
+                        value = (int(x1, 2), int(x2, 2))
+                        if value not in actime: actime[value] = float(0.0)
+                        if value not in switch_count: switch_count[value] = int(0)
+                        actime[value] += v[0]
+                        switch_count[value] += v[1]
+        return(actime, switch_count)
+
+
+
+
+if __name__=="__main__":
+    inj_dump = simDump()
+    combining = False
+    inj_dump.internal_labels = ['Item', 'Compl'] if combining else ['Item']
+    inj_dump.build_vectors_from_file("C:/Projects/Profiling/Models/MC8051_ZC/Traces/02144_v.lst")
+    res = inj_dump.get_activity_time(0, 1960000, 1 if combining else None)
+    print(str(res))

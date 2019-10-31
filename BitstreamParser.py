@@ -2,6 +2,7 @@
 from collections import OrderedDict
 import copy
 from XilinxInjector.BitstreamParseLib import *
+import ast
 
 def get_lut_to_bel_map(cellType, BelEquation):
     inputnum = int(re.findall('LUT([0-9]+)', cellType)[0])
@@ -11,7 +12,7 @@ def get_lut_to_bel_map(cellType, BelEquation):
         if len(vardict) == inputnum:
             return( OrderedDict(zip(['I{0:d}'.format(i) for i in range(inputnum)], vardict.keys())) )
 
-def TableToLutList(LutDescTab, ClockRows = 3):
+def VivadoParseTableToLutList(LutDescTab, ClockRows = 3):
     res=[]
     TopRows, BottomRows = ClockRows/2, ClockRows/2 +  ClockRows%2
     for i in range(LutDescTab.rownum()):
@@ -35,27 +36,76 @@ def TableToLutList(LutDescTab, ClockRows = 3):
         item['lutindex'] = CLB_LUTS.from_coord(int(item['cellloc'][0]), item['abcd'])
         item['combcell'] = None
         item['cbelinputs']=[]
+        item['Actime'] = []
+        item['SwitchCount'] = []
+        item['globalmap'] = []
+        item['Label']=''
+        item['node_main'], item['node_compl'] = None, None
+        item['FailureModeEmul'] = []
+        item['FailureModeSim']  = []
+
         res.append(item)
     return(res)
 
 
-def LutListToTable(LutList):
-    res = Table('Luts')
-    for lbl in ['name', 'celltype','cellloc','abcd' ,'beltype','clkrow','tileloc','init', 'connections', 'lutindex', 'combcell', 'bitsequence', 'bit_i', 'match', 'cbelinputs']:
-        res.add_column(lbl, map(str, [LutList[i][lbl] for i in range(len(LutList))]))
+def LutListToTable(LutList, expand = False, no_duplicate_sim_cases = False):
+    labels = ['name', 'celltype','cellloc','abcd' ,'beltype','clkrow','tileloc','init', 'connections', 'lutindex', 'combcell', 'bitsequence', 'bit_i', 'match', 'cbelinputs', 'Label', 'Actime', 'SwitchCount',  'FailureModeEmul', 'FailureModeSim', 'Emul_vs_Sim', 'globalmap']
+    if not expand:
+        res = Table('Luts')
+        res.add_column('simnode', [(LutList[i]['node_main'].name if (('node_main' in LutList[i]) and  LutList[i]['node_main']!=None) else LutList[i]['simnode'] if 'simnode' in LutList[i] else '') for i in range(len(LutList))])
+        for lbl in labels:
+            res.add_column(lbl, map(str, [LutList[i][lbl] if lbl in LutList[i] else '' for i in range(len(LutList))]))
+    else:
+        res = Table('Luts', ['simnode', 'InitReg_bit'] + labels)
+        for lut in LutList:
+            #print('\n\n>> {0} \n{1}'.format(str(lut['Actime']), str(lut['FailureModeEmul'])))
+            for i in range(len(lut['FailureModeEmul'])):
+                if len(lut['FailureModeEmul'][i]) > 0:
+                    for j in range(len(lut['FailureModeEmul'][i])) if not no_duplicate_sim_cases else range(1):
+                        res.add_row(map(str, [lut['simnode'], str(i), lut['name'], lut['celltype'], lut['cellloc'], lut['abcd'], lut['beltype'], lut['clkrow'], lut['tileloc'], lut['init'], lut['connections'], lut['lutindex'], lut['combcell'], 
+                                              lut['bitsequence'][i] if type(lut['bitsequence'][i] != list) else lut['bitsequence'][i][j], 
+                                              lut['bit_i'], lut['match'], lut['cbelinputs'], lut['Label'], 
+                                              '' if len(lut['Actime'])==0 else lut['Actime'][i][0] if (j >= len(lut['Actime'][i])) else lut['Actime'][i][j],
+                                              '' if len(lut['SwitchCount'])==0 else lut['SwitchCount'][i][0] if (j >= len(lut['SwitchCount'][i])) else lut['SwitchCount'][i][j],
+                                              lut['FailureModeEmul'][i][j], 
+                                              lut['FailureModeSim'][i] if len(lut['FailureModeSim'])>0 else -1,
+                                              lut['Emul_vs_Sim'][i] if 'Emul_vs_Sim' in lut else '',
+                                              lut['globalmap'][i][j]
+                                     ]))
     return(res)
 
 
+def TableToLutList(LutDescTab):
+    res = []
+    for i in range(LutDescTab.rownum()):
+        item = dict()
+        for lbl in ['simnode', 'name', 'celltype', 'abcd', 'beltype', 'init', 'bit_i', 'match', 'combcell', 'Label']:
+                item[lbl] = LutDescTab.getByLabel(lbl, i)
+        for lbl in ['clkrow', 'lutindex']:
+            item[lbl] = int(LutDescTab.getByLabel(lbl, i))
+        for lbl in ['cellloc', 'tileloc', 'connections',  'bitsequence', 'cbelinputs', 'globalmap', 'Actime', 'SwitchCount', 'FailureModeEmul']:
+            if lbl in LutDescTab.labels:
+                item[lbl] = ast.literal_eval(LutDescTab.getByLabel(lbl, i))
+        item['FailureModeSim'] = ast.literal_eval(LutDescTab.getByLabel('FailureModeSim', i)) if 'FailureModeSim' in LutDescTab.labels else []
+        item['Emul_vs_Sim'] = ast.literal_eval(LutDescTab.getByLabel('Emul_vs_Sim', i)) if 'Emul_vs_Sim' in LutDescTab.labels and LutDescTab.getByLabel('Emul_vs_Sim', i) != '' else []
+
+        res.append(item)
+    return(res)
+
+        
+
 def MapLutToBitstream(LutDescTab, BIN_FrameList):
-    LutCells = TableToLutList(LutDescTab)
+    LutCells = VivadoParseTableToLutList(LutDescTab)
     for i in range(len(LutCells)):
         if LutCells[i]['combcell']==None:
             for j in range(i+1, len(LutCells)):
                 if LutCells[i]['cellloc'] == LutCells[j]['cellloc'] and LutCells[i]['abcd'] == LutCells[j]['abcd']:
                     LutCells[i]['combcell'] = LutCells[j]
-                    LutCells[i]['cbelinputs'] = list( set(LutCells[j]['connections'].values()) - set(LutCells[i]['connections'].values()) )
+                    #LutCells[i]['cbelinputs'] = list( set(LutCells[j]['connections'].values()) - set(LutCells[i]['connections'].values()) )
+                    LutCells[i]['cbelinputs'] = [LutCells[j]['connections'][x] for x in sorted([y for y in LutCells[j]['connections'].keys() if LutCells[j]['connections'][y] in list( set(LutCells[j]['connections'].values()) - set(LutCells[i]['connections'].values()) )], reverse=False)]
                     LutCells[j]['combcell'] = LutCells[i]
-                    LutCells[j]['cbelinputs'] = list( set(LutCells[i]['connections'].values()) - set(LutCells[j]['connections'].values()) )
+                    #LutCells[j]['cbelinputs'] = list( set(LutCells[i]['connections'].values()) - set(LutCells[j]['connections'].values()) )
+                    LutCells[j]['cbelinputs'] = [LutCells[i]['connections'][x] for x in sorted([y for y in LutCells[i]['connections'].keys() if LutCells[i]['connections'][y] in list( set(LutCells[i]['connections'].values()) - set(LutCells[j]['connections'].values()) )], reverse=False)]
                     break
 
     #Bitstream mapping for complete 6-input LUT
@@ -71,6 +121,8 @@ def MapLutToBitstream(LutDescTab, BIN_FrameList):
         T_M.add_row( [(i>>j)&0x1 for j in range(len(vars))] )
     T_M.add_column('Bit', map_M)
 
+#    with open('C:/Projects/MAP.csv','w') as f:
+#        f.write(T_L.to_csv())
 
 
 
@@ -93,12 +145,21 @@ def MapLutToBitstream(LutDescTab, BIN_FrameList):
         Map.reorder_columns(sequence + ['Bit'])
         for i in range(2**len(node['connections'])):
             r = [(i>>j)&0x1 for j in range(len(node['connections']))]
-            rows = Map.search_rows(r,0)
-            res.append(  [val[-1] for val in rows ] )     
+            if len(node['cbelinputs'])==0:
+                rows = Map.search_rows(r,0)
+                res.append(  [val[-1] for val in rows ] )    
+            else:
+                z = []
+                for k in range(2**len(node['cbelinputs'])):
+                    x = [(k>>j)&0x1 for j in range(len(node['cbelinputs']))]
+                    rows = Map.search_rows(r+x,0)
+                    z.append(rows[0][-1])
+                res.append(  z )    
+
         node['bitsequence'] = ','.join(map(str, res))
 
         #2. GET LUT BEL content from bitstream
-        BITSTREAM = SetCustomLutMask(node['top'], node['row'], node['major'], node['minor'], node['lutindex'], BIN_FrameList, res)
+        BITSTREAM, node['globalmap'] = SetCustomLutMask(node['top'], node['row'], node['major'], node['minor'], node['lutindex'], BIN_FrameList, res)
         BIT_INIT = 0x0000000000000000
         w = 2**len(node['connections'])
         for bit in range(w): 
@@ -107,27 +168,35 @@ def MapLutToBitstream(LutDescTab, BIN_FrameList):
         node['bit_i'] =  '{bits}\'h{num:0{width}X}'.format(bits=w,num=BIT_INIT, width=w/4)
         node['match'] = 'Y' if node['init'] == node['bit_i'] else 'N'
 
-    T = LutListToTable(LutCells)
-    with open('ResT.csv','w') as f:
-        f.write(T.to_csv())
+
+    return(LutCells)
+
+
+
 
 
 if __name__ == "__main__":
 
+    proj_path = 'C:/Projects/Profiling/Models/MC8051_ZC/'
+ 
+
+    Tab = Table('LutMapList')
+    Tab.build_from_csv(os.path.join(proj_path, 'LutMapList.csv'))
+    TableToLutList(Tab)
+    raw_input('Stopped LutMap')
+
 
     verbosity = 1
-    logfile = open('C:/Projects/Profiling/Models/MC8051_ZC/parselog.txt','w')
-    LUTMAP_FILE = 'C:/Projects/Profiling/Models/MC8051_ZC/LUTMAP.csv'
-    SHADOWLUTS_FILE = 'C:/Projects/Profiling/Models/MC8051_ZC/SHADOWLUTS.csv'
-    FARARRAY_FILE = 'C:/Projects/Profiling/Models/MC8051_ZC/FarArray.txt'
-    BITSTREAM_FILE = 'C:/Projects/Profiling/Models/MC8051_ZC/Bitstream.bin'
-    Input_EBCFile = 'C:/Projects/Profiling/Models/MC8051_ZC/Bitstream.ebc'
-    Input_EBDFile = 'C:/Projects/Profiling/Models/MC8051_ZC/Bitstream.ebd'
+    logfile = open(os.path.join(proj_path, 'parselog.txt'),'w')
+    LUTMAP_FILE = os.path.join(proj_path,'LUTMAP.csv')
+    FARARRAY_FILE = os.path.join(proj_path,'FarArray.txt')
+    BITSTREAM_FILE = os.path.join(proj_path,'Bitstream.bin')
+    Input_EBCFile = os.path.join(proj_path,'Bitstream.ebc')
+    Input_EBDFile = os.path.join(proj_path,'Bitstream.ebd')
 
     LutDescTab = Table('LutMap')
     LutDescTab.build_from_csv(LUTMAP_FILE)
-    ShadowLutsTab = Table('ShadowLuts')
- 
+
 
     FarList = LoadFarList(FARARRAY_FILE)
     EBC_FrameList = EBC_to_FrameList(Input_EBCFile, Input_EBDFile, FarList)
@@ -149,25 +218,24 @@ if __name__ == "__main__":
 
 
 
-    MapLutToBitstream(LutDescTab, BIN_FrameList)
+    LutMapList = MapLutToBitstream(LutDescTab, BIN_FrameList)
 
 
 
-
+    with open(os.path.join(proj_path, 'ResT.csv'),'w') as f:
+        f.write(LutListToTable(LutMapList).to_csv())
 
 
 
 
 
     #log non-empty frames
-    with open('C:/Projects/Profiling/Models/MC8051_ZC/BitLog.txt','w') as f:
+    with open(os.path.join(proj_path,'BitLog.txt'),'w') as f:
         for i in BIN_FrameList:
             if i.flags & 0x1 > 0:
                 f.write(i.to_string(2)+'\n\n')
 
 
-    with open(LUTMAP_FILE.replace('.csv','_res.csv'), 'w') as f:
-        f.write(LutDescTab.to_csv())
 
     logfile.close()
 

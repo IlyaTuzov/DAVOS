@@ -440,7 +440,8 @@ class Table:
         nc = len(self.columns)
         nr = len(self.columns[0])
         for r in range(0, nr, 1):
-            res+="\n{0}".format(sep.join([str(self.get(r,c)) for c in range(0, nc, 1)]))
+            #res+="\n{0}".format(sep.join([str(self.get(r,c)) for c in range(0, nc, 1)]))
+            res+="\n{0}".format(sep.join([str(self.columns[c][r]) for c in range(0, nc, 1)]))
         return(res)
     
     def snormalize(self, ist):
@@ -1505,5 +1506,23 @@ def intersect_intervals(A_low, A_high, B_low, B_high):
         return((True, min(A_high, B_high) - max(A_low,B_low)))
     else:
         return((False, 0))  
+
+
+#returns list of possible addresses by replacing X with 1/0
+def resolve_indetermination(addr):
+	res = []
+	res.append(addr.upper().replace('Z','X').replace('*','X').replace('U','X').replace('?','X'))
+	cnt = 1
+	while cnt > 0:
+		cnt = 0
+		for i in range(0, len(res), 1):
+			if res[i].count('X') > 0:
+				a = res[i]
+				res.remove(a)
+				res.append(a.replace('X','1',1))
+				res.append(a.replace('X','0',1))
+				cnt+=1
+				break
+	return(res)	
 
 

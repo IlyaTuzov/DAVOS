@@ -20,6 +20,7 @@ import time
 #sys.path.insert(0, os.path.abspath(".."))
 from Davos_Generic import Table
 from XilinxInjector.BitstreamParseLib import *
+from SBFI_Profiler import *
 from BitstreamParser import *
 
 
@@ -43,6 +44,8 @@ class JobDescriptor:
         self.BitstreamSize = 0
         self.BitmaskAddr   = 0
         self.BitmaskSize   = 0
+        self.FaultListAdr  = 0
+        self.FaultListItems= 0
         self.UpdateBitstream = 0
         self.Mode = 0 # 0 - exhaustive, 1 - sampling
         self.Blocktype = 0 # 0 - CLB , 1 - BRAM, >=2 both
@@ -64,9 +67,9 @@ class JobDescriptor:
         self.SamplingWithouRepetition = 0
         #these fields are not exported to device (for internal use)
         self.failure_rate = float(0.0)
-        self.failure_error = float(0.0)
+        self.failure_error = float(50.0)
         self.masked_rate = float(0.0)
-        self.masked_error = float(0.0)
+        self.masked_error = float(50.0)
         self.latent_rate = float(0.0)
         self.latent_error = float(0.0)
         self.InjectorError = False
@@ -84,6 +87,8 @@ class JobDescriptor:
             f.write(struct.pack(specificator, self.BitstreamSize)) 
             f.write(struct.pack(specificator, self.BitmaskAddr)) 
             f.write(struct.pack(specificator, self.BitmaskSize)) 
+            f.write(struct.pack(specificator, self.FaultListAdr)) 
+            f.write(struct.pack(specificator, self.FaultListItems)) 
             f.write(struct.pack(specificator, self.UpdateBitstream))
             f.write(struct.pack(specificator, self.Mode))
             f.write(struct.pack(specificator, self.Blocktype))
@@ -105,7 +110,32 @@ class JobDescriptor:
             
             
             
-         
+def ExportFaultList(ProfilingRes, fname):
+        specificator = '<L'         #Little Endian
+        with open(fname, 'wb') as f:
+            #f.write(struct.pack(specificator, len(ProfilingRes)))
+            for i in range(len(ProfilingRes)):
+                ProfilingRes[i]['ID'] = i
+                ProfilingRes[i]['InjRes'] = int(0)
+                f.write(struct.pack(specificator, ProfilingRes[i]['ID']))
+                f.write(struct.pack(specificator, ProfilingRes[i]['BitstreamCoordinates'][0])) #FAR
+                f.write(struct.pack(specificator, ProfilingRes[i]['BitstreamCoordinates'][1])) #word
+                f.write(struct.pack(specificator, ProfilingRes[i]['BitstreamCoordinates'][2])) #bit
+                f.write(struct.pack('<f',         ProfilingRes[i]['Actime']))
+                f.write(struct.pack(specificator, ProfilingRes[i]['InjRes']))
+
+def LoadFaultList(fname):
+    ProfilingRes=[]
+    with open(fname,'rb') as f:
+        N = os.stat(fname).st_size / (4*6)
+        for i in range(N):
+            item={'ID' : struct.unpack('<L',f.read(4))[0],
+                  'BitstreamCoordinates' : (struct.unpack('<L',f.read(4))[0], struct.unpack('<L',f.read(4))[0], struct.unpack('<L',f.read(4))[0]),
+                  'Actime' : struct.unpack('<f',f.read(4))[0],
+                  'InjRes': struct.unpack('<L',f.read(4))[0]
+                  }
+            ProfilingRes.append(item)
+    return(ProfilingRes)
 
 
 #Export Frame Descriptors File (N frame items: {u32 FAR, u32 flags, FrameSize word items: {u32 data[i], u32 mask[i]}}
@@ -208,6 +238,11 @@ class InjectorHostManager:
         self.verbosity = 1      #0 - small log (only errors and results), 1 - detailed log
         self.MemConfig = []
         self.CustomLutMask = False
+        self.Profiling = False
+        self.DAVOS_Config = None
+        self.FaultListFile    = os.path.join(targetDir, 'FaultList.dat')
+        self.LutMapFile = os.path.join(targetDir, 'LutMapList.csv')
+        self.ProfilingResult = None
 
     def configure(self, targetid, portname, VivadoProjectFile = '', ImplementationRun=''):
         self.targetid = targetid                        #Target CPU id on Xilinx HW server
@@ -359,19 +394,29 @@ class InjectorHostManager:
 				set tile [get_tiles -of_objects $bel]
 				set cr [get_clock_regions -of_objects $tile]
 				set cellpins [get_pins -of_objects [get_bel_pins -of_objects $bel]]
+                set eqn [get_property CONFIG.EQN $bel]
+
 				if {{[llength $cellpins] > 0}} {{
+                    #Path-through LUT (one of the inputs forwarded to output)
 					puts -nonewline $fout [format \"PATHTHROUGH;LUT1;%s;%s;%s;%s;%s;;\" \
 						[get_property NAME $slice] \
 						[lindex [split [get_property NAME $bel] '/'] end] \
 						[get_property TYPE $bel] \
 						[get_property NAME $cr] \
-						[get_property NAME $tile] \
-						]
+						[get_property NAME $tile] ]
 					foreach pin $cellpins {{ 
 						puts -nonewline $fout [format \"{{I0:%s}}\" [lindex [split [lindex [get_bel_pins -of_objects $pin] 0] '/'] end] ] 
 					}} 		
 					puts $fout \";\"
-				}}
+				}}  elseif {{ [llength $eqn] > 0}} {{
+                    #Constant on the output O6/O5 = 1/0
+                    puts $fout [format \"Constant;LUT0;%s;%s;%s;%s;%s;;;\" \
+						[get_property NAME $slice] \
+						[lindex [split [get_property NAME $bel] '/'] end] \
+						[get_property TYPE $bel] \
+						[get_property NAME $cr] \
+						[get_property NAME $tile] ]
+                }}
 			}}
             close $fout
 
@@ -480,14 +525,38 @@ class InjectorHostManager:
 
         if self.CustomLutMask:
             LutDescTab = Table('LutMap'); LutDescTab.build_from_csv(os.path.join(self.targetDir, 'LUTMAP.csv'))
-            MapLutToBitstream(LutDescTab, BIN_FrameList)
+            print('Mapping LUTs to bitstream')
+            LutMapList = MapLutToBitstream(LutDescTab, BIN_FrameList)
+            with open(self.LutMapFile,'w') as f:
+                f.write(LutListToTable(LutMapList).to_csv())
+            if self.Profiling and self.DAVOS_Config != None:
+                if not os.path.exists(self.FaultListFile):
+                    print('Profiling LUTs switching activity')
+                    self.ProfilingResult = Estimate_LUT_switching_activity(LutMapList, self.DAVOS_Config)
+                    ExportFaultList(self.ProfilingResult, self.FaultListFile)
+                else:
+                    self.ProfilingResult = LoadFaultList(self.FaultListFile) #load from file
+                with open(self.LutMapFile,'w') as f:
+                    f.write(LutListToTable(LutMapList).to_csv())
+
+
+            with open(os.path.join(self.targetDir,'BitLog.txt'),'w') as f:
+                for i in BIN_FrameList:
+                    if all(v==0 for v in i.custom_mask): continue
+                    else: 
+                        f.write(i.to_string(2)+'\n\n')
+                
+
             for i in BIN_FrameList:
                 if i.custom_mask==[]:
                     i.mask = [0x0]*FrameSize
                 else:
                     for k in range(FrameSize):
-                        i.mask[k] =  i.custom_mask[k] #(i.mask[k] ^ i.custom_mask[k]) & i.mask[k]
-            print('Difference with custom mask')
+                        i.mask[k] = i.custom_mask[k] #(i.mask[k] ^ i.custom_mask[k]) & i.mask[k]
+            #raw_input('Difference with custom mask...')
+            
+
+
 
         #Step 5: append descriptors for FAR items which should be recovered after injection (BRAM) 
         RecoveryRamLocations = []
@@ -550,11 +619,14 @@ class InjectorHostManager:
         self.jdesc.BitmaskAddr = self.jdesc.BitstreamAddr + self.jdesc.BitstreamSize
         if os.path.exists(self.Output_FrameDescFile): 
             self.jdesc.BitmaskSize = os.stat(self.Output_FrameDescFile).st_size
+
+        self.jdesc.FaultListAdr = self.jdesc.BitmaskAddr+self.jdesc.BitmaskSize
+        self.jdesc.FaultListItems = 0 if (not self.Profiling or self.jdesc.Mode<100) else len(self.ProfilingResult)
         self.jdesc.ExportToFile(self.JobDescFile)
         if self.jdesc.UpdateBitstream > 0:
             self.logtimeout = 180   #more time for responce if bitstream is uploaded
         else:
-            self.logtimeout = 120
+            self.logtimeout = 15
 
     def export_devrun_script(self):
         script = """
@@ -573,7 +645,10 @@ class InjectorHostManager:
             script += """\ndow -data {0}  0x{1:08x}\n""".format(self.Input_BinstreamFile, self.jdesc.BitstreamAddr)
             if os.path.exists(self.Output_FrameDescFile): 
                  script += """dow -data {0}  0x{1:08x}\n""".format(self.Output_FrameDescFile, self.jdesc.BitmaskAddr)
-        script += "con \n con \n exit \n"
+            if os.path.exists(self.FaultListFile): 
+                    script += """dow -data {0}  0x{1:08x}\n""".format(self.FaultListFile, self.jdesc.FaultListAdr)
+
+        script += "con \n exit \n"
         script = script.replace('\\','/')
         fname = os.path.join(self.targetDir, "InjectorStart.tcl")
         with open(fname,'w') as f:
@@ -644,14 +719,19 @@ class InjectorHostManager:
 
         start_time = time.time()
         last_msg_time = start_time
-        while((self.jdesc.error_margin_goal >= self.jdesc.masked_error) or (self.jdesc.error_margin_goal >= self.jdesc.failure_error) or (self.jdesc.ExperimentsCompleted <= self.jdesc.sample_size_goal)): 
+        while((self.jdesc.Mode in [102, 103]) or (self.jdesc.error_margin_goal <= self.jdesc.masked_error) or (self.jdesc.error_margin_goal <= self.jdesc.failure_error) or (self.jdesc.ExperimentsCompleted <= self.jdesc.sample_size_goal)): 
             line = self.serialport.readline().replace('\n','')
             if line != None:
                 if len(line) > 0 :
                     #self.logfile.write('\n'+line)
                     if int( time.time() - last_msg_time ) > self.logtimeout:
-                        self.logfile.write('Valid Message Timeout\n\tRestaring from current injection point')
-                        self.launch_injector_app()
+                        self.logfile.write('Valid Message Timeout\n\tRestaring from next intjection point')
+                        hang_move_delta = 1
+                        self.jdesc.StartIndex += hang_move_delta
+                        self.jdesc.ExperimentsCompleted = self.jdesc.StartIndex
+                        self.jdesc.Failures += hang_move_delta
+                        self.export_JobDescriptor()
+                        self.launch_injector_app()  
                         last_msg_time = time.time()                     
                         continue
 
@@ -705,10 +785,11 @@ class InjectorHostManager:
 
                 else:
                     self.logfile.write('Timeout - hang\n\tRestaring from next intjection point')
-                    hang_move_delta = 50
+                    hang_move_delta = 1
                     self.jdesc.StartIndex += hang_move_delta
                     self.jdesc.ExperimentsCompleted = self.jdesc.StartIndex
                     self.jdesc.Failures += hang_move_delta
+                    self.export_JobDescriptor()
                     self.launch_injector_app()                           
         self.serialport.close()
         self.jdesc.InjectorError, self.jdesc.VerificationSuccess = False, True
@@ -716,3 +797,78 @@ class InjectorHostManager:
 
 
 
+def AggregateInjectionResults(LutMapList, EmulResFile, SimResFile=''):
+    simresdict={}
+    if SimResFile != '':
+        print('Processing simulation results: {0}'.format(SimResFile))
+        SimRes = Table('SimRes')
+        SimRes.build_from_csv(SimResFile)
+        node_ind, case_ind, res_ind = SimRes.labels.index('Node'), SimRes.labels.index('InjCase'),  SimRes.labels.index('FailureMode')
+        for i in range(SimRes.rownum()):
+            node = SimRes.get(i, node_ind)
+            case = int(re.findall('[0-9]+', SimRes.get(i, case_ind))[0])
+            injres = 1 if SimRes.get(i, res_ind).lower() == 'c' else 0 if SimRes.get(i, res_ind).lower() == 'm' else -1
+            simresdict[(node, case)] = injres
+
+    item_ptn = re.compile('>>.*?\|\|.*?([0-9]+).*?([0-9]+).*?([0-9]+).*?([0-9]+).*?([0-9\.]+).*?([0-9]+)$')
+    with open(EmulResFile, 'rU') as f:
+        content = f.readlines()
+    coord_dict = {}
+    for lut in LutMapList:
+        if 'Multiplicity' not in lut: lut['Multiplicity'] = len(lut['globalmap'][0])
+        if ('FailureModeEmul' not in lut) or (lut['FailureModeEmul']==[]): lut['FailureModeEmul'] = [[-1]*lut['Multiplicity'] for i in range(len(lut['globalmap']))]
+        for i in range(len(lut['globalmap'])):
+            if (lut['simnode'], i) in simresdict:
+                lut['FailureModeSim'].append(simresdict[(lut['simnode'], i)])
+            for j in range(len(lut['globalmap'][i])):
+                #several logic luts can use the same memory cell (LUT6_2 bell = LUT6 cell + LUT5 cell )
+                if not lut['globalmap'][i][j] in coord_dict: coord_dict[lut['globalmap'][i][j]] = []
+                coord_dict[lut['globalmap'][i][j]].append((lut, i, j))
+    for l in content:
+        match = re.search(item_ptn, l)
+        if match:
+            index = int(match.group(1))
+            coord = (int(match.group(2)), int(match.group(3)), int(match.group(4)))
+            actime = float(match.group(5))
+            failuremode = int(match.group(6))
+            if coord in coord_dict:
+                for (lut, i, j) in coord_dict[coord]:
+                    lut['FailureModeEmul'][i][j] = failuremode 
+    for lut in LutMapList:
+        lut['Emul_vs_Sim']=['']*len(lut['FailureModeEmul'])
+        for i in range(len(lut['FailureModeSim'])):
+            fm_sim  = lut['FailureModeSim'][i]
+            fm_emul = list(set(lut['FailureModeEmul'][i]))
+            if -1 in fm_emul: fm_emul.remove(-1)
+            if len(fm_emul)==1:
+                lut['Emul_vs_Sim'][i] = 'eq_s' if fm_sim==fm_emul[0] else 'un' if fm_sim==0 else 'ov'
+            elif len(fm_emul) > 0:
+                lut['Emul_vs_Sim'][i] = 'eq_w' if fm_sim==1 else 'un'
+             
+
+
+
+
+def ExportProfilingStatistics(LutMapList, fname):
+    #Per frame: FAR;MeanActivityTime;FailureRate
+    print('creating perframe dict')
+    perframe_experiments = dict()
+    for lut in LutMapList:
+        for i in range(len(lut['FailureModeEmul'])):
+            if len(lut['FailureModeEmul'][i]) > 0:
+                for j in range(len(lut['FailureModeEmul'][i])):
+                    if len(lut['Actime']) > 0 and j< len(lut['Actime'][i]) and lut['Actime'][i][j] >= 0 and lut['FailureModeEmul'][i][j] >= 0:
+                        FAR = lut['globalmap'][i][j][0]
+                        if FAR not in perframe_experiments: perframe_experiments[FAR]  = []
+                        perframe_experiments[ FAR ].append((lut['Actime'][i][j], lut['FailureModeEmul'][i][j]))
+    res = []
+    for k,v in perframe_experiments.items():
+        actime=[i[0] for i in v]
+        failures = [i[1] for i in v]
+        #res.append( (k, sum(actime)/len(actime), 100.0*float(sum(failures))/len(failures), len(actime)) )
+        res.append( (k, sum(actime)/(101*32), 100.0*float(sum(failures))/(101*32), len(actime)) )
+    T = Table('PerFrameRes', ['FAR', 'MeanActime', 'FailureRate', 'items'])
+    for i in res:
+        T.add_row(map(str, [i[0], i[1], i[2], i[3]]))
+    with open(fname,'w') as f:
+        f.write(T.to_csv())

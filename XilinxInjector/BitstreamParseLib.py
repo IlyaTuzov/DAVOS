@@ -238,9 +238,15 @@ def SetCustomLutMask(SwBox_top, SwBox_row, SwBox_major, SwBox_minor, LUTCOORD, B
             INIT = (((F[0].data[offset] & bitmask) >> Rshift) << 48) | (((F[1].data[offset] & bitmask) >> Rshift) << 32) | (((F[2].data[offset] & bitmask) >> Rshift) << 16) | ((F[3].data[offset] & bitmask) >> Rshift)
             for frame in F: 
                 if frame.custom_mask == []: frame.custom_mask = [0x00000000]*FrameSize
+            globalmap=[]
             for item in lutmap:
+                x=[]
                 for i in item:
+                    #essential bits mask
                     quarter = i/16
                     bit_index = i%16 if LUTCOORD in[CLB_LUTS.OA, CLB_LUTS.EA, CLB_LUTS.OC, CLB_LUTS.EC] else (i%16) + 16 
                     F[3-quarter].custom_mask[offset] |= (0x1 << bit_index)
-            return(INIT)     
+                    #global mapping
+                    x.append((F[3-quarter].GetFar(), offset, bit_index))
+                globalmap.append(x)
+            return(INIT, globalmap)     

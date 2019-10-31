@@ -5,12 +5,12 @@
         DesignBuilder = "off"
         FaultInjection = "on"
         DecisionSupport = "off"
-        report_dir = "#RUNDIR/../../Projects/Profiling/Models/MC8051_ZC"        
+        report_dir = "#RUNDIR/../../Projects/Checkpointing/MC8051"        
         dbfile = "MC8051.db"  >
         
 
         <ExperimentalDesign
-            max_proc = "2"
+            max_proc = "6"
             retry_attempts = "2"            
             overwrite_existing = "off"            
             build_factorial_design = "off"
@@ -30,12 +30,12 @@
                 'GenBitstreamScriptTemplate' : 'GenBitstreamPhase.tcl'
                 }"                      
                 design_label = "Zynq_MC8051_"
-                design_dir = "../../Projects/Profiling/Models/MC8051_ZC"
+                design_dir = "../../Projects/Checkpointing/MC8051"
                 template_dir = "Zync_Template"
                 log_dir = "./log"
                 netlist_dir = "./netgen"
                 constraint_file = ""    
-                uut_root   = "sim:/tb_mc8051_top/i_mc8051_top/U0"   
+                uut_root   = "/design_1_wrapper/design_1_i/mc8051_top_0/U0"   
                 post_injection_recovery_nodes = "['i_mc8051_rom']"
             />        
 
@@ -368,9 +368,9 @@
         -->
         <FaultInjection
             platform = "Multicore"
-            initializer_phase = "on"    
+            initializer_phase = "off"    
             profiler_phase = "off"
-            injector_phase = "off"
+            injector_phase = "on"
             reportbuilder_phase = "on"    
             >
               <!-- 
@@ -380,15 +380,17 @@
                 library_specification: leave it blank if design_type = RTL
             -->
             <Generic
-                design_type = "RTL"
-                library_specification = "./FaultDictionaries/Xilinx_Unisim_VHDL.xml"
-                compile_script = "../par_compile.do"
-                run_script = "../par_run.do"	
+                design_type = "NETLIST"
+                library_specification = "./FaultDictionaries/Xilinx_Simprim_Ver.xml"
+                compile_script = "./par_compile.do"
+                run_script = "./par_run.do"	
+				trace_script = ""
                 std_clk_period = "50.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
-                std_workload_time = "1750000"
-                finish_flag = ""
+                std_workload_time = "1950000"
+				std_trace_time =     "0"
+                finish_flag = "/design_1_wrapper/design_1_i/FinishFlag"
             />
             
 
@@ -409,16 +411,14 @@
                 
                     
             <!-- unit path: withing the design scope-->            
-                <InjectionScope node_prefix = ""   unit_path = "/tb_mc8051_top/i_mc8051_top/U0" />
+                <InjectionScope node_prefix = ""   unit_path = "/design_1_wrapper/design_1_i/mc8051_top_0/U0" />
 
-                <ObservationScope node_prefix = "" unit_path = "/tb_mc8051_top/i_mc8051_top/U0" label_prefix = "" sampling_options = "-notrigger"/>
+                <ObservationScope node_prefix = "" unit_path = "/design_1_wrapper/design_1_i/mc8051_top_0/U0" label_prefix = "" sampling_options = "-notrigger"/>
 
                     
                     <!-- location: INTERNALS / OUTPUTS -->            
                 <GenericObservationNodes>
-                   <memarray 	location = "INTERNALS" 	options = "" 		label = "RAM" 		path= "sim:/i_mc8051_top/i_mc8051_ram/gpram"  low_address = "0" high_address = "127" comment="Onchip Memory" />					
-                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "XRAM" 		path= "sim:/i_mc8051_top/i_mc8051_ramx/gpram" low_address = "0" high_address = "11" comment="External Memory" />		
-                   <signal 	    location = "OUTPUTS" 	options = "" 		label = "PORT_A" 	path= "sim:/tb_mc8051_top/i_mc8051_top/p1_o"  comment="PORT_A" />						
+                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "sim:/design_1_wrapper/design_1_i/ResultArray" low_address = "0" high_address = "19" comment="External Memory" />		
                 </GenericObservationNodes>
             </Initializer>
 
@@ -426,10 +426,10 @@
 
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
-                    checkpont_mode = "WarmRestore"
-                    maxproc = "8"
+                    checkpont_mode = "ColdRestore"
+                    maxproc = "4"
                     workload_split_factor = "10"			
-                    campaign_label = "MC8051_RTL"		
+                    campaign_label = "MC8051"		
                     cleanup_folders="off"
                     compile_project = "off"
                     create_scripts="off"
@@ -437,7 +437,7 @@
                     create_precise_checkpoints = "off"
                     create_injection_scripts = "off"
                     run_faultinjection="off"
-                    remove_par_lib_after_checkpoint_stored = "on"
+                    remove_par_lib_after_checkpoint_stored = "off"
                     cancel_pending_tasks = "off"
                     
                     sim_time_checkpoints = "16:00:00"
@@ -456,15 +456,15 @@
 
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
                 <fault_model
-                    model = "bit_flip"
-                    target_logic = "SIGNAL"
+                    model = "upset_cmem"
+                    target_logic = "lut1, lut2, lut3, lut4, lut5, lut6"
                     faults_per_target = "1"
                     time_mode = "Relative"
                     injection_time_start = "0.0"            
-                    injection_time_end = "1.0"
+                    injection_time_end = "0.0"
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
-                    sample_size = "1000"
+                    sample_size = "0"
                     rand_seed	= "2"					
                 />	
         
@@ -512,11 +512,11 @@
             
             
             <config
-                work_dir = "../../Projects/Profiling/Models/MC8051_ZC"
+                work_dir = "../../Projects/Checkpointing/MC8051"
                 label = "MC8051_RTL"
                 compile_options = ""
                 run_options = ""
-                clk_period = "16.0"
+                clk_period = "50.0"
                 start_from = ""
                 stop_at = ""
             />

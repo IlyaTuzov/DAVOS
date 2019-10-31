@@ -73,10 +73,12 @@ class HDLModelConfigGeneric:
             self.library_specification = ""
             self.compile_script = ""
             self.run_script = ""
+            self.trace_script = ""
             self.std_clk_period = float(0)
             self.std_rst_delay = int(0)
             self.std_init_time = int(0)
-            self.std_workload_time = int(0)  
+            self.std_workload_time = int(0)
+            self.std_trace_time = int(0)  
             self.finish_flag = ""
             self.clk_signal = ""
         else:
@@ -87,10 +89,12 @@ class HDLModelConfigGeneric:
         self.library_specification = xnode.get('library_specification')
         self.compile_script = xnode.get('compile_script')
         self.run_script = xnode.get('run_script')
+        self.trace_script = xnode.get('trace_script')
         self.std_clk_period = float(xnode.get('std_clk_period'))
         self.std_rst_delay = int(xnode.get('std_rst_delay', '0'))
-        self.std_init_time = int(xnode.get('std_init_time'))
+        self.std_init_time = int(xnode.get('std_init_time', '0'))
         self.std_workload_time = int(xnode.get('std_workload_time'))    
+        self.std_trace_time = int(xnode.get('std_workload_time', '0'))    
         self.finish_flag = xnode.get('finish_flag', '')        
         self.clk_signal  = xnode.get('clk_signal', '')        
         return(0)
@@ -474,6 +478,7 @@ class SBFIConfiguration:
                 c.work_dir = os.path.normpath(os.path.join(self.call_dir, c.work_dir))
         if self.initializer.match_pattern_file.find('#RUNDIR') >= 0:
             self.initializer.match_pattern_file = os.path.normpath(self.initializer.match_pattern_file.replace('#RUNDIR', self.call_dir))
+        self.genconf.library_specification = os.path.join(self.call_dir, self.genconf.library_specification)
 
                 
     def get_DBfilepath(self, backup_path = False):

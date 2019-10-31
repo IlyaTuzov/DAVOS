@@ -1,0 +1,227 @@
+<!-- 
+    Dictionary of fault models for Xilinx simprim macrocell library
+    Author: Ilya Tuzov, Universitat Politecnica de Valencia
+-->
+
+
+<data>
+
+	<observation_spec>
+		<macrocell name = "FDCE"  >
+			<port name = "O" />
+		</macrocell>
+		<macrocell name = "FDPE"  >
+			<port name = "O" />
+		</macrocell>
+
+        
+        
+		<macrocell name = "SIGNAL"  >
+			
+		</macrocell>   
+        
+	</observation_spec>
+	
+	
+
+	<register_reconstruction>
+		<macrocell name = "FDCE"  outport = "O"/>
+		<macrocell name = "FDPE" outport = "O"/>
+
+        
+	</register_reconstruction>
+
+	
+
+	
+	
+
+<fdesc 	model = "pulse" 
+		macrocells = "LUT1, LUT2, LUT3, LUT4, LUT5, LUT6" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH/#NODE_1]#;
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -freeze #PATH/#NODE_1 $nv 0 -cancel #DURATION#; " >
+			
+		<injectioncase label = "O" nodes = "#NODE_1=O"/>			
+	</injection_rule>
+</fdesc>	
+	
+	
+<fdesc 	model = "bit_flip" 
+		macrocells = "X_FF, X_SFF, X_FDD" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH/#NODE_1]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -deposit #PATH/#NODE_1 $nv 0#;">
+			
+		<injectioncase label = "Q" nodes = "#NODE_1=Q_out"/>
+	</injection_rule>
+</fdesc>	   
+
+
+
+<fdesc 	model = "bit_flip" 
+		macrocells = "X_RAMB18E1" 
+		configuration = "RAM_MODE:SDP" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH/#NODE_1]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			change #PATH/#NODE_1 $nv 0#;">
+			
+		<injectioncase label = "SDP/WWB36/X_RAMB18E1_SDP_inst/prcs_clk/mem" 
+			  dimensions = "0-31, 0-135" 
+			  nodes = "#NODE_1=SDP/WWB36/X_RAMB18E1_SDP_inst/prcs_clk/mem#DIM"/>
+	</injection_rule>
+</fdesc>
+
+
+
+<fdesc 	model = "upset_cmem" 
+		macrocells = "lut1" >
+
+	<instrumentation_rule>
+		<redefine_node	name = "INIT_REG"  modifier_to = "signal" 	basetype_to = ""	inline_to = "" />
+		<extend_sensitivity_list	process_name = "X_LUT5P"	nodes = "INIT_REG"	 />
+	</instrumentation_rule>
+	
+	<injection_rule
+		code_pattern = "
+			set cv [examine {#PATH/#NODE_1}]#;
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -freeze {#PATH/#NODE_1} $nv 0#;">
+
+		<injectioncase 
+			label = "INIT_REG" 
+			dimensions = "0-1" 
+			nodes = "#NODE_1=INIT_REG#DIM">	  	
+		</injectioncase>
+	</injection_rule>
+</fdesc>
+
+
+
+
+<fdesc 	model = "upset_cmem" 
+		macrocells = "lut2" >
+
+	<instrumentation_rule>
+		<redefine_node	name = "INIT_REG"  modifier_to = "signal" 	basetype_to = ""	inline_to = "" />
+		<extend_sensitivity_list	process_name = "X_LUT5P"	nodes = "INIT_REG"	 />
+	</instrumentation_rule>
+	
+	<injection_rule
+		code_pattern = "
+			set cv [examine {#PATH/#NODE_1}]#;
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -freeze {#PATH/#NODE_1} $nv 0#;">
+
+		<injectioncase 
+			label = "INIT_REG" 
+			dimensions = "0-3" 
+			nodes = "#NODE_1=INIT_REG#DIM">	  	
+		</injectioncase>
+	</injection_rule>
+</fdesc>
+
+
+
+<fdesc 	model = "upset_cmem" 
+		macrocells = "lut3" >
+
+	<instrumentation_rule>
+		<redefine_node	name = "INIT_REG"  modifier_to = "signal" 	basetype_to = ""	inline_to = "" />
+		<extend_sensitivity_list	process_name = "X_LUT5P"	nodes = "INIT_REG"	 />
+	</instrumentation_rule>
+	
+	<injection_rule
+		code_pattern = "
+			set cv [examine {#PATH/#NODE_1}]#;
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -freeze {#PATH/#NODE_1} $nv 0#;">
+
+		<injectioncase 
+			label = "INIT_REG" 
+			dimensions = "0-7" 
+			nodes = "#NODE_1=INIT_REG#DIM">	  	
+		</injectioncase>
+	</injection_rule>
+</fdesc>
+
+
+
+<fdesc 	model = "upset_cmem" 
+		macrocells = "lut4" >
+
+	<instrumentation_rule>
+		<redefine_node	name = "INIT_REG"  modifier_to = "signal" 	basetype_to = ""	inline_to = "" />
+		<extend_sensitivity_list	process_name = "X_LUT5P"	nodes = "INIT_REG"	 />
+	</instrumentation_rule>
+	
+	<injection_rule
+		code_pattern = "
+			set cv [examine {#PATH/#NODE_1}]#;
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -freeze {#PATH/#NODE_1} $nv 0#;">
+
+		<injectioncase 
+			label = "INIT_REG" 
+			dimensions = "0-15" 
+			nodes = "#NODE_1=INIT_REG#DIM">	  	
+		</injectioncase>
+	</injection_rule>
+</fdesc>
+
+
+<fdesc 	model = "upset_cmem" 
+		macrocells = "lut5" >
+
+	<instrumentation_rule>
+		<redefine_node	name = "INIT_REG"  modifier_to = "signal" 	basetype_to = ""	inline_to = "" />
+		<extend_sensitivity_list	process_name = "X_LUT5P"	nodes = "INIT_REG"	 />
+	</instrumentation_rule>
+	
+	<injection_rule
+		code_pattern = "
+			set cv [examine {#PATH/#NODE_1}]#;
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -freeze {#PATH/#NODE_1} $nv 0#;">
+
+		<injectioncase 
+			label = "INIT_REG" 
+			dimensions = "0-31" 
+			nodes = "#NODE_1=INIT_REG#DIM">	  	
+		</injectioncase>
+	</injection_rule>
+</fdesc>
+
+
+<fdesc 	model = "upset_cmem" 
+		macrocells = "lut6" >
+
+	<instrumentation_rule>
+		<redefine_node  name = "INIT_REG"  modifier_to = "signal" 	basetype_to = ""	inline_to = "" />
+		<extend_sensitivity_list	process_name = "X_LUT6P"	nodes = "INIT_REG"	 />
+	</instrumentation_rule>
+		
+		
+	<injection_rule
+		code_pattern = "
+			set cv [examine {#PATH/#NODE_1}]#;
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -freeze {#PATH/#NODE_1} $nv 0#;">
+			
+		<injectioncase 
+			label = "INIT_REG" 
+			dimensions = "0-63" 
+			nodes = "#NODE_1=INIT_REG#DIM">			
+		</injectioncase>	  
+	</injection_rule>
+</fdesc>
+
+
+
+</data>

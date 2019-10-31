@@ -1,0 +1,993 @@
+
+
+
+
+2019-10-05_15-36-59 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_15-42-05 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_15-51-10 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_16-08-05 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_16-09-03 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_16-20-31 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_16-21-58 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_16-22-29 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_16-25-09 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_16-28-33 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_16-33-34 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_16-38-11 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_17-03-29 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_17-10-26 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_17-10-42 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_17-15-26 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_17-25-05 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_17-31-42 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_17-32-31 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_17-35-16 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_17-45-27 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-05_18-59-28 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-06_12-58-05 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-12_23-18-29 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-12_23-19-26 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-12_23-21-44 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-12_23-24-41 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-12_23-28-25 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-12_23-31-02 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-12_23-31-53 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1
+
+
+
+2019-10-13_17-08-08 : 
+
+	profiling = 
+	trigger_expression = 
+	forced_value = 
+	experiments_per_target = 1
+	time_end = 0.0
+	rand_seed = 2
+	inactivity_time_start = 0.0
+	injections_per_experiment = 1
+	duration = 0.0
+	time_start = 0.0
+	time_mode = 1
+->target_logic[0] = lut1
+->target_logic[1] = lut2
+->target_logic[2] = lut3
+->target_logic[3] = lut4
+->target_logic[4] = lut5
+->target_logic[5] = lut6
+	simulataneous_faults = False
+	increment_time_step = 0.0
+	activity_time_start = 0.0
+	multiplicity = 1
+	inactivity_time_end = 0.0
+	sample_size = 0
+	activity_time_end = 0.0
+	model = upset_cmem
+	modifier =  : 
+		ITERATION 1

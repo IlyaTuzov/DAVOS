@@ -1,4 +1,4 @@
-# Library defining data structes/classes and related logic, used by DAVOS modules
+﻿# Library defining data structes/classes and related logic, used by DAVOS modules
 # Covers:
 # 1. Configuration management (parsing/exporting of XML formatted confgirations),
 # 2. Observation dumps (pasring, tracing, etc.)
