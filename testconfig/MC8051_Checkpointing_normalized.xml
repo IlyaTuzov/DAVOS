@@ -3,7 +3,8 @@
 
     <DAVOS
         DesignBuilder = "off"
-        FaultInjection = "on"
+        SBFI = "off"
+		FFI  = "on"
         DecisionSupport = "off"
         report_dir = "#RUNDIR/../../Projects/Checkpointing/MC8051"        
         dbfile = "MC8051.db"  >
@@ -36,7 +37,6 @@
                 netlist_dir = "./netgen"
                 constraint_file = ""    
                 uut_root   = "/design_1_wrapper/design_1_i/mc8051_top_0/U0"   
-                post_injection_recovery_nodes = "['i_mc8051_rom']"
             />        
 
             
@@ -362,11 +362,33 @@
         </ExperimentalDesign>
     
     
+	<!--
+		block_type = 0/1/All
+		target_filter = FF/LUT/BRAM/NONE	
+	-->
+		<FFI
+			block_type = "0"
+			target_filter = "LUT"
+			post_injection_recovery_nodes = "['i_mc8051_rom']"			
+			hdf_path = "./MC8051.sdk/design_1_wrapper_hw_platform_0/system.hdf"
+			init_tcl_path = "./MC8051.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"
+			injectorapp_path = "./MC8051.sdk/InjectorApp/Debug/InjectorApp.elf"
+			memory_buffer_address = "0x3E000000"
+			custom_lut_mask = 'on' 
+			profiling = 'off'
+			platformconf = "[{&apos;TargetId&apos;:&apos;2&apos;, &apos;PortID&apos;:&apos;COM3&apos;}]"
+		>
+		
+		
+		
+		</FFI>
+	
+	
     
         <!-- platform: Multicore / Grid / GridLight 
             #RUNDIR - path from where SBFI tool is launched
         -->
-        <FaultInjection
+        <SBFI
             platform = "Multicore"
             initializer_phase = "off"    
             profiler_phase = "off"
@@ -509,25 +531,34 @@
                 default_logic_type = "SIGNAL" 
              />       
 
-            
-            
-            <config
-                work_dir = "../../Projects/Checkpointing/MC8051"
-                label = "MC8051_RTL"
-                compile_options = ""
-                run_options = ""
-                clk_period = "50.0"
-                start_from = ""
-                stop_at = ""
-            />
 
-        </FaultInjection>
+        </SBFI>
     
+	
+	
+	
+	
+		<ModelConfig
+			work_dir = "../../Projects/Checkpointing/MC8051"
+			label = "MC8051_RTL"
+			compile_options = ""
+			run_options = ""
+			clk_period = "50.0"
+			start_from = ""
+			stop_at = ""
+		/>
+			
+			
+			
+			
+			
+			
+			
     
-    <DecisionSupport
-        task = "DSE"
-        method = "Statistical"
-    >
+		<DecisionSupport
+			task = "DSE"
+			method = "Statistical"
+		>
     
     
         <DerivedMetrics>

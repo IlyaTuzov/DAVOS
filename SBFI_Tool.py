@@ -310,7 +310,8 @@ if __name__ == "__main__":
     xml_conf = ET.parse(os.path.join(os.getcwd(), normconfig))
     tree = xml_conf.getroot()
     davosconf = DavosConfiguration(tree.findall('DAVOS')[0])
-    config = davosconf.FaultInjectionConfig
+    config = davosconf.SBFIConfig
+    config.parconf = davosconf.parconf
     config.file = normconfig
     print (to_string(config, "Configuration: "))
     fault_dict = FaultDict(config.genconf.library_specification)

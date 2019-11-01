@@ -1,4 +1,4 @@
-
+﻿
 
 def AggregateInjectionResults(LutMapList, EmulResFile, SimResFile=''):
     simresdict={}
@@ -81,7 +81,7 @@ def ExportProfilingStatistics(LutMapList, fname):
 
 
 def build_FFI_report(DavosConfig, datamodel):
-    for conf in DavosConfig.FaultInjectionConfig.parconf:
+    for conf in DavosConfig.SBFIConfig.parconf:
         Tab = Table('LutMapList')
         Tab.build_from_csv(os.path.join(conf.work_dir, 'LutMapList.csv'))
         LutMapList = TableToLutList(Tab)  
@@ -101,8 +101,7 @@ if __name__ == "__main__":
     normalize_xml(os.path.join(os.getcwd(), sys.argv[1]), os.path.join(os.getcwd(), normconfig))
     xml_conf = ET.parse(os.path.join(os.getcwd(), normconfig))
     tree = xml_conf.getroot()
-    davosconf = DavosConfiguration(tree.findall('DAVOS')[0])
-    config = davosconf 
+    config = DavosConfiguration(tree.findall('DAVOS')[0])
     config.toolconf = toolconf
     config.file = normconfig
 

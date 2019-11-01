@@ -26,7 +26,8 @@ normalize_xml(iconfig, normconfig)
 xml_conf = ET.parse(normconfig)
 tree = xml_conf.getroot()
 davosconf = DavosConfiguration(tree.findall('DAVOS')[0])
-config = davosconf.FaultInjectionConfig
+config = davosconf.SBFIConfig
+config.parconf = davosconf.parconf
 selected_conf = ''
 if len(sys.argv) > 2: selected_conf = sys.argv[2]
 

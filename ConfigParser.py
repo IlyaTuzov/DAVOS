@@ -473,9 +473,6 @@ class SBFIConfiguration:
         self.reportbuilder = None
         if xnode != None:
             self.build_from_xml(xnode)
-        for c in self.parconf:
-            if(c.relative_path =="on"):
-                c.work_dir = os.path.normpath(os.path.join(self.call_dir, c.work_dir))
         if self.initializer.match_pattern_file.find('#RUNDIR') >= 0:
             self.initializer.match_pattern_file = os.path.normpath(self.initializer.match_pattern_file.replace('#RUNDIR', self.call_dir))
         self.genconf.library_specification = os.path.join(self.call_dir, self.genconf.library_specification)
@@ -504,9 +501,7 @@ class SBFIConfiguration:
         if len(tag) > 0: self.injector = SBFIConfigInjector(tag[0])
         tag = xnode.findall('Analyzer')
         if len(tag) > 0: self.analyzer = SBFIConfigAnalyzer(tag[0])
-        for c in xnode.findall('config'):
-            self.parconf.append(ParConfig(c))
-        self.parconf.sort(key=lambda x: x.label, reverse = False)
+
 
 
 class ExperiementalDesignConfiguration:
@@ -574,8 +569,7 @@ class ExperimentalDesignGenerics:
         self.constraint_file = xnode.get('constraint_file','')
         cp = xnode.get('custom_parameters','')
         if cp != '': self.custom_parameters = ast.literal_eval(cp)
-        cp = xnode.get('post_injection_recovery_nodes','')
-        if cp != '': self.post_injection_recovery_nodes = ast.literal_eval(cp)
+
 
         
 
@@ -829,25 +823,63 @@ class DecisionSupportConfiguration:
                 self.DerivedMetrics.append(DerivedMetric(x))
 
 
+
+class FFIConfiguration:
+    def __init__(self, xnode):
+        self.block_type = 0
+        self.target_filter = ""
+        self.post_injection_recovery_nodes = []
+        self.hdf_path = ""
+        self.init_tcl_path = ""
+        self.injectorapp_path = ""
+        self.memory_buffer_address = 0x3E000000
+        self.custom_lut_mask = False
+        self.profiling = False
+        self.platformconf = []
+        if xnode != None:
+            self.build_from_xml(xnode)
+
+
+    def build_from_xml(self, xnode):
+        self.block_type = int(xnode.get('block_type', '0'))
+        self.target_filter = xnode.get('target_filter', '')
+        cp = xnode.get('post_injection_recovery_nodes','')
+        if cp != '': self.post_injection_recovery_nodes = ast.literal_eval(cp)
+        self.hdf_path = xnode.get('hdf_path', '')
+        self.init_tcl_path = xnode.get('init_tcl_path', '')
+        self.injectorapp_path = xnode.get('injectorapp_path', '')
+        self.memory_buffer_address = int(xnode.get('memory_buffer_address', '0x3E000000'), 16)
+        self.custom_lut_mask = True if xnode.get('custom_lut_mask', '') == 'on' else False
+        self.profiling = True if xnode.get('profiling', '') == 'on' else False
+        cp = xnode.get('platformconf','')
+        if cp != '': self.platformconf = ast.literal_eval(cp)
+
 class DavosConfiguration:
     def __init__(self, xnode):
         self.call_dir = os.getcwd()
         self.platform = Platforms.Multicore
         self.DesignBuilder = False
-        self.FaultInjection = False
+        self.SBFI = False
+        self.FFI = False
         self.DecisionSupport = False
         self.ExperimentalDesignConfig = None
-        self.FaultInjectionConfig = None
+        self.SBFIConfig = None
+        self.FFIConfig = None
         self.DecisionSupportConfig = None
         self.report_dir = ''
         self.dbfile = ''
+        self.parconf=[]
         if xnode != None:
             self.build_from_xml(xnode)
-        self.FaultInjectionConfig.report_dir = self.report_dir
-        self.FaultInjectionConfig.dbfile = self.dbfile
-        self.FaultInjectionConfig.platform = self.platform
+        self.SBFIConfig.report_dir = self.report_dir
+        self.SBFIConfig.dbfile = self.dbfile
+        self.SBFIConfig.platform = self.platform
         self.ExperimentalDesignConfig.platform = self.platform
         self.ConfigFile = ''
+        for c in self.parconf:
+            if(c.relative_path =="on"):
+                c.work_dir = os.path.normpath(os.path.join(self.call_dir, c.work_dir))
+
 
     def build_from_xml(self, xnode):
         v = xnode.get('platform', 'multicore').lower()
@@ -855,17 +887,22 @@ class DavosConfiguration:
         elif v == 'grid': self.platform = Platforms.Grid
         elif v == 'gridlight': self.platform = Platforms.GridLight
         self.DesignBuilder = True if xnode.get('DesignBuilder', '') == 'on' else False
-        self.FaultInjection = True if xnode.get('FaultInjection', '') == 'on' else False
+        self.SBFI = True if xnode.get('SBFI', '') == 'on' else False
+        self.FFI = True if xnode.get('FFI', '') == 'on' else False
         self.DecisionSupport = True if xnode.get('DecisionSupport', '') == 'on' else False
         self.report_dir = os.path.normpath(xnode.get('report_dir', '').replace('#RUNDIR', self.call_dir))
         self.dbfile = xnode.get('dbfile', 'Results.db')
         tag = xnode.findall('ExperimentalDesign')
         if len(tag) > 0: self.ExperimentalDesignConfig = ExperiementalDesignConfiguration(tag[0])
-        tag = xnode.findall('FaultInjection')
-        if len(tag) > 0: self.FaultInjectionConfig = SBFIConfiguration(tag[0])
+        tag = xnode.findall('SBFI')
+        if len(tag) > 0: self.SBFIConfig = SBFIConfiguration(tag[0])
+        tag = xnode.findall('FFI')
+        if len(tag) > 0: self.FFIConfig = FFIConfiguration(tag[0])
         tag = xnode.findall('DecisionSupport')
         if len(tag) > 0: self.DecisionSupportConfig = DecisionSupportConfiguration(tag[0])
-
+        for c in xnode.findall('ModelConfig'):
+            self.parconf.append(ParConfig(c))
+        self.parconf.sort(key=lambda x: x.label, reverse = False)
 
 
     def get_DBfilepath(self, backup_path = False):
