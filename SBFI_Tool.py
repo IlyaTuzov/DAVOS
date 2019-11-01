@@ -18,12 +18,12 @@ import glob
 import copy
 from Davos_Generic import *
 from Datamanager import *
-from SBFI_Initializer import *
-from SBFI_Profiler import *
-from SBFI_FaultloadGenerator import *
-from SBFI_Injector import *
-from SBFI_Analyzer import *
-from SBFI_reportbuilder import *
+from SBFI.SBFI_Initializer import *
+from SBFI.SBFI_Profiler import *
+from SBFI.SBFI_FaultloadGenerator import *
+from SBFI.SBFI_Injector import *
+from SBFI.SBFI_Analyzer import *
+from SBFI.SBFI_reportbuilder import *
 
 def cleanup(config, toolconfig):
     timestamp = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d_%H-%M-%S')
