@@ -826,8 +826,7 @@ class DecisionSupportConfiguration:
 
 class FFIConfiguration:
     def __init__(self, xnode):
-        self.block_type = 0
-        self.target_filter = ""
+        self.target_logic = ""
         self.post_injection_recovery_nodes = []
         self.hdf_path = ""
         self.init_tcl_path = ""
@@ -841,8 +840,7 @@ class FFIConfiguration:
 
 
     def build_from_xml(self, xnode):
-        self.block_type = int(xnode.get('block_type', '0'))
-        self.target_filter = xnode.get('target_filter', '')
+        self.target_logic = xnode.get('target_logic', '')
         cp = xnode.get('post_injection_recovery_nodes','')
         if cp != '': self.post_injection_recovery_nodes = ast.literal_eval(cp)
         self.hdf_path = xnode.get('hdf_path', '')

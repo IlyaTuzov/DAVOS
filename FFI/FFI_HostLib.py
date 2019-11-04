@@ -19,7 +19,6 @@ import random
 import time
 #sys.path.insert(0, os.path.abspath(".."))
 from Davos_Generic import Table
-from SBFI.SBFI_Profiler import *
 from BitstreamParser import *
 from NetlistParser import *
 
@@ -28,7 +27,7 @@ class OperatingModes:
 
 
 res_ptn  = re.compile(r'Tag.*?([0-9]+).*?Injection Result.*?Injections.*?([0-9]+).*?([0-9]+).*?Masked.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+).*?Failures.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+)', re.M)
-stat_ptn = re.compile(r'Tag.*?([0-9]+).*?Injection.*?([0-9]+).*?([0-9]+).*?Masked.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+).*?Failures.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+)', re.M)
+stat_ptn = re.compile(r'Tag.*?([0-9]+).*?Injection.*?([0-9]+).*?([0-9]+).*?Masked.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+).*?Failures.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+).*?Latent.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+)', re.M)
 recovery_ptn = re.compile(r'([0-9]+).*?seconds.*?Experiments.*?([0-9]+).*?([0-9]+).*?Masked.*?([0-9]+).*?([0-9\.]+).*?([0-9\.]+).*?Failures.*?([0-9]+).*?([0-9\.]+).*?([0-9\.]+)')
 
 
@@ -44,10 +43,11 @@ class JobDescriptor:
         self.BitmaskAddr   = 0
         self.BitmaskSize   = 0
         self.FaultListAdr  = 0
-        self.FaultListItems= 0
+        self.FaultListSize = 0
         self.UpdateBitstream = 0
         self.Mode = 0 # 0 - exhaustive, 1 - sampling
         self.Blocktype = 0 # 0 - CLB , 1 - BRAM, >=2 both
+        self.Celltype = 0   # 0 - ANY, 1-FF, 2-LUT, 3-BRAM, 4-Type0
         self.Essential_bits = 0 # 0 - target all bits, 1 - only masked bits
         self.LogTimeout = 1000  #report intermediate results each 1000 experiments
         self.CheckRecovery = 0
@@ -64,6 +64,9 @@ class JobDescriptor:
         self.FilterFrames = 0
         self.PopulationSize = 0.0
         self.SamplingWithouRepetition = 0
+        self.DetailedLog = 1
+        self.DetectLatentErrors = 1
+        self.InjectionTime = 0;     # 0-random, > 0 - inject before clock cycle 'InjectionTime', e.g. InjectionTime==1 - inject at the workload start 
         #these fields are not exported to device (for internal use)
         self.failure_rate = float(0.0)
         self.failure_error = float(50.0)
@@ -87,10 +90,11 @@ class JobDescriptor:
             f.write(struct.pack(specificator, self.BitmaskAddr)) 
             f.write(struct.pack(specificator, self.BitmaskSize)) 
             f.write(struct.pack(specificator, self.FaultListAdr)) 
-            f.write(struct.pack(specificator, self.FaultListItems)) 
+            f.write(struct.pack(specificator, self.FaultListSize)) 
             f.write(struct.pack(specificator, self.UpdateBitstream))
             f.write(struct.pack(specificator, self.Mode))
             f.write(struct.pack(specificator, self.Blocktype))
+            f.write(struct.pack(specificator, self.Celltype))
             f.write(struct.pack(specificator, self.Essential_bits))
             f.write(struct.pack(specificator, self.CheckRecovery))
             f.write(struct.pack(specificator, self.LogTimeout))
@@ -106,9 +110,48 @@ class JobDescriptor:
             f.write(struct.pack(specificator, self.FilterFrames))
             f.write(struct.pack('<f', self.PopulationSize))
             f.write(struct.pack(specificator, self.SamplingWithouRepetition))
+            f.write(struct.pack(specificator, self.DetailedLog))
+            f.write(struct.pack(specificator, self.DetectLatentErrors))
+            f.write(struct.pack(specificator, self.InjectionTime))
             
             
             
+
+
+
+#Export Frame Descriptors File (N frame items: {u32 FAR, u32 flags, FrameSize word items: {u32 data[i], u32 mask[i]}}
+# | DescriptorList_offset,  DescriptorList_items                | 4B + 4B
+# | RecoveryFrames_offset,  RecoveryFrames_items                | 4B + 4B
+# | <-- DescriptorList_offset = 16                              | 
+# | FAR_0, flags, NumOfEsBits, FrameSize x {data[i], mask[i]}   | 4B + 4B + 4B + (4B + 4B)x101 = 416B
+# | ....                                                        | ... 416B x DescriptorList_items
+# | <-- RecoveryFrames_offset = 16+ 412B xDescriptorList_items  |
+# | FAR_0, FAR_1, ...                                           |       4B x RecoveryFrames_items
+def export_DescriptorFile(fname, BIN_FrameList, RecoveryFrames, CheckpointFrames):
+    specificator = '<I'         #Little Endian
+    with open(os.path.join(os.getcwd(), fname), 'wb') as f:
+        f.write(struct.pack(specificator, 24))                                                                  # DescriptorList_offset
+        f.write(struct.pack(specificator, len(BIN_FrameList)))                                                  # DescriptorList_items
+        f.write(struct.pack(specificator, 24 + (12+8*FrameSize)*len(BIN_FrameList)))                            # RecoveryFrames_offset
+        f.write(struct.pack(specificator, len(RecoveryFrames)))                                                 # RecoveryFrames_items
+        f.write(struct.pack(specificator, 24 + (12+8*FrameSize)*len(BIN_FrameList) + 4*len(RecoveryFrames)))    # CheckpointFrames_offset
+        f.write(struct.pack(specificator, len(CheckpointFrames)))                                               # CheckpointFrames_items
+        for frame in BIN_FrameList:                                     # 416B x DescriptorList_items
+            frame.UpdateFlags()
+            f.write(struct.pack(specificator, frame.GetFar()))
+            f.write(struct.pack(specificator, int(frame.flags)))
+            f.write(struct.pack(specificator, int(frame.EssentialBitsCount)))
+            for i in range(FrameSize):
+                f.write(struct.pack(specificator, frame.data[i]))
+                f.write(struct.pack(specificator, frame.mask[i]))    
+        for item in RecoveryFrames:                                     # 4B x RecoveryFrames_items
+            f.write(struct.pack(specificator, item))
+        for item in CheckpointFrames:                                   # 4B x RecoveryFrames_items
+            f.write(struct.pack(specificator, item))
+
+
+
+
 def ExportFaultList(ProfilingRes, fname):
         specificator = '<L'         #Little Endian
         with open(fname, 'wb') as f:
@@ -123,6 +166,8 @@ def ExportFaultList(ProfilingRes, fname):
                 f.write(struct.pack('<f',         ProfilingRes[i]['Actime']))
                 f.write(struct.pack(specificator, ProfilingRes[i]['InjRes']))
 
+
+
 def LoadFaultList(fname):
     ProfilingRes=[]
     with open(fname,'rb') as f:
@@ -135,33 +180,6 @@ def LoadFaultList(fname):
                   }
             ProfilingRes.append(item)
     return(ProfilingRes)
-
-
-#Export Frame Descriptors File (N frame items: {u32 FAR, u32 flags, FrameSize word items: {u32 data[i], u32 mask[i]}}
-# | DescriptorList_offset,  DescriptorList_items                | 4B + 4B
-# | RecoveryFrames_offset,  RecoveryFrames_items                | 4B + 4B
-# | <-- DescriptorList_offset = 16                              | 
-# | FAR_0, flags, NumOfEsBits, FrameSize x {data[i], mask[i]}   | 4B + 4B + 4B + (4B + 4B)x101 = 416B
-# | ....                                                        | ... 416B x DescriptorList_items
-# | <-- RecoveryFrames_offset = 16+ 412B xDescriptorList_items  |
-# | FAR_0, FAR_1, ...                                           |       4B x RecoveryFrames_items
-def export_DescriptorFile(fname, BIN_FrameList, RecoveryFrames):
-    specificator = '<I'         #Little Endian
-    with open(os.path.join(os.getcwd(), fname), 'wb') as f:
-        f.write(struct.pack(specificator, 16))                      # DescriptorList_offset
-        f.write(struct.pack(specificator, len(BIN_FrameList)))          # DescriptorList_items
-        f.write(struct.pack(specificator, 16 + (12+8*FrameSize)*len(BIN_FrameList)))   # RecoveryFrames_offset
-        f.write(struct.pack(specificator, len(RecoveryFrames)))     # RecoveryFrames_items
-        for frame in BIN_FrameList:                                     # 416B x DescriptorList_items
-            frame.UpdateFlags()
-            f.write(struct.pack(specificator, frame.GetFar()))
-            f.write(struct.pack(specificator, int(frame.flags)))
-            f.write(struct.pack(specificator, int(frame.EssentialBitsCount)))
-            for i in range(FrameSize):
-                f.write(struct.pack(specificator, frame.data[i]))
-                f.write(struct.pack(specificator, frame.mask[i]))    
-        for item in RecoveryFrames:                                 # 4B x RecoveryFrames_items
-            f.write(struct.pack(specificator, item))
 
 
 
@@ -227,8 +245,6 @@ class InjectorHostManager:
         self.logfile.write('Injector instantiated: {}\n\n'.format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
         #list of internal memories to recover after injection
         self.RecoveryNodeNames = []        
-        #bitmask file to be created by this manager
-        self.Output_FrameDescFile = os.path.join(targetDir, 'FrameDescriptors.dat')
         #Job descriptor file to be uploaded to the device before each run
         self.JobDescFile = os.path.join(targetDir, 'JobDesc.dat')
         self.EssentialBitsPerBlockType = [] 
@@ -239,9 +255,12 @@ class InjectorHostManager:
         self.CustomLutMask = False
         self.Profiling = False
         self.DAVOS_Config = None
-        self.FaultListFile    = os.path.join(targetDir, 'FaultList.dat')
-        self.LutMapFile = os.path.join(targetDir, 'LutMapList.csv')
+        #bitmask file to be created by this manager
+        self.Output_FrameDescFile = os.path.join(self.targetDir, 'FrameDescriptors.dat')
+        self.FaultListFile    = os.path.join(self.targetDir, 'FaultList.dat')
+        self.LutMapFile = os.path.join(self.targetDir, 'LutMapList.csv')
         self.ProfilingResult = None
+        self.target_logic = 'type0'
 
     def configure(self, targetid, portname, VivadoProjectFile = '', ImplementationRun=''):
         self.targetid = targetid                        #Target CPU id on Xilinx HW server
@@ -357,7 +376,7 @@ class InjectorHostManager:
     def check_fix_preconditions(self):
         print "Running Fix preconditions, see detailed log in {}\nwait...".format(self.logfilename)
         os.chdir(self.targetDir)
-        for i in [self.Input_BitstreamFile, self.Input_EBCFile, self.Input_EBDFile, self.Input_LLFile, self.Input_CellDescFile]:
+        for i in [self.Input_BitstreamFile, self.Input_EBCFile, self.Input_EBDFile, self.Input_LLFile, self.Input_CellDescFile, 'LUTMAP.csv']:
             if not os.path.exists(i):
                 print("Input files not found, running Vivado to obtain them...")
                 out, err = ParseVivadoNetlist(self.VivadoProjectFile, self.ImplementationRun, self.targetDir)
@@ -397,52 +416,39 @@ class InjectorHostManager:
                 self.logfile.write('Injector Error: no file found {}\n'.format(str(i)))
                 check = False
         if not check: return(check)
-        if not os.path.exists(self.Output_FrameDescFile):
-            self.create_bitmask_file(self.Output_FrameDescFile)
+        self.GenerateFaultload()
         return(check)
         
 
-    def cleanup(self):
-        self.logfile.write('Injector stopped: {}\n\n'.format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-        self.logfile.flush()
-        self.logfile.close()
 
-        
-                
-    def create_bitmask_file(self, Output_FrameDescFile):
-        #Step 1: Build the list of frame addresses: from input file, build it if not exist (run profiler through xcst)
+
+    def GenerateFaultload(self):
+        #Step 1: Build the list of frame addresses (obtained by running InjApp in profiling mode)
         FarList = LoadFarList(self.Input_FarListFile)
-        check  = dict()
-        for i in FarList:
-            F = FrameDesc(i)
-            key = "{0:02d}_{1:02d}_{2:02d}_{3:02d}".format(F.BlockType, F.Top, F.Row, F.Major)
-            if key in check:
-                check[key] += 1
-            else:
-                check[key]=0
-        if self.verbosity > 1:
-            for k,v in sorted(check.items(), key=lambda x:x[0]):
-                self.logfile.write('{0:s} = {1:d}\n'.format(k, v))        
-        #Step 2: Build the list of frame descriptors from EBC+EBD (essential bits)
-        EBC_FrameList = EBC_to_FrameList(self.Input_EBCFile, self.Input_EBDFile, FarList)
-               
-        #Step 3: Build the list of frame discriptors for complete bitstream (*.bit or *.bin)
+   
+        #Step 2: Build the list of frame discriptors for complete bitstream (*.bit or *.bin)
         BIN_FrameList = bitstream_to_FrameList(self.Input_BinstreamFile, FarList)
 
-        #Step 4: Compare BIN to EBC and If no mismatches found
-        #        copy essential bits (mask from) to BIN (all descriptors will be collected there)
-        mismatches = 0
-        for i in range(len(EBC_FrameList)):
-            for k in range(FrameSize):
-                if EBC_FrameList[i].data[k] != BIN_FrameList[i].data[k]:
-                    if self.verbosity > 0:
-                        self.logfile.write('Check EBC vs BIT: mismatch at Frame[{0:08x}]: Block={1:5d}, Top={2:5d}, Row={3:5d}, Major={4:5d}, Minor={5:5d}\n'.format(BIN_FrameList[i].GetFar(), BIN_FrameList[i].BlockType, BIN_FrameList[i].Top, BIN_FrameList[i].Row, self.Major, BIN_FrameList[i].Minor))
-                    mismatches+=1
-        if mismatches == 0: self.logfile.write('\nCheck EBC vs BIT: Complete Match\n')
-        else: self.logfile.write('Check EBC vs BIT: Mismatches Count = {0:d}\n'.format(mismatches))
-        if mismatches ==0:
+        if self.target_logic=='type0' or self.target_logic=='all' or (self.target_logic=='lut' and not self.CustomLutMask):
+            #Step 3: Build the list of frame descriptors from EBC+EBD (essential bits)
+            EBC_FrameList = EBC_to_FrameList(self.Input_EBCFile, self.Input_EBDFile, FarList)
+
+            #Step 4: Compare BIN to EBC and, if no mismatches found, copy essential bits mask to BIN
+            mismatches = 0
             for i in range(len(EBC_FrameList)):
-                BIN_FrameList[i].mask = EBC_FrameList[i].mask
+                for k in range(FrameSize):
+                    if EBC_FrameList[i].data[k] != BIN_FrameList[i].data[k]:
+                        if self.verbosity > 0:
+                            self.logfile.write('Check EBC vs BIT: mismatch at Frame[{0:08x}]: Block={1:5d}, Top={2:5d}, Row={3:5d}, Major={4:5d}, Minor={5:5d}\n'.format(BIN_FrameList[i].GetFar(), BIN_FrameList[i].BlockType, BIN_FrameList[i].Top, BIN_FrameList[i].Row, self.Major, BIN_FrameList[i].Minor))
+                        mismatches+=1
+            if mismatches == 0: self.logfile.write('\nCheck EBC vs BIT: Complete Match\n')
+            else: self.logfile.write('Check EBC vs BIT: Mismatches Count = {0:d}\n'.format(mismatches))
+            if mismatches ==0:
+                for i in range(len(EBC_FrameList)):
+                    if (self.target_logic in ['type0', 'all']) or (self.target_logic=='lut' and BIN_FrameList[i].Minor in [26,27,28,29, 32,33,34,35]):
+                        BIN_FrameList[i].mask = EBC_FrameList[i].mask
+
+
 
         if self.CustomLutMask:
             LutDescTab = Table('LutMap'); LutDescTab.build_from_csv(os.path.join(self.targetDir, 'LUTMAP.csv'))
@@ -459,27 +465,18 @@ class InjectorHostManager:
                     self.ProfilingResult = LoadFaultList(self.FaultListFile) #load from file
                 with open(self.LutMapFile,'w') as f:
                     f.write(LutListToTable(LutMapList).to_csv())
-
-
-            with open(os.path.join(self.targetDir,'BitLog.txt'),'w') as f:
-                for i in BIN_FrameList:
-                    if all(v==0 for v in i.custom_mask): continue
-                    else: 
-                        f.write(i.to_string(2)+'\n\n')
                 
-
-            for i in BIN_FrameList:
-                if i.custom_mask==[]:
-                    i.mask = [0x0]*FrameSize
-                else:
-                    for k in range(FrameSize):
-                        i.mask[k] = i.custom_mask[k] #(i.mask[k] ^ i.custom_mask[k]) & i.mask[k]
-            #raw_input('Difference with custom mask...')
-            
-
+            if self.target_logic in ['type0','all','lut']:
+                for i in BIN_FrameList:
+                    if i.Minor in [26,27,28,29, 32,33,34,35]:
+                        if i.custom_mask==[]: 
+                            i.mask = [0x0]*FrameSize
+                        else:
+                            for k in range(FrameSize):
+                                i.mask[k] = i.custom_mask[k] #(i.mask[k] ^ i.custom_mask[k]) & i.mask[k]
 
 
-        #Step 5: append descriptors for FAR items which should be recovered after injection (BRAM) 
+        #Step 5: append targets from LL file (FF and BRAM)
         RecoveryRamLocations = []
         FAR_CLB = set()
         T = Table('Cells')
@@ -494,24 +491,34 @@ class InjectorHostManager:
         #And build FAR recovery list - include all FAR from *.ll file containing bits of selected design units (e.g. ROM inferred on BRAM)
         FARmask = dict()
         RecoveryFrames = set()
+        CheckpointFrames = set()
+        ram_search_ptn = re.compile(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-Z_]+)\s+Ram=B:(BIT|PARBIT)([0-9]+)', re.M)
+        ff_search_ptn = re.compile(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-Z_]+)\s+Latch=([0-9a-zA-Z\.]+)\s+Net=(.*)', re.M)
+
         with open(self.Input_LLFile, 'r') as f:
             for line in f:
-                matchDesc = re.search(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-Z_]+)\s+Ram=B:(BIT|PARBIT)([0-9]+)',line, re.M)
+                matchDesc , t = re.search(ram_search_ptn,line), 1
+                if not matchDesc: 
+                    matchDesc, t = re.search(ff_search_ptn,line), 2
                 if matchDesc:
                     FAR = int(matchDesc.group(1), 16)
                     offset = int(matchDesc.group(2))
                     block = matchDesc.group(3)
-                    if block in RecoveryRamLocations:
+                    if t==1 and (block in RecoveryRamLocations):
                         RecoveryFrames.add(FAR)
-                    word=offset/32
-                    bit = offset%32
-                    if FAR in FARmask:
-                        desc = FARmask[FAR]
-                    else:
-                        desc = FrameDesc(FAR)
-                        desc.mask=[0]*FrameSize
-                        FARmask[FAR] = desc
-                    desc.mask[word] |= 1<<bit
+                    elif t==2:
+                        CheckpointFrames.add(FAR)
+
+                    if (t==1 and self.target_logic=='bram') or (t==2 and self.target_logic in ['ff', 'type0']) or self.target_logic == 'all':
+                        word, bit =offset/32, offset%32
+                        if FAR in FARmask:
+                            desc = FARmask[FAR]
+                        else:
+                            desc = FrameDesc(FAR)
+                            desc.mask=[0]*FrameSize
+                            FARmask[FAR] = desc
+                        desc.mask[word] |= 1<<bit
+
                         
         for key in sorted(FARmask):
             for i in BIN_FrameList:
@@ -521,7 +528,14 @@ class InjectorHostManager:
                     break
         self.logfile.write('Recovery FAR: {}\n'.format(",".join(["{0:08x}".format(i) for i in sorted(list(RecoveryFrames))])))
         #Export the resulting descriptor
-        export_DescriptorFile(Output_FrameDescFile, BIN_FrameList, RecoveryFrames)
+
+        with open(os.path.join(self.targetDir,'BitLog.txt'),'w') as f:
+            for i in BIN_FrameList:
+                if all(v==0 for v in i.mask): continue
+                else: 
+                    f.write(i.to_string(2)+'\n\n')
+
+        export_DescriptorFile(self.Output_FrameDescFile, BIN_FrameList, RecoveryFrames, CheckpointFrames)
         populationsize = 0
         for i in list(range(0, 9)): self.EssentialBitsPerBlockType.append(0)
         for i in BIN_FrameList:
@@ -529,7 +543,21 @@ class InjectorHostManager:
             self.EssentialBitsPerBlockType[i.BlockType] += i.EssentialBitsCount
             #self.logfile.write('FAR: {0:08x} = {1:5d} Essential bits\n'.format(i.GetFar(), i.EssentialBitsCount))
         self.logfile.write('Population Size: {0:10d}\n'.format(populationsize))
+        self.logfile.write('CheckpointFrames = '+ ', '.join(['{0:08x}'.format(int(x)) for x in CheckpointFrames]))
 
+
+
+
+
+
+
+    def cleanup(self):
+        self.logfile.write('Injector stopped: {}\n\n'.format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        self.logfile.flush()
+        self.logfile.close()
+
+        
+                
 
 
     def export_JobDescriptor(self):
@@ -542,7 +570,8 @@ class InjectorHostManager:
             self.jdesc.BitmaskSize = os.stat(self.Output_FrameDescFile).st_size
 
         self.jdesc.FaultListAdr = self.jdesc.BitmaskAddr+self.jdesc.BitmaskSize
-        self.jdesc.FaultListItems = 0 if (not self.Profiling or self.jdesc.Mode<100) else len(self.ProfilingResult)
+        if os.path.exists(self.FaultListFile): 
+            self.jdesc.FaultListSize = os.stat(self.FaultListFile).st_size / (8*4)
         self.jdesc.ExportToFile(self.JobDescFile)
         if self.jdesc.UpdateBitstream > 0:
             self.logtimeout = 180   #more time for responce if bitstream is uploaded
@@ -632,9 +661,6 @@ class InjectorHostManager:
                     self.jdesc.InjectorError, self.jdesc.VerificationSuccess = False, True
                     return(self.jdesc)
 
-
-
-
         self.jdesc.SyncTag = random.randint(100, 1000000)
         self.launch_injector_app()       
 
@@ -700,7 +726,11 @@ class InjectorHostManager:
                                 self.jdesc.Failures = int(matchDesc.group(7))
                                 self.jdesc.failure_rate = float(matchDesc.group(8))
                                 self.jdesc.failure_error = float(matchDesc.group(9))
-                                stat = '[{0:5d}] seconds | Experiments: {1:9d} / {2:9d}, Masked: {3:9d}, masked_rate: {4:3.4f} +/- {5:3.4f}, Failures: {6:9d},  failure_rate: {7:3.4f} +/- {8:3.4f}'.format(int(time.time() - start_time), self.jdesc.ExperimentsCompleted,self.jdesc.EssentialBitsCount, self.jdesc.Masked, self.jdesc.masked_rate, self.jdesc.masked_error, self.jdesc.Failures, self.jdesc.failure_rate, self.jdesc.failure_error)
+                                self.jdesc.Latent = int(matchDesc.group(10))
+                                self.jdesc.latent_rate = float(matchDesc.group(11))
+                                self.jdesc.latent_error = float(matchDesc.group(12))
+
+                                stat = '[{0:5d}] seconds | Experiments: {1:9d} / {2:9d}, Masked: {3:9d}, masked_rate: {4:3.4f} +/- {5:3.4f}, Failures: {6:9d},  failure_rate: {7:3.4f} +/- {8:3.4f}, Latent: {9:9d}, latent_rate: {10:3.4f} +/- {11:3.4f}'.format(int(time.time() - start_time), self.jdesc.ExperimentsCompleted,self.jdesc.EssentialBitsCount, self.jdesc.Masked, self.jdesc.masked_rate, self.jdesc.masked_error, self.jdesc.Failures, self.jdesc.failure_rate, self.jdesc.failure_error, self.jdesc.Latent, self.jdesc.latent_rate, self.jdesc.latent_error)
                                 self.logfile.write(stat+'\n')
                                 if self.verbosity > 0: sys.stdout.write(stat+'\n'); sys.stdout.flush()
 
