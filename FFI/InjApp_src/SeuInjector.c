@@ -143,17 +143,6 @@ InjectionStatistics InjectorRun(InjectorDescriptor* InjDesc, JobDescriptor* JobD
 	}
 
 
-	if(JobDesc->mode == 2){
-		//Sampling mode
-		InjectionStatistics res = RunInSamplingMode(InjDesc, JobDesc, CustomInjectionFlow,  0);
-		printf("Tag_%9d | Injection Result: Injections = %9d of %.0f,  Masked: %6d, Masked Rate= %.3f +/- %.3f, Failures = %5d, Failure Rate = %.5f +/- %.5f, FuncVerification = %s\n\n", JobDesc->SyncTag, res.injections, res.population, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin,  goldenrun_match==1 ? "Success" : "Mismatches" );
-	}
-	else if(JobDesc->mode == 3){
-		//Exhaustive mode
-	    InjectionStatistics res = RunInExhaustiveMode(InjDesc, JobDesc, NULL, NULL, 0, 0);
-		printf("Tag_%9d | Injection Result: Injections = %9d of %.0f,  Masked: %6d, Masked Rate= %.3f +/- %.3f, Failures = %5d, Failure Rate = %.5f +/- %.5f, FuncVerification = %s\n\n", JobDesc->SyncTag, res.injections, res.population, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin,  goldenrun_match==1 ? "Success" : "Mismatches" );	}
-
-
 	return(res);
 
 }
@@ -161,19 +150,22 @@ InjectionStatistics InjectorRun(InjectorDescriptor* InjDesc, JobDescriptor* JobD
 
 
 
+
+
+
+
 //************* INJECTION PROCEDURES IN DIFFERENT OPMODES *********************
-
-
-
 InjectionCoorditates NextRandomInjectionTarget(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc){
 	InjectionCoorditates res;
-	for(int i=0;i<100000;i++){
+	FarFields Frame;
+	while(1){
 		//Select random frame
-		res.FrameIndex = rand()%InjDesc->FrameDescriptorsCount;
+		res.FrameIndex = InjDesc->MaskedFramesIndexes[rand()%InjDesc->MaskedFramesCount];
 		//skip pad frames
 		if(get_bit(InjDesc->ReferenceFrames[res.FrameIndex].Flags, 1) == 1) continue;
 		res.FAR = InjDesc->ReferenceFrames[res.FrameIndex].FAR;
-		FarFields Frame = parseFAR(res.FAR);
+		Frame = parseFAR(res.FAR);
+
 		//proceed only when logic type matches
 		if(JobDesc->BlockType < 2 && Frame.BLOCK != JobDesc->BlockType) continue;	//filer FAR items when CLB or BRAM selected (0 or 1), otherwise  (BlockType>=2) - proceed with any
 		//Select random word and random bit
@@ -191,6 +183,8 @@ InjectionCoorditates NextRandomInjectionTarget(InjectorDescriptor* InjDesc, JobD
 		}
 		break;
 	}
+	//printf("RandomTarget [%d]: (%5d, %5d, %5d, %5d, %5d) (%5d, %5d)\n", res.FrameIndex, Frame.BLOCK, Frame.TOP, Frame.HCLKROW, Frame.MAJOR, Frame.MINOR, res.word, res.bit);
+	res.CellType = JobDesc->CellType;
 	return(res);
 }
 
@@ -214,207 +208,11 @@ InjectionCoorditates GetTargetFromInjectionList(InjectorDescriptor* InjDesc, Job
 }
 
 
-//sample_size=0, max_error_margin=0 to sample complete population
-InjectionStatistics RunInSamplingMode(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc,  int (*CustomInjectionFlow)(), int verbose){
-	int errframecnt=0;
-	float N=0.0;
-
-	if(JobDesc->PopulationSize > 0){
-		N = JobDesc->PopulationSize;
-	}
-	else if(JobDesc->BlockType >= 2){
-		for(int i=0;i<8;i++) N+= InjDesc->EssentialBitsPerBlockType[i];
-	}
-	else{
-		N=InjDesc->EssentialBitsPerBlockType[JobDesc->BlockType]*1.0;
-	}
-
-	InjectionStatistics res = {.complete_reconfigurations=0, .failure_error_margin=50.0, .failure_rate=0.0, .failures=0, .injections=0, .masked=0, .masked_error_margin=50.0, .masked_rate=0.0, .population =  N };
-	printf("Injector RunInSamplingMode: %s, BlockType = %d (%s), PopulationSize = %.0f, min_sample_size=%d, max_error_margin = %0.5f\n", JobDesc->Essential_bits>0?"Essential bits":"Blind", JobDesc->BlockType,   JobDesc->BlockType==0?"CLB":"BRAM", N, JobDesc->SampleSizeGoal, JobDesc->ErrorMarginGoal);
-
-	if(JobDesc->StartIndex > 0){
-		res.injections = (int) JobDesc->StartIndex;
-		res.failures = (int) JobDesc->CurrentFailureCount;
-		res.masked   = (int) JobDesc->CurrentMaskedCount;
-	}
-
-
-	ClockThrottle(0x1);
-	int Status = ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
-
-
-	while( 		(JobDesc->SampleSizeGoal>0 && res.injections<JobDesc->SampleSizeGoal) 																	/* until given sample size */
-			||  (JobDesc->ErrorMarginGoal>0 && (res.failure_error_margin>JobDesc->ErrorMarginGoal || res.masked_error_margin>JobDesc->ErrorMarginGoal)) /* until given error margin */
-			|| 	(JobDesc->SampleSizeGoal==0 && JobDesc->ErrorMarginGoal==0 && res.injections < N) )														/* until sampling complete population */
-	{
-
-		int failure;
-		if(CustomInjectionFlow != NULL){
-			failure = (*CustomInjectionFlow)();
-		}
-		else{	//Default injection flow
-			//select random injection point
-			InjectionCoorditates InjPoint = NextRandomInjectionTarget(InjDesc, JobDesc);
-			failure = 0;
-			//flip selected bit and check that flip was effective
-			int err = FlipBits(InjDesc, InjPoint, 0, 0, 0);
-			FarFields Frame = parseFAR(InjPoint.FAR);
-			if(err > 0){
-				errframecnt++;
-				printf("Error: Injection[%5d] FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %2d\n", res.injections, Frame.BLOCK, Frame.TOP, Frame.HCLKROW, Frame.MAJOR, Frame.MINOR, InjPoint.word, InjPoint.bit);
-				continue;	//not valid injection
-			}
-			//Execute Workload and check failure mode
-			failure = (*InjDesc->WorkloadRunFunc)(1);
-		}
-
-		res.injections++;
-	    if(failure > 0) res.failures++;
-	    else res.masked++;
-	    if(res.injections % JobDesc->LogTimeout == 0 || res.injections >= N){
-	    	res.failure_rate = 1.0*res.failures/res.injections;
-	    	res.masked_rate = 1.0*res.masked/res.injections;
-	    	if((N-res.injections) > 0){
-		    	res.failure_error_margin = 2.576*sqrt( res.failure_rate*(1-res.failure_rate)*(N-res.injections)/(res.injections*(N-1)) );
-		    	res.masked_error_margin =  2.576*sqrt( res.masked_rate*(1-res.masked_rate)*(N-res.injections)/(res.injections*(N-1)) );
-	    	}
-	    	else{
-	    		res.failure_error_margin = 0.0;
-	    		res.masked_error_margin = 0.0;
-	    	}
-	    	res.failure_rate *= 100.0; res.masked_rate  *= 100.0; res.failure_error_margin *= 100.0; res.masked_error_margin *= 100.0;
-	    	//printf("Tag_%9d | Injection[%9d] / [%9d] FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %3d,  complete_reconfigurations= %5d | locked_targets= %5d | Masked: %6d, Rate= %.3f +/- %.3f | Failures: %6d, Rate = %.3f +/- %.3f\n", JobDesc->SyncTag,  res.injections, (int) N, Frame.BLOCK, Frame.TOP, Frame.HCLKROW, Frame.MAJOR, Frame.MINOR, InjPoint.word, InjPoint.bit, res.complete_reconfigurations, errframecnt, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin);
-	    	printf("Tag_%9d | Injection[%9d] / [%.0f]  complete_reconfigurations= %5d | locked_targets= %5d | Masked: %6d, Rate= %.3f +/- %.3f | Failures: %6d, Rate = %.3f +/- %.3f\n", JobDesc->SyncTag,  res.injections,  N,  res.complete_reconfigurations, errframecnt, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin);
-	    }
-
-
-	    //Recover to fault-free state
-	    recover_bitstream(InjDesc, JobDesc,  failure);
-
-
-		//check that system has been recovered (slows down the experimentation when Tworkload ~ Trecovery)
-		if(JobDesc->CheckRecovery > 0){
-			if(res.injections % JobDesc->CheckRecovery == 0){
-				//Execute Workload and check failure mode
-			    failure = (*InjDesc->WorkloadRunFunc)(1);
-			    if(failure){
-					//printf("Complete reconfiguration required after Injection[%5d] FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %2d\n", res.injections, Frame.BLOCK, Frame.TOP, Frame.HCLKROW, Frame.MAJOR, Frame.MINOR, InjPoint.word, InjPoint.bit);
-					int Status = ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
-					res.complete_reconfigurations++;
-					if (Status != XST_SUCCESS) { xil_printf("ReloadCompleteBitstream ERROR \n\r");}
-					printf("Complete bitstream reloaded\n");
-			    }
-			}
-		}
-	}
-
-	return(res);
-}
-
-
-
-
-InjectionStatistics RunInExhaustiveMode(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, u32* FarFirst, u32* FarLast, int verbose, int expId){
-	int errframecnt=0;
-	InjectionStatistics res = {.complete_reconfigurations=0, .failure_error_margin=0.0, .failure_rate=0.0, .failures=0, .injections=0, .masked=0, .masked_error_margin=0.0, .masked_rate=0};
-	if(JobDesc->StartIndex > 0){
-		res.injections = (int) JobDesc->StartIndex;
-		res.failures = (int) JobDesc->CurrentFailureCount;
-		res.masked   = (int) JobDesc->CurrentMaskedCount;
-	}
-	printf("Injector RunInExhaustiveMode: %s, BlockType = %d (%s) \n", JobDesc->Essential_bits>0?"Essential bits":"Blind", JobDesc->BlockType, JobDesc->BlockType==0?"CLB":"BRAM");
-	ClockThrottle(0x1);
-	int Status = ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
-
-
-	for(int FrameIndex=0; FrameIndex < InjDesc->FrameDescriptorsCount; FrameIndex++){
-	    //skip pad frames
-	    if(get_bit(InjDesc->ReferenceFrames[FrameIndex].Flags, 1) == 1) continue;
-	    u32 FAR = InjDesc->ReferenceFrames[FrameIndex].FAR;
-	    if(FarFirst != NULL) if(FAR < FarFirst) continue;
-	    if(FarLast != NULL)  if(FAR > FarLast)  break;
-	    FarFields Frame = parseFAR(FAR);
-
-	    //proceed only when logic type matches
-	    if(Frame.BLOCK != JobDesc->BlockType) continue;
-
-	    for(u32 Word=0; Word<FRAME_SIZE; Word++){
-			if(Frame.BLOCK == 0 && Word==50) continue;	//Word 50 in CLB is not accessible for injection
-
-			for(u32 bit=0; bit<32; bit++){
-				//skip non-essential bits (mask == 0)
-				if(JobDesc->Essential_bits>0)
-					if(get_bit(InjDesc->ReferenceFrames[FrameIndex].Mask[Word], bit) == 0) continue;
-				res.injections++;
-				if(res.injections <= JobDesc->StartIndex) continue;
-
-				//if tuple {FrameIndex, Word, bit} satisfies all the conditions - proceed to injection
-				int failure = 0;
-				InjectionCoorditates InjPoint = {.FAR = FAR, .FrameIndex = FrameIndex, .word = Word, .bit = bit};
-				int err = FlipBits(InjDesc, InjPoint, 0, 0, 0);
-
-				FarFields Frame = parseFAR(InjPoint.FAR);
-				if(err > 0){
-					errframecnt++;
-					if(verbose > 0) printf("Error: Injection[%5d] FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %2d\n", res.injections, Frame.BLOCK, Frame.TOP, Frame.HCLKROW, Frame.MAJOR, Frame.MINOR, InjPoint.word, InjPoint.bit);
-					continue;	//not valid injection
-				}
-
-				//Execute Workload and check failure mode
-			    failure = (*InjDesc->WorkloadRunFunc)(1);
-			    if(failure > 0) res.failures++;
-
-				if(failure == 0) res.masked++;
-				if(res.injections % JobDesc->LogTimeout == 0){
-					res.failure_rate = 1.0*res.failures/res.injections;
-					res.masked_rate = 1.0*res.masked/res.injections;
-					printf("Tag_%9d | Injection[%5d] FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %3d,  complete_reconfigurations= %5d | locked_targets= %5d | Masked: %6d, Rate= %.3f +/- %.3f | Failures: %6d, Rate = %.3f +/- %.3f\n", JobDesc->SyncTag, res.injections, Frame.BLOCK, Frame.TOP, Frame.HCLKROW, Frame.MAJOR, Frame.MINOR, Word, bit, res.complete_reconfigurations, errframecnt, res.masked, 100.0*res.masked_rate, 100.0*res.masked_error_margin, res.failures, 100.0*res.failure_rate, 100.0*res.failure_error_margin);
-				}
-
-				//if(ReferenceFrames[FrameIndex].InjResult[expId] != NULL)
-				//	ReferenceFrames[FrameIndex].InjResult[expId]->FailureFlags[Word] = set_bit(ReferenceFrames[FrameIndex].InjResult[expId]->FailureFlags[Word], bit, failure);
-
-			    //Recover to fault-free state
-			    recover_bitstream(InjDesc, JobDesc,  failure);
-
-
-
-				//check that system has been recovered (slows down the experimentation when Tworkload ~ Trecovery)
-				if(JobDesc->CheckRecovery > 0){
-					if(res.injections % JobDesc->CheckRecovery == 0){
-						//Execute Workload and check failure mode
-					    failure = (*InjDesc->WorkloadRunFunc)(1);
-					    if(failure){
-							printf("Complete reconfiguration required after Injection[%5d] FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %2d\n", res.injections, Frame.BLOCK, Frame.TOP, Frame.HCLKROW, Frame.MAJOR, Frame.MINOR, Word, bit);
-							int Status = ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
-							res.complete_reconfigurations++;
-							if (Status != XST_SUCCESS) { xil_printf("ReloadCompleteBitstream ERROR \n\r");}
-							printf("Complete bitstream reloaded\n");
-							break;
-					    }
-					}
-				}
-
-			}
-	    }
-	}
-
-	return(res);
-}
-
-
-
-
-
-
-
-
-
 
 //*******************INJECTOR SETUP FUNCTIONS***********************
 
 //return code: 0 - success, 1 - error
-int InjectorInitialize(InjectorDescriptor * InjDesc, u16 DeviceId, int (*WorkloadRunFunc)()){
+int InjectorInitialize(InjectorDescriptor * InjDesc, u16 DeviceId, int (*WorkloadRunFunc)(), void (*TriggerGSRFunc)()){
 	int Status;
 	//Device Configuration Module
 	InjDesc->ConfigPtr = XDcfg_LookupConfig(DeviceId);
@@ -433,6 +231,7 @@ int InjectorInitialize(InjectorDescriptor * InjDesc, u16 DeviceId, int (*Workloa
 
 	//DUT-specific parameters
 	InjDesc->WorkloadRunFunc = WorkloadRunFunc;
+	InjDesc->TriggerGSRFunc = TriggerGSRFunc;
 
   return(0);
 }
@@ -460,11 +259,13 @@ void ReadJobDesc(JobDescriptor* JobDesc, const u32* Adr, int verbose){
 
 void InitInjectorFromDesignDescriptionFile(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int verbose){
 	u32* ptr_u32 = JobDesc->BitmaskAddr;
-	u32 FrameDescOffset  = 		*(ptr_u32); ptr_u32++;
-	InjDesc->FrameDescriptorsCount = *(ptr_u32); ptr_u32++;
-	u32 RecoveryFramesOffset = 	*(ptr_u32); ptr_u32++;
+	u32 FrameDescOffset  = 				*(ptr_u32); ptr_u32++;
+	InjDesc->FrameDescriptorsCount = 	*(ptr_u32); ptr_u32++;
+	u32 RecoveryFramesOffset = 			*(ptr_u32); ptr_u32++;
 	InjDesc->RecoveryFarCount = 		*(ptr_u32); ptr_u32++;
-
+	u32 checkpointFramesOffset =		*(ptr_u32); ptr_u32++;
+	InjDesc->RegisterFramesNum = 		*(ptr_u32); ptr_u32++;
+	
 	//ReferenceFrames = 		 (FrameDescriptor*) malloc(FrameDescriptorsCount*sizeof(FrameDescriptor));
 	//RecoveryDescriptorList = (u32*) malloc(RecoveryFarCount*sizeof(u32));
 	//FrameDescriptor* ptr_frame_desc = JobDesc.BitmaskAddr + FrameDescOffset;
@@ -496,25 +297,19 @@ void InitInjectorFromDesignDescriptionFile(InjectorDescriptor* InjDesc, JobDescr
 		}
 	}
 
-	InjDesc->RegisterFramesNum = 14;
-	InjDesc->RegisterFramesCaptured[0].FAR =  0x0000099f;
-	InjDesc->RegisterFramesCaptured[1].FAR =  0x00000a1f;
-	InjDesc->RegisterFramesCaptured[2].FAR =  0x00000a9f;
-	InjDesc->RegisterFramesCaptured[3].FAR =  0x00000b9f;
-	InjDesc->RegisterFramesCaptured[4].FAR =  0x00000c1f;
-	InjDesc->RegisterFramesCaptured[5].FAR =  0x00000d1f;
-	InjDesc->RegisterFramesCaptured[6].FAR =  0x00000d9f;
-	InjDesc->RegisterFramesCaptured[7].FAR =  0x00000e1f;
-	InjDesc->RegisterFramesCaptured[8].FAR =  0x00000e9f;
-	InjDesc->RegisterFramesCaptured[9].FAR =  0x00000f1f;
-	InjDesc->RegisterFramesCaptured[10].FAR = 0x00000f9f;
-	InjDesc->RegisterFramesCaptured[11].FAR = 0x0000101f;
-	InjDesc->RegisterFramesCaptured[12].FAR = 0x0000111f;
-	InjDesc->RegisterFramesCaptured[13].FAR = 0x0000119f;
+	ptr_u32 = JobDesc->BitmaskAddr + checkpointFramesOffset;
+	for(int i=0;i<InjDesc->RegisterFramesNum;i++, ptr_u32++){
+		InjDesc->RegisterFramesCaptured[i].FAR = *(ptr_u32);
+	}
 
-
-
-	//for(int i=0;i<RecoveryFarCount;i++) print_frame(&RecoveryDescriptorList[i]);
+	InjDesc->MaskedFramesCount=0;
+	for(int i=0; i<InjDesc->FrameDescriptorsCount; i++ ){
+		if(InjDesc->ReferenceFrames[i].EssentialBitsCount > 0){
+			InjDesc->MaskedFramesIndexes[InjDesc->MaskedFramesCount++] = i;
+		}
+	}
+	printf("MaskedFrames = %5d\n", InjDesc->MaskedFramesCount);
+	//for(int i=0;i<InjDesc->RegisterFramesNum;i++) printf("Checkpoint FAR [%3d] = %08x\n", i, InjDesc->RegisterFramesCaptured[i].FAR);
 }
 
 
@@ -726,34 +521,31 @@ void listdir(const TCHAR* path){
 
 
 
-//CellType = 0 - non-changeable CMEM (LUTs, switchboxes, etc), 1 - FF, 2 - BRAM
+
 //When mask == 0 : flips target.bit of target.word in Frame target.FAR
 //When mask != 0 : applies bitwise XOR to target.word in Frame target.FAR
 //returns: 0 - success, 1 - memory modification not applied (error)
-int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask, int CellType, int verbose){
+int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask, int verbose){
 	int Status;
 	FarFields FC = parseFAR(target.FAR);
-
 	//Readback-capture and write back Frames with FFs
-	int capture_restore = CellType>0 ? 1 : 0;
-
-
+	int capture_restore = target.CellType==2 ? 0 : 1;
 
 	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]), capture_restore);
 	memcpy(&(InjDesc->WriteFrameData[0]), &(InjDesc->ReadFrameData[0]), FRAME_SIZE*sizeof(u32));
-
-
+	//Flip the masked bit(s)
 	if(mask != 0){
 		InjDesc->WriteFrameData[target.word] = (InjDesc->WriteFrameData[target.word]) ^ mask;
 	}
 	else{
 		InjDesc->WriteFrameData[target.word] = (InjDesc->WriteFrameData[target.word]) ^ (1 << target.bit);
 	}
-
-
+	//Write back
 	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]), capture_restore);
+	if(capture_restore){ InjDesc->TriggerGSRFunc(); };
 
-	saveInjectionTarget(InjDesc, target.FrameIndex);
+
+	saveInjectionTarget(InjDesc, target);
 
 
 	//read again to check that faulty value has been written
@@ -766,7 +558,7 @@ int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask,
 		}
 	}
 	if(match == 0){
-		if(verbose>0) for(u32 k=0;k<FRAME_SIZE;k++) printf("FlipBits Error: Written[%3d] = %08x | Read[%3d] = %08x\n", k, InjDesc->WriteFrameData[k], k, InjDesc->ReadFrameData[k]);
+		if(verbose>0) printf("BitFlip Error: Locked target at FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %2d\n", FC.BLOCK, FC.TOP, FC.HCLKROW, FC.MAJOR, FC.MINOR, target.word, target.bit);
 		return(1);
 	}
 
@@ -776,43 +568,41 @@ int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask,
 
 
 
-void saveInjectionTarget(InjectorDescriptor* InjDesc, u32 TargetedFrameIndex){
-	for(int i=0;i<InjDesc->LastTargetedFramesCount;i++){
-		if(InjDesc->LastTargetedFrames[i]==TargetedFrameIndex) return; //this frame already present in recovery frame list
+void saveInjectionTarget(InjectorDescriptor* InjDesc, InjectionCoorditates target){
+	for(int i=0;i<InjDesc->LastTargetsCount;i++){
+		//check if target already saved
+		if(InjDesc->LastTargets[i].FAR == target.FAR && InjDesc->LastTargets[i].word == target.word && InjDesc->LastTargets[i].bit == target.bit) return;
 	}
-	InjDesc->LastTargetedFrames[InjDesc->LastTargetedFramesCount] = TargetedFrameIndex;
-	if(InjDesc->LastTargetedFramesCount < sizeof(InjDesc->LastTargetedFrames)/sizeof(u32)) InjDesc->LastTargetedFramesCount++;
+	InjDesc->LastTargets[InjDesc->LastTargetsCount] = target;
+	if(InjDesc->LastTargetsCount < sizeof(InjDesc->LastTargets)/sizeof(InjectionCoorditates)) InjDesc->LastTargetsCount++;
 }
 
 
-int recover_bitstream(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int RecoverFrameList){
+int recover_bitstream(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int RecoverFrameList, int CompleteReconfig){
     int stuck;
-	for(int i=0;i<InjDesc->LastTargetedFramesCount;i++){
-		int FrameIndex = InjDesc->LastTargetedFrames[i];
-		FrameDescriptor* desc = &InjDesc->ReferenceFrames[FrameIndex];
-		stuck = WriteVerifyFrame(InjDesc, desc->FAR, &(desc->Data[0]));
-        if(stuck) {
-        	//printf("recover_bitstream: stuck\n");
-        	break;
-        }
-    	FarFields FC = parseFAR(desc->FAR);
-    	//recover ALL CLB minor frames in this Major Frame: 30 to 35
-    	if(FC.BLOCK==0 && FC.MINOR >= 30 ){
-    		int startIndex = FrameIndex - (FC.MINOR - 30);
-    		writeFrames(InjDesc, startIndex, 6, &(InjDesc->ReferenceFrames[0]));
-    	}
-	};
-	InjDesc->LastTargetedFramesCount=0;
-
-	if(RecoverFrameList) writeFrames(InjDesc, 0, InjDesc->RecoveryFarCount, &(InjDesc->RecoveryDescriptorList[0]));
-	/*
-	if(!stuck){
+    if(CompleteReconfig==0){
+		for(int i=0;i<InjDesc->LastTargetsCount;i++){
+			int FrameIndex = InjDesc->LastTargets[i].FrameIndex;
+			FrameDescriptor* desc = &InjDesc->ReferenceFrames[FrameIndex];
+			stuck = WriteVerifyFrame(InjDesc, desc->FAR, &(desc->Data[0]));
+			if(stuck) {
+				break;
+			}
+			FarFields FC = parseFAR(desc->FAR);
+			//recover ALL CLB minor frames in this Major Frame: 30 to 35
+			if(FC.BLOCK==0 && FC.MINOR >= 30 ){
+				int startIndex = FrameIndex - (FC.MINOR - 30);
+				writeFrames(InjDesc, startIndex, 6, &(InjDesc->ReferenceFrames[0]));
+			}
+		};
+		InjDesc->LastTargetsCount=0;
 		if(RecoverFrameList) writeFrames(InjDesc, 0, InjDesc->RecoveryFarCount, &(InjDesc->RecoveryDescriptorList[0]));
-	}
+    }
 	else{
+		printf("recover_bitstream: complete reconfig\n");
 		ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
+		InjDesc->LastTargetsCount=0;
 	}
-	*/
     return(stuck);
 }
 
@@ -1413,7 +1203,7 @@ u32 get_bit(u32 data, u32 bit_index){
 
 
 void print_job_desc(JobDescriptor* JobDesc){
-	printf("Job Descriptor: \n\tBitstreamId=%08d \n\tBitstreamAddr=%08x \n\tBitstreamSize=%08x \n\tBitmaskAddr=  %08x \n\tBitmaskSize=  %08x \n\tFaultListAdr=  %08x \n\tFaultListItems=  %08x \n\tUpdateBitstream=%d \n\tmode=%d \n\tBlockType=%d \n\tEssential_bits=%d \n\tCheckRecovery=%d \n\tLogTimeout=%d \n\tStartIndex=%d \n\tExperimentsCompleted=%d \n\tCurrentFailureCount=%d \n\tCurrentMaskedCount=%d \n\tCurrentLatentCount=%d \n\tCurrentSDCCount=%d \n\tSampleSizeGoal=%d \n\tErrorMarginGoal=%.3f \n\tFaultMultiplicity=%d \n\tPopulationSize=%.0f \n\tSamplingWithoutRepetition = %d \n\n", JobDesc->BitstreamId, JobDesc->BitstreamAddr, JobDesc->BitstreamSize, JobDesc->BitmaskAddr, JobDesc->BitmaskSize, JobDesc->FaultListAdr, JobDesc->FaultListItems, JobDesc->UpdateBitstream, JobDesc->mode, JobDesc->BlockType, JobDesc->Essential_bits, JobDesc->CheckRecovery, JobDesc->LogTimeout, JobDesc->StartIndex, JobDesc->ExperimentsCompleted, JobDesc->CurrentFailureCount, JobDesc->CurrentMaskedCount, JobDesc->CurrentLatentCount, JobDesc->CurrentSDCCount, JobDesc->SampleSizeGoal, JobDesc->ErrorMarginGoal, JobDesc->FaultMultiplicity, JobDesc->PopulationSize, JobDesc->SamplingWithoutRepetition);
+	printf("Job Descriptor: \n\tBitstreamId=%08d \n\tBitstreamAddr=%08x \n\tBitstreamSize=%08x \n\tBitmaskAddr=  %08x \n\tBitmaskSize=  %08x \n\tFaultListAdr=  %08x \n\tFaultListItems=  %08x \n\tUpdateBitstream=%d \n\tmode=%d \n\tBlockType=%d \n\tCellType=%d \n\tEssential_bits=%d \n\tCheckRecovery=%d \n\tLogTimeout=%d \n\tStartIndex=%d \n\tExperimentsCompleted=%d \n\tCurrentFailureCount=%d \n\tCurrentMaskedCount=%d \n\tCurrentLatentCount=%d \n\tCurrentSDCCount=%d \n\tSampleSizeGoal=%d \n\tErrorMarginGoal=%.3f \n\tFaultMultiplicity=%d \n\tPopulationSize=%.0f \n\tSamplingWithoutRepetition = %d \n\n", JobDesc->BitstreamId, JobDesc->BitstreamAddr, JobDesc->BitstreamSize, JobDesc->BitmaskAddr, JobDesc->BitmaskSize, JobDesc->FaultListAdr, JobDesc->FaultListItems, JobDesc->UpdateBitstream, JobDesc->mode, JobDesc->BlockType, JobDesc->CellType, JobDesc->Essential_bits, JobDesc->CheckRecovery, JobDesc->LogTimeout, JobDesc->StartIndex, JobDesc->ExperimentsCompleted, JobDesc->CurrentFailureCount, JobDesc->CurrentMaskedCount, JobDesc->CurrentLatentCount, JobDesc->CurrentSDCCount, JobDesc->SampleSizeGoal, JobDesc->ErrorMarginGoal, JobDesc->FaultMultiplicity, JobDesc->PopulationSize, JobDesc->SamplingWithoutRepetition);
 }
 
 
@@ -1515,24 +1305,20 @@ void SleepNS(unsigned int nanoseconds)
 
 
 void ResetPL(u32 duration_us){
-	Xil_DCacheFlush();
-	Xil_DCacheInvalidate();
-
+	//Xil_DCacheFlush();
+	//Xil_DCacheInvalidate();
 	Xil_Out32(SLCR_UNLOCK_ADDR, SLCR_UNLOCK_KEY_VALUE);
     Xil_Out32(SLCR_LVL_SHFTR_EN_ADDR, SLCR_LVL_SHFTR_EN_VALUE);
-
     Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0x0);
-    Xil_DCacheFlush();
-
+    //Xil_DCacheFlush();
     Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0xf);	//rstN = 0 - default
     Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 0);
     Xil_Out32(SLCR_CLK0_THROTTLE_CNT_ADR, duration_us);
     Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 1);
-    Xil_DCacheFlush();
+    //Xil_DCacheFlush();
     while((Xil_In32(SLCR_CLK0_THROTTLE_STA_ADR) & 0xFFFF));
     Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0x0);
-    Xil_DCacheFlush();
-
+    //Xil_DCacheFlush();
     Xil_Out32(SLCR_LOCK_ADDR, SLCR_LOCK_KEY_VALUE);
 }
 
@@ -1558,8 +1344,7 @@ void RunClockCount(u16 clknum){
     Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 0);
     Xil_Out32(SLCR_CLK0_THROTTLE_CNT_ADR, clknum);
     Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 1);
-    //while((Xil_In32(SLCR_CLK0_THROTTLE_STA_ADR) & 0xFFFF) <= 1);
-    Xil_DCacheFlush();
+    //Xil_DCacheFlush();
     Xil_Out32(SLCR_LOCK_ADDR, SLCR_LOCK_KEY_VALUE);
 }
 

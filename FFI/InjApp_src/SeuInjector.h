@@ -164,6 +164,7 @@ typedef struct{
 	u32 UpdateBitstream;
 	u32 mode;				//0 handshake and exit, 1- cleanup (SD card cache) and exit, 2 - SEU injection sampling, 3 - SEU  injection exhaustive, 4 - profiling
 	u32 BlockType;			//0 - CLB, 1 - BRAM, >=2 Any
+	u32 CellType;			//0 - ANY, 1-FF, 2-LUT, 3-BRAM, 4-Type0
 	u32 Essential_bits;		//0 - target all bits, 1 - only masked bits
 	u32 CheckRecovery;		//> 0 - rerun workload to check is system continues to work after CheckRecovery experiments
 	u32 LogTimeout;			//Intermediate result will be reported to console each time LogTimeout experiments are completed
@@ -179,6 +180,9 @@ typedef struct{
 	u32 FilterFrames;
 	float PopulationSize;
 	u32 SamplingWithoutRepetition;
+	u32 DetailedLog;
+	u32 DetectLatentErrors;
+	int InjectionTime;	// = 0 - random,  > 0 - precise clock cycle (inject before this clock cycle)
 } JobDescriptor;
 
 
@@ -187,6 +191,8 @@ typedef struct{
 	u32 word;
 	u32 bit;
 	int FrameIndex;
+	u32 CellType;	//0-Unknown (any), 1 - FF, 2 - LUT, 3 - BRAM (Type-1)
+	u32 InjTime;
 } InjectionCoorditates;
 
 
@@ -218,8 +224,10 @@ typedef struct{
     u32 RegisterFramesNum;
 
 
-    u32 LastTargetedFrames[MAX_FRAMES];		//List of frames (indexes in ReferenceFrames list) targeted since last recovery
-    u32 LastTargetedFramesCount;
+    u32 MaskedFramesIndexes[MAX_FRAMES];
+    u32 MaskedFramesCount;
+    InjectionCoorditates LastTargets[MAX_FRAMES];		//List of frames (indexes in ReferenceFrames list) targeted since last recovery
+    u32 LastTargetsCount;
     u32 EssentialBitsPerBlockType[8];
 
     u32 FarItems[MAX_FRAMES] ;      		//valid FAR indexes obtained at profiling (FAR auto-increment mode)
@@ -228,10 +236,11 @@ typedef struct{
     int BramMaskedCount;
 
     int cache_enabled;
-    int (*WorkloadRunFunc)(int);
-
-
+    int  (*WorkloadRunFunc)(int);
+    void (*TriggerGSRFunc)();
 } InjectorDescriptor;
+
+
 
 void PrintInjectorInfo(InjectorDescriptor* InjDesc);
 
@@ -254,14 +263,14 @@ typedef struct{
 
 
 
-int InjectorInitialize(InjectorDescriptor * InjDesc, u16 DeviceId, int (*WorkloadRunFunc)());
+int InjectorInitialize(InjectorDescriptor * InjDesc, u16 DeviceId, int (*WorkloadRunFunc)(), void (*TriggerGSRFunc)());
 void SetReferenceTrace(InjectorDescriptor * InjDesc, u32* RefVect);
 InjectionStatistics InjectorRun(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc,  int (*CustomInjectionFlow)(InjectorDescriptor* , JobDescriptor* ));
 InjectionStatistics RunInSamplingMode(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc,  int (*CustomInjectionFlow)(InjectorDescriptor* , JobDescriptor* ), int verbose);
 InjectionStatistics RunInExhaustiveMode(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, u32* FarFirst, u32* FarLast, int verbose, int expId);
 InjectionCoorditates NextRandomInjectionTarget(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc);
 
-void saveInjectionTarget(InjectorDescriptor* InjDesc, u32 TargetedFrameIndex);
+void saveInjectionTarget(InjectorDescriptor* InjDesc, InjectionCoorditates target);
 int recoverInjectedFrames(InjectorDescriptor* InjDesc);
 
 
@@ -279,14 +288,14 @@ int IsExcluded(u32 item);
 void RetrieveInjectableFrames();
 void MaskFrameData(InjectorDescriptor* InjDesc, FarFields FC, u32 *FrameData);
 int IsMaskableWordIndex(InjectorDescriptor* InjDesc, FarFields FC, u32 index);
-int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask, int CellType, int verbose);
+int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask, int verbose);
 int WriteVerifyFrame(InjectorDescriptor* InjDesc, u32 FAR, u32* WriteData);
 void print_frame(FrameDescriptor* Frame);
 
 int ReloadCompleteBitstream(XDcfg *Instance, u32 StartAddress, u32 WordLength);
 void ReRunWorkload();
 void CaptureTraceVector(u32* ResVector);
-int recover_bitstream(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int RecoverFrameList);
+int recover_bitstream(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int RecoverFrameList, int CompleteReconfig);
 void InitInjectorFromDesignDescriptionFile(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int verbose);
 void InitInjectionDescriptors();
 void FilterFrameDescriptors(InjectorDescriptor* InjDesc, FrameDescriptor* FrameDesc, int DescCount, int BuildMask, int log_verbosity);
@@ -319,7 +328,6 @@ void UpdateLutINIT(InjectorDescriptor* InjDesc, long Top, long HClkRow, long Col
 void SaveCheckpoint(InjectorDescriptor* InjDesc);
 void restoreCheckpoint(InjectorDescriptor* InjDesc);
 int CountCheckpointMismatches(InjectorDescriptor* InjDesc);
-
 
 
 #endif /* SRC_SEUINJECTOR_H_ */
