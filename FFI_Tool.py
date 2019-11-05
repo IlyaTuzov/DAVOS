@@ -81,15 +81,16 @@ if __name__ == "__main__":
             jdesc.StartIndex = 0
             jdesc.Masked = 0
             jdesc.Failures = 0
-            jdesc.sample_size_goal = 10000 if not Injector.Profiling else len(Injector.ProfilingResult)
-            jdesc.error_margin_goal = float(0) 
+            jdesc.sample_size_goal = 0 if not Injector.Profiling else len(Injector.ProfilingResult)
+            jdesc.error_margin_goal = float(0.5) 
             jdesc.FaultMultiplicity = 1
             jdesc.SamplingWithouRepetition = 0  #disable tracking of tested targets
-            jdesc.Mode = 101
+            jdesc.Mode = 102            #101 - Sampling, 102 - Exhaustive, 201 - Fault List
             jdesc.DetailedLog = 1
-            jdesc.PopulationSize = float(davosconf.SBFIConfig.genconf.std_workload_time)*Injector.EssentialBitsPerBlockType[jdesc.Blocktype]
+            jdesc.PopulationSize = Injector.EssentialBitsPerBlockType[jdesc.Blocktype]
+            jdesc.WorkloadDuration = int(davosconf.SBFIConfig.genconf.std_workload_time)
             jdesc.DetectLatentErrors = 1
-            jdesc.InjectionTime = 10;
+            jdesc.InjectionTime = 0;
 
             res = Injector.run(OperatingModes.SampleUntilErrorMargin, jdesc, False)
             print("Result: SampleSize: {0:9d}, Failures: {1:9d}, FailureRate: {2:3.5f} +/- {3:3.5f} ".format(res.ExperimentsCompleted, res.Failures, res.failure_rate, res.failure_error))    

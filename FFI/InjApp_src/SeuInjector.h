@@ -179,6 +179,7 @@ typedef struct{
 	u32 FaultMultiplicity;
 	u32 FilterFrames;
 	float PopulationSize;
+	u32 WorkloadDuration;
 	u32 SamplingWithoutRepetition;
 	u32 DetailedLog;
 	u32 DetectLatentErrors;
@@ -228,6 +229,7 @@ typedef struct{
     u32 MaskedFramesCount;
     InjectionCoorditates LastTargets[MAX_FRAMES];		//List of frames (indexes in ReferenceFrames list) targeted since last recovery
     u32 LastTargetsCount;
+    InjectionCoorditates LastInjectionCoordinates;
     u32 EssentialBitsPerBlockType[8];
 
     u32 FarItems[MAX_FRAMES] ;      		//valid FAR indexes obtained at profiling (FAR auto-increment mode)
@@ -269,6 +271,8 @@ InjectionStatistics InjectorRun(InjectorDescriptor* InjDesc, JobDescriptor* JobD
 InjectionStatistics RunInSamplingMode(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc,  int (*CustomInjectionFlow)(InjectorDescriptor* , JobDescriptor* ), int verbose);
 InjectionStatistics RunInExhaustiveMode(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, u32* FarFirst, u32* FarLast, int verbose, int expId);
 InjectionCoorditates NextRandomInjectionTarget(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc);
+InjectionCoorditates NextConsecutiveInjectionTarget(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, InjectionCoorditates prev);
+
 
 void saveInjectionTarget(InjectorDescriptor* InjDesc, InjectionCoorditates target);
 int recoverInjectedFrames(InjectorDescriptor* InjDesc);
@@ -328,6 +332,19 @@ void UpdateLutINIT(InjectorDescriptor* InjDesc, long Top, long HClkRow, long Col
 void SaveCheckpoint(InjectorDescriptor* InjDesc);
 void restoreCheckpoint(InjectorDescriptor* InjDesc);
 int CountCheckpointMismatches(InjectorDescriptor* InjDesc);
+
+
+
+void RunInjectionFlow(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int WorkloadDuration);
+InjectionStatistics RunSampling(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int verbose);
+InjectionStatistics RunExhaustive(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int verbose);
+InjectionStatistics RunFaultList(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int verbose);
+
+//Define these function prototypes in InjectorApp template
+int RunDutTest(int StopAtFirstMismatch);	//Run Workload and check the failure mode
+int InjectionFlowDutEnvelope();
+void TriggerGSR();
+
 
 
 #endif /* SRC_SEUINJECTOR_H_ */

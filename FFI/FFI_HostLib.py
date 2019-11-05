@@ -63,6 +63,7 @@ class JobDescriptor:
         self.FaultMultiplicity = 1
         self.FilterFrames = 0
         self.PopulationSize = 0.0
+        self.WorkloadDuration = 0
         self.SamplingWithouRepetition = 0
         self.DetailedLog = 1
         self.DetectLatentErrors = 1
@@ -109,6 +110,7 @@ class JobDescriptor:
             f.write(struct.pack(specificator, self.FaultMultiplicity))
             f.write(struct.pack(specificator, self.FilterFrames))
             f.write(struct.pack('<f', self.PopulationSize))
+            f.write(struct.pack(specificator, self.WorkloadDuration))
             f.write(struct.pack(specificator, self.SamplingWithouRepetition))
             f.write(struct.pack(specificator, self.DetailedLog))
             f.write(struct.pack(specificator, self.DetectLatentErrors))

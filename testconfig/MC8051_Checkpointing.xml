@@ -366,13 +366,13 @@
 		target_logic = FF/LUT/BRAM/TYPE0/ALL	
 	-->
 		<FFI
-			target_logic = "TYPE0"
+			target_logic = "LUT"
 			post_injection_recovery_nodes = "['i_mc8051_rom']"			
 			hdf_path = "./MC8051.sdk/design_1_wrapper_hw_platform_0/system.hdf"
 			init_tcl_path = "./MC8051.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"
 			injectorapp_path = "./MC8051.sdk/InjectorApp/Debug/InjectorApp.elf"
 			memory_buffer_address = "0x3E000000"
-			custom_lut_mask = 'off' 
+			custom_lut_mask = 'on' 
 			profiling = 'off'
 			platformconf = "[{'TargetId':'2', 'PortID':'COM3'}]"
 		>
