@@ -296,25 +296,30 @@ InjectionStatistics RunSampling(InjectorDescriptor* InjDesc, JobDescriptor* JobD
 InjectionStatistics RunExhaustive(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int verbose){
 	int errframecnt=0;
 	float N = JobDesc->PopulationSize;
-	InjectionCoorditates start = {.FAR= 0, .FrameIndex=0, .word=0, .bit=0 };
-	InjDesc->LastInjectionCoordinates=start;
+	InjectionCoorditates coord = {.FAR= 0, .FrameIndex=0, .word=0, .bit=0 };
+	InjDesc->LastInjectionCoordinates=coord;
 
 	InjectionStatistics res = {.complete_reconfigurations=0, .failure_error_margin=0.0, .failure_rate=0.0, .failures=0, .injections=0, .masked=0, .masked_error_margin=0.0, .masked_rate=0.0, .latent=0, .latent_rate=0.0, .latent_error_margin=0.0, .population =  JobDesc->PopulationSize };
 	printf("Injector RunInExhaustiveMode: %s, BlockType = %d (%s), PopulationSize = %.0f\n", JobDesc->Essential_bits>0?"Essential bits":"Blind", JobDesc->BlockType,   JobDesc->BlockType==0?"CLB":"BRAM", N);
 
 	if(JobDesc->StartIndex > 0){
+		printf("Recovering Injector State\n");
 		res.injections = (int) JobDesc->StartIndex;
 		res.failures = (int) JobDesc->CurrentFailureCount;
 		res.masked   = (int) JobDesc->CurrentMaskedCount;
         //skip all previosly tested targets (recover the state of random target generator)
-        for(int i=0;i<JobDesc->StartIndex;i++) NextConsecutiveInjectionTarget(InjDesc, JobDesc, InjDesc->LastInjectionCoordinates);
+        for(int i=0;i<JobDesc->StartIndex;i++) {
+        	coord = NextConsecutiveInjectionTarget(InjDesc, JobDesc, InjDesc->LastInjectionCoordinates);
+        	InjDesc->LastInjectionCoordinates = coord;
+        }
+
 	}
 
 
 	ClockThrottle(0x1);
 	int Status = ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
 
-	for(int run_id=0;run_id<N;run_id++){
+	for(int run_id=JobDesc->StartIndex;run_id<N;run_id++){
 
 		int	failure   = InjectionFlowDutEnvelope();
 		int cp_mismatches = 0;
@@ -841,6 +846,7 @@ int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask,
 	else{
 		InjDesc->WriteFrameData[target.word] = (InjDesc->WriteFrameData[target.word]) ^ (1 << target.bit);
 	}
+
 	//Write back
 	Status = writeFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->WriteFrameData[0]), capture_restore);
 	if(capture_restore){ TriggerGSR(); };
