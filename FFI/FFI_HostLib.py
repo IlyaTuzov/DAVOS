@@ -263,6 +263,7 @@ class InjectorHostManager:
         self.LutMapFile = os.path.join(self.targetDir, 'LutMapList.csv')
         self.ProfilingResult = None
         self.target_logic = 'type0'
+        self.DutScope = ''
 
     def configure(self, targetid, portname, VivadoProjectFile = '', ImplementationRun=''):
         self.targetid = targetid                        #Target CPU id on Xilinx HW server
@@ -455,7 +456,7 @@ class InjectorHostManager:
         if self.CustomLutMask:
             LutDescTab = Table('LutMap'); LutDescTab.build_from_csv(os.path.join(self.targetDir, 'LUTMAP.csv'))
             print('Mapping LUTs to bitstream')
-            LutMapList = MapLutToBitstream(LutDescTab, BIN_FrameList)
+            LutMapList = MapLutToBitstream(LutDescTab, BIN_FrameList, self.DutScope)
             with open(self.LutMapFile,'w') as f:
                 f.write(LutListToTable(LutMapList).to_csv())
             if self.Profiling and self.DAVOS_Config != None:

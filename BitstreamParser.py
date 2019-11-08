@@ -229,7 +229,7 @@ def ExtractLUT_INIT(SwBox_top, SwBox_row, SwBox_major, SwBox_minor, LUTCOORD, BI
             
                 
 
-def SetCustomLutMask(SwBox_top, SwBox_row, SwBox_major, SwBox_minor, LUTCOORD, BIN_FrameList, lutmap):
+def SetCustomLutMask(SwBox_top, SwBox_row, SwBox_major, SwBox_minor, LUTCOORD, BIN_FrameList, lutmap, skip_mask=False):
     for i in range(len(BIN_FrameList)):
         f = BIN_FrameList[i]
         if f.BlockType == 0 and f.Top == SwBox_top and f.Row == SwBox_row and f.Major == SwBox_major:
@@ -251,7 +251,8 @@ def SetCustomLutMask(SwBox_top, SwBox_row, SwBox_major, SwBox_minor, LUTCOORD, B
                     #essential bits mask
                     quarter = i/16
                     bit_index = i%16 if LUTCOORD in[CLB_LUTS.OA, CLB_LUTS.EA, CLB_LUTS.OC, CLB_LUTS.EC] else (i%16) + 16 
-                    F[3-quarter].custom_mask[offset] |= (0x1 << bit_index)
+                    if not skip_mask: 
+                        F[3-quarter].custom_mask[offset] |= (0x1 << bit_index)
                     #global mapping
                     x.append((F[3-quarter].GetFar(), offset, bit_index))
                 globalmap.append(x)
@@ -349,7 +350,7 @@ def TableToLutList(LutDescTab):
 
         
 
-def MapLutToBitstream(LutDescTab, BIN_FrameList):
+def MapLutToBitstream(LutDescTab, BIN_FrameList, DutScope=''):
     LutCells = VivadoParseTableToLutList(LutDescTab)
     for i in range(len(LutCells)):
         if LutCells[i]['combcell']==None:
@@ -410,7 +411,9 @@ def MapLutToBitstream(LutDescTab, BIN_FrameList):
         node['bitsequence'] = ','.join(map(str, res))
 
         #2. GET LUT BEL content from bitstream
-        BITSTREAM, node['globalmap'] = SetCustomLutMask(node['top'], node['row'], node['major'], node['minor'], node['lutindex'], BIN_FrameList, res)
+        skip_mask = False if DutScope=='' else (not node['name'].startswith(DutScope))
+        if not skip_mask: print('Selected LUT cell: scope {} : {}'.format(DutScope, node['name'].replace(DutScope, '')))
+        BITSTREAM, node['globalmap'] = SetCustomLutMask(node['top'], node['row'], node['major'], node['minor'], node['lutindex'], BIN_FrameList, res, skip_mask)
         BIT_INIT = 0x0000000000000000
         w = 2**len(node['connections'])
         for bit in range(w): 

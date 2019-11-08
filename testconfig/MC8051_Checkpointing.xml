@@ -375,6 +375,7 @@
 			custom_lut_mask = 'on' 
 			profiling = 'off'
 			platformconf = "[{'TargetId':'2', 'PortID':'COM3'}]"
+			dut_scope = 'design_1_i/mc8051_top_0/U0/i_mc8051_core/i_mc8051_control'
 		>
 		
 		

@@ -835,6 +835,7 @@ class FFIConfiguration:
         self.custom_lut_mask = False
         self.profiling = False
         self.platformconf = []
+        self.dut_scope=''
         if xnode != None:
             self.build_from_xml(xnode)
 
@@ -849,6 +850,7 @@ class FFIConfiguration:
         self.memory_buffer_address = int(xnode.get('memory_buffer_address', '0x3E000000'), 16)
         self.custom_lut_mask = True if xnode.get('custom_lut_mask', '') == 'on' else False
         self.profiling = True if xnode.get('profiling', '') == 'on' else False
+        self.dut_scope = xnode.get('dut_scope','')
         cp = xnode.get('platformconf','')
         if cp != '': self.platformconf = ast.literal_eval(cp)
 

@@ -44,6 +44,8 @@ if __name__ == "__main__":
         Injector.Profiling = davosconf.FFIConfig.profiling
         Injector.DAVOS_Config = davosconf
         Injector.target_logic = davosconf.FFIConfig.target_logic.lower()
+        Injector.DutScope = davosconf.FFIConfig.dut_scope
+
 
         #Select Zynq device
         devconfig = davosconf.FFIConfig.platformconf
@@ -72,7 +74,7 @@ if __name__ == "__main__":
         if check:
             #raw_input("Preconditions fixed, press any key to run the injector >")
             jdesc = JobDescriptor(1)
-            jdesc.UpdateBitstream = 1
+            jdesc.UpdateBitstream = 0
             jdesc.Celltype = 1 if davosconf.FFIConfig.target_logic.lower()=='ff' else 2 if davosconf.FFIConfig.target_logic.lower()=='lut' else 3 if davosconf.FFIConfig.target_logic.lower()=='bram' else 4 if davosconf.FFIConfig.target_logic.lower()=='type0' else 0
             jdesc.Blocktype = 0 if davosconf.FFIConfig.target_logic.lower() in ['lut', 'ff', 'type0'] else 1 if davosconf.FFIConfig.target_logic.lower() in ['bram'] else 2
             jdesc.Essential_bits = 1
