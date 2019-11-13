@@ -826,6 +826,8 @@ class DecisionSupportConfiguration:
 
 class FFIConfiguration:
     def __init__(self, xnode):
+        self.injector_phase = False
+        self.reportbuilder_phase = False
         self.target_logic = ""
         self.post_injection_recovery_nodes = []
         self.hdf_path = ""
@@ -841,6 +843,8 @@ class FFIConfiguration:
 
 
     def build_from_xml(self, xnode):
+        self.injector_phase = True if xnode.get('injector_phase', '') == 'on' else False
+        self.reportbuilder_phase = True if xnode.get('reportbuilder_phase', '') == 'on' else False
         self.target_logic = xnode.get('target_logic', '')
         cp = xnode.get('post_injection_recovery_nodes','')
         if cp != '': self.post_injection_recovery_nodes = ast.literal_eval(cp)

@@ -366,6 +366,9 @@
 		target_logic = FF/LUT/BRAM/TYPE0/ALL	
 	-->
 		<FFI
+            injector_phase = "off"
+            reportbuilder_phase = "on" 
+			
 			target_logic = "LUT"
 			post_injection_recovery_nodes = "['i_mc8051_rom']"			
 			hdf_path = "./MC8051.sdk/design_1_wrapper_hw_platform_0/system.hdf"

@@ -23,7 +23,7 @@ from SBFI.SBFI_Profiler import *
 from SBFI.SBFI_FaultloadGenerator import *
 from SBFI.SBFI_Injector import *
 from SBFI.SBFI_Analyzer import *
-from SBFI.SBFI_reportbuilder import *
+from Reportbuilder import *
 
 def cleanup(config, toolconfig):
     timestamp = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d_%H-%M-%S')

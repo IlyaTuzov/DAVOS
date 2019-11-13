@@ -887,6 +887,7 @@ void saveInjectionTarget(InjectorDescriptor* InjDesc, InjectionCoorditates targe
 
 int recover_bitstream(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int RecoverFrameList, int CompleteReconfig){
     int stuck;
+	ClockThrottle(0x1);
     if(CompleteReconfig==0){
 		for(int i=0;i<InjDesc->LastTargetsCount;i++){
 			int FrameIndex = InjDesc->LastTargets[i].FrameIndex;

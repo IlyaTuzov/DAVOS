@@ -1,6 +1,25 @@
-﻿
+﻿import os
+import sys
+from serial import Serial
+import subprocess
+import serial.tools.list_ports
+import re
+import shutil
+import glob
+import struct
+import datetime
+import random
+import time
+from Davos_Generic import Table
+from BitstreamParser import *
+from Datamanager import *
+from FFI.FFI_HostLib import *
+from Reportbuilder import *
 
-def AggregateInjectionResults(LutMapList, EmulResFile, SimResFile=''):
+injlog_item_ptn = re.compile('>>.*?([0-9]+).*?([0-9]+).*?([0-9]+).*?([0-9]+).*?([0-9\.]+).*?:([a-zA-Z]+)$')
+
+
+def build_lut_coord_dict(LutMapList, SimResFile=''):
     simresdict={}
     if SimResFile != '':
         print('Processing simulation results: {0}'.format(SimResFile))
@@ -10,12 +29,8 @@ def AggregateInjectionResults(LutMapList, EmulResFile, SimResFile=''):
         for i in range(SimRes.rownum()):
             node = SimRes.get(i, node_ind)
             case = int(re.findall('[0-9]+', SimRes.get(i, case_ind))[0])
-            injres = 1 if SimRes.get(i, res_ind).lower() == 'c' else 0 if SimRes.get(i, res_ind).lower() == 'm' else -1
-            simresdict[(node, case)] = injres
+            simresdict[(node, case)] = SimRes.get(i, res_ind).upper()
 
-    item_ptn = re.compile('>>.*?\|\|.*?([0-9]+).*?([0-9]+).*?([0-9]+).*?([0-9]+).*?([0-9\.]+).*?([0-9]+)$')
-    with open(EmulResFile, 'rU') as f:
-        content = f.readlines()
     coord_dict = {}
     for lut in LutMapList:
         if 'Multiplicity' not in lut: lut['Multiplicity'] = len(lut['globalmap'][0])
@@ -27,13 +42,47 @@ def AggregateInjectionResults(LutMapList, EmulResFile, SimResFile=''):
                 #several logic luts can use the same memory cell (LUT6_2 bell = LUT6 cell + LUT5 cell )
                 if not lut['globalmap'][i][j] in coord_dict: coord_dict[lut['globalmap'][i][j]] = []
                 coord_dict[lut['globalmap'][i][j]].append((lut, i, j))
+    return(coord_dict)
+
+
+def build_regmem_coord_dict(LLfname, Beldescfname):
+    ff_coord_dict, ram_coord_dict = {}, {}
+
+    ramblocation_dict = {}
+    T = Table('Bels')
+    T.build_from_csv(Beldescfname)
+    for i in T.query({'BellType':'RAMB'}):
+        ramblocation_dict[i['CellLocation']] = i['Node']
+
+    with open(LLfname, 'r') as f:
+        for line in f:
+            matchDesc , t = re.search(ram_search_ptn,line), 1
+            if not matchDesc: 
+                matchDesc, t = re.search(ff_search_ptn,line), 2
+            if matchDesc:
+                FAR = int(matchDesc.group(1), 16)
+                offset = int(matchDesc.group(2))
+                block = matchDesc.group(3)
+                word, bit =offset/32, offset%32
+                if t==1:
+                    ram_coord_dict[(FAR, word, bit)] = {'node': ramblocation_dict[matchDesc.group(3)], 'case': '{}/{}'.format(matchDesc.group(4), matchDesc.group(5))}
+                elif t==2:
+                    ff_coord_dict[(FAR, word, bit)]  = {'node' : matchDesc.group(5), 'case' : ''} 
+    return(ff_coord_dict, ram_coord_dict)
+
+
+def AggregateLutResults(LutMapList, EmulResFile, SimResFile=''):
+    coord_dict = build_lut_coord_dict(LutMapList, SimResFile)
+    with open(EmulResFile, 'rU') as f:
+        content = f.readlines()
     for l in content:
-        match = re.search(item_ptn, l)
+        match = re.search(injlog_item_ptn, l)
         if match:
             index = int(match.group(1))
             coord = (int(match.group(2)), int(match.group(3)), int(match.group(4)))
-            actime = float(match.group(5))
-            failuremode = int(match.group(6))
+            injtime = float(match.group(5))
+            fmode = match.group(6).lower()
+            failuremode = 'M' if fmode.find('masked') >= 0 else 'L' if fmode.find('latent') >= 0 else 'C' if  fmode.find('sdc') >= 0 else 'S' if  fmode.find('signaled') >= 0 else 'X'
             if coord in coord_dict:
                 for (lut, i, j) in coord_dict[coord]:
                     lut['FailureModeEmul'][i][j] = failuremode 
@@ -80,19 +129,73 @@ def ExportProfilingStatistics(LutMapList, fname):
 
 
 
-def build_FFI_report(DavosConfig, datamodel):
-    for conf in DavosConfig.SBFIConfig.parconf:
+def build_FFI_report(DavosConfig, ExportLutCsv=False):
+    datamodel = DataModel()
+    datamodel.ConnectDatabase( DavosConfig.get_DBfilepath(False), DavosConfig.get_DBfilepath(True) )
+    datamodel.RestoreHDLModels(DavosConfig.parconf)
+    datamodel.RestoreEntity(DataDescriptors.InjTarget)
+    datamodel.SaveHdlModels()
+
+    for conf in DavosConfig.parconf:
+        model = datamodel.GetHdlModel(conf.label)
         Tab = Table('LutMapList')
         Tab.build_from_csv(os.path.join(conf.work_dir, 'LutMapList.csv'))
         LutMapList = TableToLutList(Tab)  
-        AggregateInjectionResults(LutMapList, os.path.join(conf.work_dir,'./log/ProfilingResult.log'))
-        with open(os.path.join(conf.work_dir,'LutMapList_Upd_ext.csv'),'w') as f:
-            zTab = LutListToTable(LutMapList, True, False)
-            f.write(zTab.to_csv())
-        ExportProfilingStatistics(LutMapList, os.path.join(conf.work_dir,'PerFrame.csv'))
 
+        if ExportLutCsv:
+            AggregateLutResults(LutMapList, os.path.join(conf.work_dir,'./log/Injector.log'))
+            with open(os.path.join(conf.work_dir,'LutResult.csv'),'w') as f:
+                zTab = LutListToTable(LutMapList, True, False)
+                f.write(zTab.to_csv())
+            if DavosConfig.FFIConfig.profiling:
+                ExportProfilingStatistics(LutMapList, os.path.join(conf.work_dir,'PerFrame.csv'))
 
+        lut_dict = build_lut_coord_dict(LutMapList, '')
+        ff_dict, ram_dict = build_regmem_coord_dict(os.path.join(conf.work_dir, 'Bitstream.ll'), os.path.join(conf.work_dir, 'Bels.csv'))
 
+        ExpDescIdCnt=0
+        with open(os.path.join(conf.work_dir,'./log/Injector.log'), 'rU') as f:
+            content = f.readlines()
+        for l in content:
+            match = re.search(injlog_item_ptn, l)
+            if match:
+                coord = (int(match.group(2)), int(match.group(3)), int(match.group(4)))
+                if coord in lut_dict:
+                    target = datamodel.GetOrAppendTarget(lut_dict[coord][0][0]['name'], 'LUT', '{}/{}'.format(lut_dict[coord][0][1], lut_dict[coord][0][2]))
+                elif coord in ff_dict:
+                    target = datamodel.GetOrAppendTarget(ff_dict[coord]['node'], 'FF', ff_dict[coord]['case'])
+                elif coord in ram_dict:
+                    target = datamodel.GetOrAppendTarget(ram_dict[coord]['node'], 'BRAM', ram_dict[coord]['case'])
+                else:
+                    target = datamodel.GetOrAppendTarget('root/unknown', 'ANY', '')
+
+                InjDesc = InjectionDescriptor()
+                InjDesc.InjectionTime = float(match.group(5))
+                fmode = match.group(6).lower()
+                InjDesc.FailureMode = 'M' if fmode.find('masked') >= 0 else 'L' if fmode.find('latent') >= 0 else 'C' if  fmode.find('sdc') >= 0 else 'S' if  fmode.find('signaled') >= 0 else 'X'
+                InjDesc.ID = ExpDescIdCnt
+                InjDesc.ModelID = model.ID
+                InjDesc.TargetID = target.ID
+                InjDesc.FaultModel = 'BitFlip'
+                InjDesc.ForcedValue = ''
+                InjDesc.InjectionDuration = float(0)
+                InjDesc.ObservationTime = float(0)
+                InjDesc.Node = target.NodeFullPath
+                InjDesc.InjCase = target.InjectionCase
+                InjDesc.Status = 'F'
+                InjDesc.FaultToFailureLatency = float(0)
+                InjDesc.ErrorCount = 0
+                InjDesc.Dumpfile = ''
+                datamodel.LaunchedInjExp_dict[InjDesc.ID] = InjDesc
+                ExpDescIdCnt+=1
+
+    datamodel.SaveHdlModels()
+    datamodel.SaveTargets()
+    datamodel.SaveInjections()
+
+    #build_report(DavosConfig, DavosConfig.toolconf, datamodel)
+
+    datamodel.SyncAndDisconnectDB()  
 
 
 if __name__ == "__main__":
@@ -105,16 +208,11 @@ if __name__ == "__main__":
     config.toolconf = toolconf
     config.file = normconfig
 
-    if config.platform == Platforms.Multicore or config.platform == Platforms.Grid or config.platform == Platforms.GridLight:
-        datamodel = DataModel()
-        datamodel.ConnectDatabase( config.get_DBfilepath(False), config.get_DBfilepath(True) )
-        datamodel.RestoreHDLModels(config.parconf)
-        datamodel.RestoreEntity(DataDescriptors.InjTarget)
-        datamodel.SaveHdlModels()
+
 
 
     build_FFI_report(config, datamodel)
-         
+       
     
     
 

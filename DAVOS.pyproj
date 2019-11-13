@@ -63,7 +63,7 @@
     <Compile Include="SBFI\SBFI_Profiler.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="SBFI\SBFI_reportbuilder.py">
+    <Compile Include="Reportbuilder.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="SBFI_Tool.py">

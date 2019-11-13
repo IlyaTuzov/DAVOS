@@ -30,7 +30,8 @@ res_ptn  = re.compile(r'Tag.*?([0-9]+).*?Injection Result.*?Injections.*?([0-9]+
 stat_ptn = re.compile(r'Tag.*?([0-9]+).*?Injection.*?([0-9]+).*?([0-9]+).*?Masked.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+).*?Failures.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+).*?Latent.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+)', re.M)
 recovery_ptn = re.compile(r'([0-9]+).*?seconds.*?Experiments.*?([0-9]+).*?([0-9]+).*?Masked.*?([0-9]+).*?([0-9\.]+).*?([0-9\.]+).*?Failures.*?([0-9]+).*?([0-9\.]+).*?([0-9\.]+)')
 
-
+ram_search_ptn = re.compile(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-Z_]+)\s+Ram=B:(BIT|PARBIT)([0-9]+)', re.M)
+ff_search_ptn = re.compile(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-Z_]+)\s+Latch=([0-9a-zA-Z\.]+)\s+Net=(.*)', re.M)
 
 
 
@@ -495,8 +496,7 @@ class InjectorHostManager:
         FARmask = dict()
         RecoveryFrames = set()
         CheckpointFrames = set()
-        ram_search_ptn = re.compile(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-Z_]+)\s+Ram=B:(BIT|PARBIT)([0-9]+)', re.M)
-        ff_search_ptn = re.compile(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-Z_]+)\s+Latch=([0-9a-zA-Z\.]+)\s+Net=(.*)', re.M)
+
 
         with open(self.Input_LLFile, 'r') as f:
             for line in f:
