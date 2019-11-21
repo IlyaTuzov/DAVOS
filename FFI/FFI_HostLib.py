@@ -507,12 +507,13 @@ class InjectorHostManager:
                     FAR = int(matchDesc.group(1), 16)
                     offset = int(matchDesc.group(2))
                     block = matchDesc.group(3)
+                    nodepath = matchDesc.group(5) if t == 2 else ''
                     if t==1 and (block in RecoveryRamLocations):
                         RecoveryFrames.add(FAR)
                     elif t==2:
                         CheckpointFrames.add(FAR)
 
-                    if (t==1 and self.target_logic=='bram') or (t==2 and self.target_logic in ['ff', 'type0']) or self.target_logic == 'all':
+                    if (nodepath.startswith(self.DutScope) or self.DutScope =='') and ((t==1 and self.target_logic=='bram') or (t==2 and self.target_logic in ['ff', 'type0']) or self.target_logic == 'all'):
                         word, bit =offset/32, offset%32
                         if FAR in FARmask:
                             desc = FARmask[FAR]
