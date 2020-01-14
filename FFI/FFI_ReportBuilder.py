@@ -131,6 +131,8 @@ def ExportProfilingStatistics(LutMapList, fname):
 
 def build_FFI_report(DavosConfig, ExportLutCsv=False):
     datamodel = DataModel()
+    if not os.path.exists(DavosConfig.report_dir):
+        os.makedirs(DavosConfig.report_dir)
     datamodel.ConnectDatabase( DavosConfig.get_DBfilepath(False), DavosConfig.get_DBfilepath(True) )
     datamodel.RestoreHDLModels(DavosConfig.parconf)
     datamodel.RestoreEntity(DataDescriptors.InjTarget)
@@ -153,7 +155,7 @@ def build_FFI_report(DavosConfig, ExportLutCsv=False):
         lut_dict = build_lut_coord_dict(LutMapList, '')
         ff_dict, ram_dict = build_regmem_coord_dict(os.path.join(conf.work_dir, 'Bitstream.ll'), os.path.join(conf.work_dir, 'Bels.csv'))
 
-        ExpDescIdCnt=0
+        ExpDescIdCnt=datamodel.GetMaxKey(DataDescriptors.InjectionExp) + 1
         with open(os.path.join(conf.work_dir,'./log/Injector.log'), 'rU') as f:
             content = f.readlines()
         for l in content:
@@ -193,7 +195,7 @@ def build_FFI_report(DavosConfig, ExportLutCsv=False):
     datamodel.SaveTargets()
     datamodel.SaveInjections()
 
-    #build_report(DavosConfig, DavosConfig.toolconf, datamodel)
+    build_report(DavosConfig, DavosConfig.toolconf, datamodel)
 
     datamodel.SyncAndDisconnectDB()  
 

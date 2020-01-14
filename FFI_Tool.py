@@ -72,7 +72,7 @@ if __name__ == "__main__":
             if check:
                 #raw_input("Preconditions fixed, press any key to run the injector >")
                 jdesc = JobDescriptor(1)
-                jdesc.UpdateBitstream = 0
+                jdesc.UpdateBitstream = 1
                 jdesc.Celltype = 1 if davosconf.FFIConfig.target_logic.lower()=='ff' else 2 if davosconf.FFIConfig.target_logic.lower()=='lut' else 3 if davosconf.FFIConfig.target_logic.lower()=='bram' else 4 if davosconf.FFIConfig.target_logic.lower()=='type0' else 0
                 jdesc.Blocktype = 0 if davosconf.FFIConfig.target_logic.lower() in ['lut', 'ff', 'type0'] else 1 if davosconf.FFIConfig.target_logic.lower() in ['bram'] else 2
                 jdesc.Essential_bits = 1
@@ -82,15 +82,15 @@ if __name__ == "__main__":
                 jdesc.Masked = 0
                 jdesc.Failures = 0
                 jdesc.sample_size_goal = 0 if not Injector.Profiling else len(Injector.ProfilingResult)
-                jdesc.error_margin_goal = float(0.5) 
-                jdesc.FaultMultiplicity = 1
+                jdesc.error_margin_goal = davosconf.FFIConfig.error_margin_goal
+                jdesc.FaultMultiplicity = davosconf.FFIConfig.fault_multiplicity
                 jdesc.SamplingWithouRepetition = 0  #disable tracking of tested targets
-                jdesc.Mode = 102            #101 - Sampling, 102 - Exhaustive, 201 - Fault List
+                jdesc.Mode = davosconf.FFIConfig.mode            #101 - Sampling, 102 - Exhaustive, 201 - Fault List
                 jdesc.DetailedLog = 1
                 jdesc.PopulationSize = Injector.EssentialBitsPerBlockType[jdesc.Blocktype]
                 jdesc.WorkloadDuration = int(davosconf.SBFIConfig.genconf.std_workload_time)
                 jdesc.DetectLatentErrors = 1
-                jdesc.InjectionTime = 0;
+                jdesc.InjectionTime = davosconf.FFIConfig.injection_time;
                 res = Injector.run(OperatingModes.SampleUntilErrorMargin, jdesc, False)
                 print("Result: SampleSize: {0:9d}, Failures: {1:9d}, FailureRate: {2:3.5f} +/- {3:3.5f} ".format(res.ExperimentsCompleted, res.Failures, res.failure_rate, res.failure_error))    
                 Injector.cleanup()

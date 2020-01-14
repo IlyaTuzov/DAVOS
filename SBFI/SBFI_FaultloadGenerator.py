@@ -20,6 +20,7 @@ from Datamanager import *
 
 
 def get_checkpoints(dir):
+    print('Checkpoints in dir: {0}'.format(dir))
     checkpointlist = []
     if(not os.path.exists(dir)):
         print 'Generate injection scripts: Checkpoints dir does not exist: ' + dir
@@ -30,7 +31,7 @@ def get_checkpoints(dir):
         if i.startswith('checkpoint'):
             checkpointlist.append( int(re.findall("[0-9]+", i)[0]) )
     checkpointlist.sort()
-    print "Checkpoints: {}".format("\n".join([str(i) for i in checkpointlist]))
+    print "Checkpoints: {0}".format("\n".join([str(i) for i in checkpointlist]))
     if(len(checkpointlist)==0): print 'Generate injection scripts: No checkpoints found at ' + dir
     return(checkpointlist)
 
@@ -58,10 +59,10 @@ def get_random_injection_time(h_start_time, h_end_time, time_mode, sample_size, 
 
 
 def GenerateInjectionScripts_SamplingMode(config, modelconf, toolconf, faultdict):
-    checkpointlist = get_checkpoints(os.path.join(modelconf.work_dir, toolconf.checkpoint_dir))    
+    checkpointlist = get_checkpoints(os.path.join(config.call_dir, modelconf.work_dir, toolconf.checkpoint_dir))    
     scale_factor = float(modelconf.clk_period) / float(config.genconf.std_clk_period)
     os.chdir(os.path.join(modelconf.work_dir, toolconf.script_dir))
-    fdesclog_content = "sep=;\nINDEX;DUMPFILE;TARGET;INSTANCE_TYPE;FAULT_MODEL;FORCED_VALUE;DURATION;TIME_INSTANCE;OBSERVATION_TIME;MAX_ACTIVITY_DURATION;EFFECTIVE_SWITHES;PROFILED_VALUE;ON_TRIGGER;"
+    fdesclog_content = "sep=;\nINDEX;DUMPFILE;TARGET;INSTANCE_TYPE;INJECTION_CASE;FAULT_MODEL;FORCED_VALUE;DURATION;TIME_INSTANCE;OBSERVATION_TIME;MAX_ACTIVITY_DURATION;EFFECTIVE_SWITHES;PROFILED_VALUE;ON_TRIGGER;"
 
     script_index = 0
     for fconfig in config.injector.fault_model:
@@ -75,6 +76,8 @@ def GenerateInjectionScripts_SamplingMode(config, modelconf, toolconf, faultdict
 
         for local_index in range(fconfig.sample_size):
             c = random.sample(inj_code_items, fconfig.multiplicity)
+
+
             inj_time = get_random_injection_time(fconfig.time_start, fconfig.time_end, fconfig.time_mode, fconfig.multiplicity, scale_factor, modelconf.clk_period, config.genconf.std_workload_time)
             if fconfig.simulataneous_faults: inj_time=[inj_time[0]]*fconfig.multiplicity
             str_index = str("%06d" % (script_index))
@@ -112,7 +115,7 @@ def GenerateInjectionScripts_SamplingMode(config, modelconf, toolconf, faultdict
                 robust_file_write(fname, inj_script)
                 sys.stdout.write('Stored script: %6d\r' % (script_index))
                 sys.stdout.flush() 
-                fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0][0] + ";" + instance.type + ";" + c[1] + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(fconfig.duration) + ";" + str(inj_time[0]) + ";" + str(int(config.genconf.std_workload_time*scale_factor)-int(inj_time[0])) 
+                fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0][0] + ";" + instance.type + ";" + c[0][1] + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(fconfig.duration) + ";" + str(inj_time[0]) + ";" + str(int(config.genconf.std_workload_time*scale_factor)-int(inj_time[0])) 
                 if c[0][3] != None:
                     fdesclog_content += ';{0:.2f};{1:d};{2:s};'.format(c[0][3].total_time, c[0][3].effective_switches, c[0][3].profiled_value)
                 else:
@@ -216,7 +219,7 @@ def generate_injection_scripts(config, modelconf, toolconf, faultdict):
                     robust_file_write(fname, inj_script)
                     sys.stdout.write('Stored script: %6d\r' % (script_index))
                     sys.stdout.flush() 
-                    fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0] + ";" + instance.type + ";" + c[1] + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(fconfig.duration) + ";" + str(inj_time[0]) + ";" + str(int(config.genconf.std_workload_time*scale_factor)-int(inj_time[0])) 
+                    fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0] + ";" + instance.type + ";" + c[0][1] + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(fconfig.duration) + ";" + str(inj_time[0]) + ";" + str(int(config.genconf.std_workload_time*scale_factor)-int(inj_time[0])) 
                     if c[3] != None:
                         fdesclog_content += ';{0:.2f};{1:d};{2:s};'.format(c[3].total_time, c[3].effective_switches, c[3].profiled_value)
                     else:

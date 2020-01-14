@@ -3,10 +3,11 @@
 
     <DAVOS
         DesignBuilder = "off"
-        FaultInjection = "on"
+        SBFI = "off"
+		FFI  = "on"
         DecisionSupport = "off"
         report_dir = "#RUNDIR/../../Projects/Checkpointing/counter"        
-        dbfile = "MC8051.db"  >
+        dbfile = "Counter.db"  >
         
 
         <ExperimentalDesign
@@ -30,13 +31,12 @@
                 &apos;GenBitstreamScriptTemplate&apos;:&apos;GenBitstreamPhase.tcl&apos;
                 }"                      
                 design_label = "Zynq_MC8051_"
-                design_dir = "../../Projects/Checkpointing/counter"
+                design_dir = "../../Projects/Checkpointing/MC8051"
                 template_dir = "Zync_Template"
                 log_dir = "./log"
                 netlist_dir = "./netgen"
                 constraint_file = ""    
-                uut_root   = ""   
-                post_injection_recovery_nodes = "[]"
+                uut_root   = "/design_1_wrapper/design_1_i/mc8051_top_0/U0"   
             />        
 
             
@@ -362,11 +362,35 @@
         </ExperimentalDesign>
     
     
+	<!--
+		target_logic = FF/LUT/BRAM/TYPE0/ALL	
+	-->
+		<FFI
+            injector_phase = "on"
+            reportbuilder_phase = "off" 
+			
+			target_logic = "FF"
+			post_injection_recovery_nodes = ""			
+			hdf_path = "./counter.sdk/design_1_wrapper_hw_platform_0/system.hdf"
+			init_tcl_path = "./counter.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"
+			injectorapp_path = "./counter.sdk/InjectorApp/Debug/InjectorApp.elf"
+			memory_buffer_address = "0x3E000000"
+			custom_lut_mask = 'off' 
+			profiling = 'off'
+			platformconf = "[{&apos;TargetId&apos;:&apos;2&apos;, &apos;PortID&apos;:&apos;COM3&apos;}]"
+			dut_scope = 'design_1_i/'
+		>
+		
+		
+		
+		</FFI>
+	
+	
     
         <!-- platform: Multicore / Grid / GridLight 
             #RUNDIR - path from where SBFI tool is launched
         -->
-        <FaultInjection
+        <SBFI
             platform = "Multicore"
             initializer_phase = "off"    
             profiler_phase = "off"
@@ -509,25 +533,34 @@
                 default_logic_type = "SIGNAL" 
              />       
 
-            
-            
-            <config
-                work_dir = "../../Projects/Checkpointing/counter"
-                label = "MC8051_RTL"
-                compile_options = ""
-                run_options = ""
-                clk_period = "50.0"
-                start_from = ""
-                stop_at = ""
-            />
 
-        </FaultInjection>
+        </SBFI>
     
+	
+	
+	
+	
+		<ModelConfig
+			work_dir = "../../Projects/Checkpointing/counter"
+			label = "MC8051_RTL"
+			compile_options = ""
+			run_options = ""
+			clk_period = "50.0"
+			start_from = ""
+			stop_at = ""
+		/>
+			
+			
+			
+			
+			
+			
+			
     
-    <DecisionSupport
-        task = "DSE"
-        method = "Statistical"
-    >
+		<DecisionSupport
+			task = "DSE"
+			method = "Statistical"
+		>
     
     
         <DerivedMetrics>

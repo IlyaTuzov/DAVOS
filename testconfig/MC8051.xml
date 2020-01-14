@@ -6,7 +6,7 @@
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "off"
-        report_dir = "#RUNDIR/../../Projects/Checkpointing/MC8051"        
+        report_dir = "#RUNDIR/../../HTWEB/FFI/MC8051/"        
         dbfile = "MC8051.db"  >
         
 
@@ -26,9 +26,9 @@
             
             <generic            
                 custom_parameters = "{ 
-                &apos;SynthesisScriptTemplate&apos;:&apos;SynthesisPhase.tcl&apos;, 
-                &apos;ImplementationScriptTemplate&apos;:&apos;ImplementationPhase.tcl&apos;,
-                &apos;GenBitstreamScriptTemplate&apos;:&apos;GenBitstreamPhase.tcl&apos;
+                'SynthesisScriptTemplate' : 'SynthesisPhase.tcl', 
+                'ImplementationScriptTemplate' : 'ImplementationPhase.tcl',
+                'GenBitstreamScriptTemplate' : 'GenBitstreamPhase.tcl'
                 }"                      
                 design_label = "Zynq_MC8051_"
                 design_dir = "../../Projects/Checkpointing/MC8051"
@@ -364,21 +364,31 @@
     
 	<!--
 		target_logic = FF/LUT/BRAM/TYPE0/ALL	
+		mode = 1XX: using essential bits: 101 - sampling, 102 - exhaustive 
+			   2XX: using external fault list
+		injection_time = 0-random, > 0 - inject after that number of clock cycles, e.g. ==1 - inject at the workload start, ==10 - inject after 9 clock cycles	   
 	-->
 		<FFI
-            injector_phase = "on"
-            reportbuilder_phase = "off" 
+            injector_phase 		= "on"
+            reportbuilder_phase = "on" 
+
+			dut_scope 						= 'design_1_i/mc8051_top_0/U0/'			
+			target_logic 					= "FF"
+			custom_lut_mask 				= 'on' 
+			profiling 						= 'off'
+
+
+			mode 							= "101"
+			error_margin_goal 				= "2.0"
+			fault_multiplicity				= "1"
+			injection_time 					= "0"
 			
-			target_logic = "FF"
-			post_injection_recovery_nodes = "['i_mc8051_rom']"			
-			hdf_path = "./MC8051.sdk/design_1_wrapper_hw_platform_0/system.hdf"
-			init_tcl_path = "./MC8051.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"
-			injectorapp_path = "./MC8051.sdk/InjectorApp/Debug/InjectorApp.elf"
-			memory_buffer_address = "0x3E000000"
-			custom_lut_mask = 'off' 
-			profiling = 'off'
-			platformconf = "[{&apos;TargetId&apos;:&apos;2&apos;, &apos;PortID&apos;:&apos;COM3&apos;}]"
-			dut_scope = 'design_1_i/'
+			post_injection_recovery_nodes 	= "['i_mc8051_rom']"			
+			hdf_path 						= "./MC8051.sdk/design_1_wrapper_hw_platform_0/system.hdf"
+			init_tcl_path 					= "./MC8051.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"
+			injectorapp_path 				= "./MC8051.sdk/InjectorApp/Debug/InjectorApp.elf"
+			memory_buffer_address 			= "0x3E000000"
+			platformconf 					= "[{'TargetId':'2', 'PortID':'COM3'}]"
 		>
 		
 		

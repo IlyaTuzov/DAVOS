@@ -838,6 +838,10 @@ class FFIConfiguration:
         self.profiling = False
         self.platformconf = []
         self.dut_scope=''
+        self.mode = 101
+        self.error_margin_goal = 0.1
+        self.fault_multiplicity = 1
+        self.injection_time = 0
         if xnode != None:
             self.build_from_xml(xnode)
 
@@ -855,6 +859,10 @@ class FFIConfiguration:
         self.custom_lut_mask = True if xnode.get('custom_lut_mask', '') == 'on' else False
         self.profiling = True if xnode.get('profiling', '') == 'on' else False
         self.dut_scope = xnode.get('dut_scope','')
+        self.mode = int(xnode.get('mode','101'))
+        self.error_margin_goal = float(xnode.get('error_margin_goal','0.1'))
+        self.fault_multiplicity = int(xnode.get('fault_multiplicity','1'))
+        self.injection_time = int(xnode.get('injection_time','0'))
         cp = xnode.get('platformconf','')
         if cp != '': self.platformconf = ast.literal_eval(cp)
 

@@ -244,7 +244,7 @@ class InjectorHostManager:
         if not os.path.exists(self.logdir): os.makedirs(self.logdir)    
         self.logfilename =    os.path.join(self.logdir, 'Injector.log')    
         self.recovered_statistics = recover_statistics(self.logfilename)
-        self.logfile = open(self.logfilename, 'a', 0)
+        self.logfile = open(self.logfilename, 'w', 0)
         self.logfile.write('Injector instantiated: {}\n\n'.format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
         #list of internal memories to recover after injection
         self.RecoveryNodeNames = []        
@@ -489,6 +489,9 @@ class InjectorHostManager:
             #print("Locations for {}".format(node))
             for i in T.query({'Node':node, 'BellType':'RAMB'}):
                 RecoveryRamLocations.append(i['CellLocation']) 
+        BramNodes = dict()
+        for i in T.query({'BellType':'RAMB'}):
+            BramNodes[i['CellLocation']] = i['Node'] 
         #print("Recovery Ram Locations: {}".format(str(RecoveryRamLocations)) )
         self.logfile.write('Recovery RAM Location: ' + str(RecoveryRamLocations)+'\n')        
         #Set mask=1 for all bits of used BRAM (from *.ll file)
@@ -497,6 +500,10 @@ class InjectorHostManager:
         RecoveryFrames = set()
         CheckpointFrames = set()
 
+        BinDataDict = dict()
+        for i in BIN_FrameList:
+            BinDataDict[i.GetFar()] = i
+        BramMap=[] #[BramNode, BramBit, FAR, word, bit, data)
 
         with open(self.Input_LLFile, 'r') as f:
             for line in f:
@@ -507,7 +514,7 @@ class InjectorHostManager:
                     FAR = int(matchDesc.group(1), 16)
                     offset = int(matchDesc.group(2))
                     block = matchDesc.group(3)
-                    nodepath = matchDesc.group(5) if t == 2 else ''
+                    nodepath = matchDesc.group(5) if t == 2 else BramNodes[block]
                     if t==1 and (block in RecoveryRamLocations):
                         RecoveryFrames.add(FAR)
                     elif t==2:
@@ -515,6 +522,9 @@ class InjectorHostManager:
 
                     if (nodepath.startswith(self.DutScope) or self.DutScope =='') and ((t==1 and self.target_logic=='bram') or (t==2 and self.target_logic in ['ff', 'type0']) or self.target_logic == 'all'):
                         word, bit =offset/32, offset%32
+                        if t==1:
+                            if matchDesc.group(4) == 'BIT':
+                                BramMap.append((nodepath, int(matchDesc.group(5)), FAR, word, bit, (BinDataDict[FAR].data[word]>>bit)&0x1))
                         if FAR in FARmask:
                             desc = FARmask[FAR]
                         else:
@@ -533,6 +543,10 @@ class InjectorHostManager:
         self.logfile.write('Recovery FAR: {}\n'.format(",".join(["{0:08x}".format(i) for i in sorted(list(RecoveryFrames))])))
         #Export the resulting descriptor
 
+        with open(os.path.join(self.targetDir,'BitLogBram.txt'),'w') as f:
+            BramMap.sort()
+            f.write('\n'.join([str(i) for i in BramMap]))
+        
         with open(os.path.join(self.targetDir,'BitLog.txt'),'w') as f:
             for i in BIN_FrameList:
                 if all(v==0 for v in i.mask): continue

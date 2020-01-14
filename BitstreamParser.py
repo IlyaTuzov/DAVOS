@@ -139,14 +139,14 @@ def bitstream_to_FrameList(fname, FarList):
     while not (bitstream[i] == 0xaa995566): i+=1
     while i < len(bitstream):
         #Find command: write FAR register
-        if bitstream[i]==0x30002001:
-            i+=1; FAR = bitstream[i]
+        if bitstream[i]==0x30002001:                    #write FAR register 1 word
+            i+=1; FAR = bitstream[i]                    #FAR register value
             startFrameIndex = 0
-            while FarList[startFrameIndex] != FAR: startFrameIndex+=1
+            while FarList[startFrameIndex] != FAR: startFrameIndex+=1       
             #WCFG command: Write config 
-            while not (bitstream[i] == 0x30008001 and bitstream[i+1]==0x00000001): i+=1
-            while bitstream[i] & 0xFFFFF800 != 0x30004000: i+=1
-            WordCount = bitstream[i] & 0x7FF; i+=1
+            while not (bitstream[i] == 0x30008001 and bitstream[i+1]==0x00000001): i+=1     #Command register --> WCFG command (write config data)
+            while bitstream[i] & 0xFFFFF800 != 0x30004000: i+=1                             #Packet type 1: Write FDRI register
+            WordCount = bitstream[i] & 0x7FF; i+=1                                          #if 0 - word count in the next packet type 2
              #big data packet: WordCount in following Type2Packet
             if WordCount == 0: 
                 WordCount = bitstream[i] & 0x7FFFFFF; i+=1
@@ -412,7 +412,7 @@ def MapLutToBitstream(LutDescTab, BIN_FrameList, DutScope=''):
 
         #2. GET LUT BEL content from bitstream
         skip_mask = False if DutScope=='' else (not node['name'].startswith(DutScope))
-        if not skip_mask: print('Selected LUT cell: scope {} : {}'.format(DutScope, node['name'].replace(DutScope, '')))
+        #if not skip_mask: print('Selected LUT cell: scope {} : {}'.format(DutScope, node['name'].replace(DutScope, '')))
         BITSTREAM, node['globalmap'] = SetCustomLutMask(node['top'], node['row'], node['major'], node['minor'], node['lutindex'], BIN_FrameList, res, skip_mask)
         BIT_INIT = 0x0000000000000000
         w = 2**len(node['connections'])

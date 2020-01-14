@@ -112,6 +112,12 @@
   <ItemGroup>
     <Content Include="FaultDictionaries\Xilinx_Simprim_VHDL.xml" />
     <Content Include="FaultDictionaries\Xilinx_Unisim_VHDL.xml" />
+    <Content Include="FFI\InjApp_src\BitArray.c" />
+    <Content Include="FFI\InjApp_src\BitArray.h" />
+    <Content Include="FFI\InjApp_src\helloworld.c" />
+    <Content Include="FFI\InjApp_src\lscript.ld" />
+    <Content Include="FFI\InjApp_src\SeuInjector.c" />
+    <Content Include="FFI\InjApp_src\SeuInjector.h" />
     <Content Include="SupportScripts\AnovaRegression.m" />
     <Content Include="SupportScripts\AugmentDesign.m" />
     <Content Include="SupportScripts\doptimal.m" />
