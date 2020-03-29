@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <data>
 
+        <!-- platform: Multicore / Grid / GridLight 
+            #RUNDIR - path from where SBFI tool is launched
+        -->
     <DAVOS
+        platform = "Multicore"    
         DesignBuilder = "off"
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "off"
-        report_dir = "#RUNDIR/../../HTWEB/FFI/MC8051/"        
-        dbfile = "MC8051.db"  >
+        report_dir = "#RUNDIR/../../HTWEB/LEON3_IMPL"        
+        dbfile = "LEON3.db"  >
         
 
         <ExperimentalDesign
@@ -26,11 +30,11 @@
             
             <generic            
                 custom_parameters = "{ 
-                &apos;SynthesisScriptTemplate&apos;:&apos;SynthesisPhase.tcl&apos;, 
-                &apos;ImplementationScriptTemplate&apos;:&apos;ImplementationPhase.tcl&apos;,
-                &apos;GenBitstreamScriptTemplate&apos;:&apos;GenBitstreamPhase.tcl&apos;
+                'SynthesisScriptTemplate' : 'SynthesisPhase.tcl', 
+                'ImplementationScriptTemplate' : 'ImplementationPhase.tcl',
+                'GenBitstreamScriptTemplate' : 'GenBitstreamPhase.tcl'
                 }"                      
-                design_label = "Zynq_MC8051_"
+                design_label = "LEON3"
                 design_dir = "../../Projects/Checkpointing/MC8051"
                 template_dir = "Zync_Template"
                 log_dir = "./log"
@@ -364,31 +368,21 @@
     
 	<!--
 		target_logic = FF/LUT/BRAM/TYPE0/ALL	
-		mode = 1XX: using essential bits: 101 - sampling, 102 - exhaustive 
-			   2XX: using external fault list
-		injection_time = 0-random, > 0 - inject after that number of clock cycles, e.g. ==1 - inject at the workload start, ==10 - inject after 9 clock cycles	   
 	-->
 		<FFI
-            injector_phase 		= "on"
-            reportbuilder_phase = "on" 
-
-			dut_scope 						= 'design_1_i/mc8051_top_0/U0/'			
-			target_logic 					= "FF"
-			custom_lut_mask 				= 'on' 
-			profiling 						= 'off'
-
-
-			mode 							= "101"
-			error_margin_goal 				= "2.0"
-			fault_multiplicity				= "1"
-			injection_time 					= "0"
+            injector_phase = "on"
+            reportbuilder_phase = "off" 
 			
-			post_injection_recovery_nodes 	= "['i_mc8051_rom']"			
-			hdf_path 						= "./MC8051.sdk/design_1_wrapper_hw_platform_0/system.hdf"
-			init_tcl_path 					= "./MC8051.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"
-			injectorapp_path 				= "./MC8051.sdk/InjectorApp/Debug/InjectorApp.elf"
-			memory_buffer_address 			= "0x3E000000"
-			platformconf 					= "[{&apos;TargetId&apos;:&apos;2&apos;, &apos;PortID&apos;:&apos;COM3&apos;}]"
+			target_logic = "FF"
+			post_injection_recovery_nodes = "['i_mc8051_rom']"			
+			hdf_path = "./MC8051.sdk/design_1_wrapper_hw_platform_0/system.hdf"
+			init_tcl_path = "./MC8051.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"
+			injectorapp_path = "./MC8051.sdk/InjectorApp/Debug/InjectorApp.elf"
+			memory_buffer_address = "0x3E000000"
+			custom_lut_mask = 'off' 
+			profiling = 'off'
+			platformconf = "[{'TargetId':'2', 'PortID':'COM3'}]"
+			dut_scope = 'design_1_i/'
 		>
 		
 		
@@ -397,11 +391,8 @@
 	
 	
     
-        <!-- platform: Multicore / Grid / GridLight 
-            #RUNDIR - path from where SBFI tool is launched
-        -->
+
         <SBFI
-            platform = "Multicore"
             initializer_phase = "off"    
             profiler_phase = "off"
             injector_phase = "on"
@@ -415,16 +406,16 @@
             -->
             <Generic
                 design_type = "NETLIST"
-                library_specification = "./FaultDictionaries/Xilinx_Simprim_Ver.xml"
+                library_specification = "./FaultDictionaries/Xilinx_Simprim_VHDL.xml"
                 compile_script = "./par_compile.do"
                 run_script = "./par_run.do"	
 				trace_script = ""
-                std_clk_period = "50.0"
+                std_clk_period = "8.5"
                 std_rst_delay = "0"
                 std_init_time =  "0"
-                std_workload_time = "1950000"
+                std_workload_time = "35000"
 				std_trace_time =     "0"
-                finish_flag = "/design_1_wrapper/design_1_i/FinishFlag"
+                finish_flag = ""
             />
             
 
@@ -445,9 +436,9 @@
                 
                     
             <!-- unit path: withing the design scope-->            
-                <InjectionScope node_prefix = ""   unit_path = "/design_1_wrapper/design_1_i/mc8051_top_0/U0" />
+                <InjectionScope node_prefix = ""   unit_path = "" />
 
-                <ObservationScope node_prefix = "" unit_path = "/design_1_wrapper/design_1_i/mc8051_top_0/U0" label_prefix = "" sampling_options = "-notrigger"/>
+                <ObservationScope node_prefix = "" unit_path = "" label_prefix = "" sampling_options = "-notrigger"/>
 
                     
                     <!-- location: INTERNALS / OUTPUTS -->            
@@ -461,9 +452,9 @@
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
                     checkpont_mode = "ColdRestore"
-                    maxproc = "4"
+                    maxproc = "130"
                     workload_split_factor = "10"			
-                    campaign_label = "MC8051"		
+                    campaign_label = "LEON3"		
                     cleanup_folders="off"
                     compile_project = "off"
                     create_scripts="off"
@@ -490,15 +481,15 @@
 
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
                 <fault_model
-                    model = "upset_cmem"
-                    target_logic = "lut1, lut2, lut3, lut4, lut5, lut6"
+                    model = "bit_flip"
+                    target_logic = "X_FF, X_SFF"
                     faults_per_target = "1"
                     time_mode = "Relative"
                     injection_time_start = "0.0"            
-                    injection_time_end = "0.0"
+                    injection_time_end = "1.0"
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
-                    sample_size = "0"
+                    sample_size = "38500"
                     rand_seed	= "2"					
                 />	
         
@@ -506,12 +497,12 @@
                 
 
             <Analyzer
-                report_dir = "#RUNDIR/../../HTWEB/Profiling"
+                report_dir = "#RUNDIR/../Projects/LEON3/RES"
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
-                error_flag_signal = ""
-                error_flag_active_value = ""
-                trap_type_signal = ""                         
+                error_flag_signal = "proc_error"
+                error_flag_active_value = "0"
+                trap_type_signal = "trap_type"                         
                 neg_timegap = "0"
                 pos_timegap = "1000"
                 check_duration_factor = "0"           
@@ -549,13 +540,12 @@
 	
 	
 	
-	
 		<ModelConfig
-			work_dir = "../../Projects/Checkpointing/MC8051"
-			label = "MC8051_RTL"
+			work_dir = "../../Projects/Processors/grlib-gpl-1.4.1-b4156/designs/LEON3_ISE_Default/"
+			label = "LEON3_IMPL"
 			compile_options = ""
 			run_options = ""
-			clk_period = "50.0"
+			clk_period = "8.5"
 			start_from = ""
 			stop_at = ""
 		/>

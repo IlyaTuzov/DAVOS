@@ -122,7 +122,7 @@ def CreateDefaultConfig(datamodel, config):
         if p != None:
             a.OptionVal = p.get_option(factor.option_name).default
         else:
-            print 'Error: CreateDefaultConfig: option {} not founf in phase {}'.format(factor.option_name, factor.phase_name)            
+            print 'Error: CreateDefaultConfig: option {} not found in phase {}'.format(factor.option_name, factor.phase_name)            
         c.append(a)
         a.FactorVal = -1
         x = config.factorial_config.GetFactorByName(a.FactorName)

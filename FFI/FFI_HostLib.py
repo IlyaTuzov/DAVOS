@@ -244,7 +244,7 @@ class InjectorHostManager:
         if not os.path.exists(self.logdir): os.makedirs(self.logdir)    
         self.logfilename =    os.path.join(self.logdir, 'Injector.log')    
         self.recovered_statistics = recover_statistics(self.logfilename)
-        self.logfile = open(self.logfilename, 'w', 0)
+        self.logfile = open(self.logfilename, 'a', 0)
         self.logfile.write('Injector instantiated: {}\n\n'.format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
         #list of internal memories to recover after injection
         self.RecoveryNodeNames = []        
@@ -592,9 +592,9 @@ class InjectorHostManager:
             self.jdesc.FaultListSize = os.stat(self.FaultListFile).st_size / (8*4)
         self.jdesc.ExportToFile(self.JobDescFile)
         if self.jdesc.UpdateBitstream > 0:
-            self.logtimeout = 180   #more time for responce if bitstream is uploaded
+            self.logtimeout = 120   #more time for responce if bitstream is uploaded
         else:
-            self.logtimeout = 15
+            self.logtimeout = 60
 
     def export_devrun_script(self):
         script = """
@@ -691,7 +691,7 @@ class InjectorHostManager:
                     #self.logfile.write('\n'+line)
                     if int( time.time() - last_msg_time ) > self.logtimeout:
                         self.logfile.write('Valid Message Timeout\n\tRestaring from next intjection point')
-                        hang_move_delta = 1
+                        hang_move_delta = 50
                         self.jdesc.StartIndex += hang_move_delta
                         self.jdesc.ExperimentsCompleted = self.jdesc.StartIndex
                         self.jdesc.Failures += hang_move_delta
@@ -754,7 +754,7 @@ class InjectorHostManager:
 
                 else:
                     self.logfile.write('Timeout - hang\n\tRestaring from next intjection point')
-                    hang_move_delta = 1
+                    hang_move_delta = 50
                     self.jdesc.StartIndex += hang_move_delta
                     self.jdesc.ExperimentsCompleted = self.jdesc.StartIndex
                     self.jdesc.Failures += hang_move_delta

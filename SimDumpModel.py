@@ -120,11 +120,13 @@ class simDump:
         #subset of vectors where only inputs/outputs change their value
         self.v_out_filtered = []
         self.v_int_filtered = []
+        self.fname = fname
     
     #input - simInitModel.do
     #result - self.internal_labels, self.output_labels
     def build_labels_from_file(self, fname="", rename_list=None):
         initfile = open(fname,'r')
+        self.fname = fname
         fcontent = initfile.read()
         initfile.close()
         internals_content = find_between(fcontent, "#<INTERNALS>","#</INTERNALS>")
@@ -453,6 +455,22 @@ class simDump:
             if(label == self.output_labels[ind]):
                 return(('outputs',ind))
         return(('not_found', 0))
+
+
+    def replaceval(self, key = "FinishFlag", oldval = "X", newval="1"):
+        vname, c_index = self.get_index_by_label(key)
+        cnt = 0
+        if(vname == 'internals'):
+            try:
+                for i in range(0, len(self.vectors), 1):
+                    if(self.vectors[i].internals[c_index] == oldval):
+                        self.vectors[i].internals[c_index] = newval
+                        cnt+=1
+            except IndexError:
+                print str(IndexError)
+                return(None)
+        if(cnt>0): print('Fixed {}: {}'.format(self.fname, str(cnt)))
+
 
     def get_first_vector_by_key (self, key = "FinishFlag", val = "1"):
         vname, c_index = self.get_index_by_label(key)

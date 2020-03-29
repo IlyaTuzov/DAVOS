@@ -1,4 +1,4 @@
-/*
+/*0=วั
  *  SeuInjector.c
  *
  *  SEU emulation library for Zynq SoC and 7-Series
@@ -99,7 +99,6 @@
 		(Row << XHI_FAR_ROW_ADDR_SHIFT_7) | \
 		(ColumnAddress << XHI_FAR_COLUMN_ADDR_SHIFT_7) | \
 		(MinorAddress << XHI_FAR_MINOR_ADDR_SHIFT_7))
-
 
 
 #define SLCR_CAN_RST_ADDR 0xF8000220

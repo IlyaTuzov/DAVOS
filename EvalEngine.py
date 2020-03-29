@@ -17,7 +17,7 @@ from sys import platform
 from Datamanager import *
 import ImplementationTool
 #from XilinxInjector import InjHostLib
-from XilinxInjector.InjHostLib import *
+from FFI.FFI_HostLib import *
 
 class EvalEngineParameters:
     FIT_DEVICE = (75.0/float(1024*1024))
@@ -49,20 +49,20 @@ def invalidate_robustness_metrics(configurations):
 
 
 class JobManager:
-    def __init__(self, proc_num):
-        self.proc_num = proc_num
-        self.DeviceList =  [{'TargetId':'2', 'PortID':'COM3'}]  #[{'TargetId':'2', 'PortID':'COM3'},{'TargetId':'6', 'PortID':'COM5'}] 
-        if len(self.DeviceList) == 0:
-            self.DeviceList = get_devices('Cortex-A9 MPCore #0')      
-        DAVOS_PATH = 'C:/GitHub/DAVOS' 
+    def __init__(self, davosconf):
+        self.proc_num = davosconf.ExperimentalDesignConfig.max_proc
+        self.DeviceList =  davosconf.FFIConfig.platformconf  #[{'TargetId':'2', 'PortID':'COM3'},{'TargetId':'6', 'PortID':'COM5'}] 
+        #if len(self.DeviceList) == 0:
+        #    self.DeviceList = get_devices('Cortex-A9 MPCore #0')      
+        path =  os.path.join( davosconf.ExperimentalDesignConfig.design_genconf.design_dir, davosconf.ExperimentalDesignConfig.design_genconf.template_dir)
         if raw_input('Clean the cache before running: Y/N: ').lower().startswith('y'):                                   
             for i in self.DeviceList:   #cleanup (cache, ...) each platform
-                Injector = InjectorHostManager(DAVOS_PATH, 
+                Injector = InjectorHostManager(path, 
                                                0, 
-                                               os.path.join(DAVOS_PATH, "./XilinxInjector/InjApp_build/system.hdf"),
-                                               os.path.join(DAVOS_PATH, "./XilinxInjector/InjApp_build/ps7_init.tcl"),
-                                               os.path.join(DAVOS_PATH, "./XilinxInjector/InjApp_build/InjectorApp.elf"),
-                                               0x3E000000)
+                                               os.path.join(path,  davosconf.FFIConfig.hdf_path),
+                                               os.path.join(path, davosconf.FFIConfig.init_tcl_path),
+                                               os.path.join(path, davosconf.FFIConfig.injectorapp_path),
+                                               davosconf.FFIConfig.memory_buffer_address)  
                 Injector.configure(i['TargetId'], i['PortID'], "", "")
                 Injector.cleanup_platform()
         self.manager = multiprocessing.Manager()
@@ -71,10 +71,10 @@ class JobManager:
         self.queue_faulteval = self.manager.Queue()
         self.queue_result = self.manager.Queue()
         self.ids_imp = self.manager.Queue()
-        for i in range(proc_num): self.ids_imp.put(i)
+        for i in range(self.proc_num): self.ids_imp.put(i)
         self.ids_inj = self.manager.Queue()
         for i in range(len(self.DeviceList)): self.ids_inj.put(i)                       
-        implement_Pool = multiprocessing.Pool(proc_num, worker_Implement,(self.ids_imp, self.queue_implement, self.queue_faulteval, self.console_lock))
+        implement_Pool = multiprocessing.Pool(self.proc_num, worker_Implement,(self.ids_imp, self.queue_implement, self.queue_faulteval, self.console_lock))
         faulteval_Pool = multiprocessing.Pool(len(self.DeviceList), worker_Faulteval,(self.ids_inj, self.queue_faulteval, self.queue_result, self.console_lock, self.DeviceList))    
         
 
@@ -86,10 +86,10 @@ def worker_Implement(idx, queue_i, queue_o, lock):
         item = queue_i.get(True)
         model = item[0]
         stat = item[1]
-        config = item[2]
+        davosconf = item[2] 
         with lock: print('worker_Implement {0} :: Implementing {1}'.format(id_proc, model.Label))           
           
-        ImplementationTool.implement_model(config, model, True, stat, False)
+        ImplementationTool.implement_model(davosconf.ExperimentalDesignConfig, model, True, stat, False)
         #dummy_implement(config, model, True, stat)
 
         model.Metrics['Error'] = ''
@@ -109,27 +109,27 @@ def worker_Faulteval(idx, queue_i, queue_o, lock, DeviceList):
         item = queue_i.get(True)
         model = item[0]
         stat = item[1]
-        config = item[2]
-        if model.Metrics['Error'] != '':
+        davosconf = item[2]
+        if model.Metrics['Error'] != '' and model.Metrics['Error'] != 0:
             with lock: print('worker_Faulteval {0} :: Passing {1} due to error flag'.format(id_proc, model.Label))     
         else:
             with lock: print('worker_Faulteval {0} :: Estimating Robustness {1}'.format(id_proc, model.Label))     
 
-            estimate_robustness(model, DeviceList[id_proc], stat, config, lock)
+            estimate_robustness(model, DeviceList[id_proc], stat, davosconf, lock)
             #dummy_estimate_robustness(model, id_proc, stat)
 
 
         for i in EvalEngineParameters.require_properties_faulteval:
             if not i in model.Metrics['Implprop']:
                 model.Metrics['Implprop'][i] = 0
-                if model.Metrics['Error'] == '':
+                if model.Metrics['Error'] == '' or model.Metrics['Error'] == 0:
                     model.Metrics['Error'] = 'InjError'
         queue_o.put(item)
 
 
 
 
-def estimate_robustness(model, Device, stat, config, lock):
+def estimate_robustness(model, Device, stat, davosconf, lock):
     os.chdir(model.ModelPath)
     if stat == None: stat = ProcStatus('Config')
     for k, v in model.Metrics['Implprop'].iteritems():
@@ -143,25 +143,29 @@ def estimate_robustness(model, Device, stat, config, lock):
 
     Injector = InjectorHostManager(model.ModelPath, 
                                    model.ID, 
-                                   os.path.join(model.ModelPath,  "./MicZC.sdk/BD_wrapper_hw_platform_0/system.hdf"),
-                                   os.path.join(model.ModelPath, "./MicZC.sdk/BD_wrapper_hw_platform_0/ps7_init.tcl"),
-                                   os.path.join(model.ModelPath, "./MicZC.sdk/InjectorApp/Debug/InjectorApp.elf"),
-                                   0x3E000000)    
-    Injector.verbosity = 1  #silent when multiprocessing is used
+                                   os.path.join(model.ModelPath,  davosconf.FFIConfig.hdf_path),
+                                   os.path.join(model.ModelPath, davosconf.FFIConfig.init_tcl_path),
+                                   os.path.join(model.ModelPath, davosconf.FFIConfig.injectorapp_path),
+                                   davosconf.FFIConfig.memory_buffer_address)    
+    Injector.verbosity = 0  #silent when multiprocessing is used
 
 #    Injector.attachMemConfig(   os.path.join(model.ModelPath, "./MicZC.sdk/BD_wrapper_hw_platform_0/BD_wrapper.mmi"), 
 #                                os.path.join(model.ModelPath, "./MicZC.sdk/AppM/Debug/AppM.elf"), 
 #                                'BD_i/microblaze_0' )
 
-    Injector.configure(Device['TargetId'], Device['PortID'], "MicZC.xpr", "ImplementationPhase")
 
+    Injector.RecoveryNodeNames = davosconf.FFIConfig.post_injection_recovery_nodes
+    Injector.CustomLutMask = davosconf.FFIConfig.custom_lut_mask
+    Injector.Profiling = davosconf.FFIConfig.profiling
+    Injector.DAVOS_Config = davosconf
+    Injector.target_logic = davosconf.FFIConfig.target_logic.lower()
+    Injector.DutScope = davosconf.FFIConfig.dut_scope
+    Injector.configure(Device['TargetId'], Device['PortID'], "", "ImplementationPhase")
     with lock: print('Evaluating configuration {} on device {}\n\nMetrics: {} \n\n\n'.format(model.ID, str(Device), str(model.Metrics)))
 
 
-    if config.design_genconf.post_injection_recovery_nodes != None:
-        Injector.RecoveryNodeNames = config.design_genconf.post_injection_recovery_nodes
     #remove/force regenerate bitmask file
-    if(os.path.exists(Injector.Output_FrameDescFile)): os.remove(Injector.Output_FrameDescFile)
+    #if(os.path.exists(Injector.Output_FrameDescFile)): os.remove(Injector.Output_FrameDescFile)
     check = Injector.check_fix_preconditions()
 
 
@@ -174,15 +178,15 @@ def estimate_robustness(model, Device, stat, config, lock):
     #Setup Job Parameters
     jdesc = JobDescriptor(model.ID)
     if 'SampleSizeGoal' in model.Metrics and model.Metrics['SampleSizeGoal'] > 0:
-        jdesc.Mode = 100
+        jdesc.Mode = 101
         jdesc.sample_size_goal = int(model.Metrics['SampleSizeGoal'])
         opmode = OperatingModes.SampleExtend
     elif 'ErrorMarginGoal' in model.Metrics and model.Metrics['ErrorMarginGoal'] > 0:
-        jdesc.Mode = 100
+        jdesc.Mode = 101
         jdesc.error_margin_goal = float(model.Metrics['ErrorMarginGoal'])
         opmode = OperatingModes.SampleUntilErrorMargin
     else:
-        jdesc.Mode = 100
+        jdesc.Mode = 102
         opmode = OperatingModes.Exhaustive
 
     with lock: print('\nMODE SELECTED: {}, \n'.format(str(opmode)))
@@ -194,13 +198,18 @@ def estimate_robustness(model, Device, stat, config, lock):
         if int(model.Metrics['Implprop']['Injections']) > 0:
             jdesc.UpdateBitstream = 0
            
-    jdesc.Blocktype = 0         #CLB only
+    jdesc.Celltype =  1 if davosconf.FFIConfig.target_logic.lower()=='ff' else 2 if davosconf.FFIConfig.target_logic.lower()=='lut' else 3 if davosconf.FFIConfig.target_logic.lower()=='bram' else 2 if davosconf.FFIConfig.target_logic.lower()=='type0' else 0
+    jdesc.Blocktype = 0 if davosconf.FFIConfig.target_logic.lower() in ['lut', 'ff', 'type0'] else 1 if davosconf.FFIConfig.target_logic.lower() in ['bram'] else 2
     jdesc.Essential_bits = 1    
     jdesc.CheckRecovery = 1    #check recovery after 10 experiments
-    jdesc.LogTimeout = 500
+    jdesc.LogTimeout = 100
     jdesc.FaultMultiplicity = 1
+    jdesc.DetectLatentErrors = 0
+    jdesc.InjectionTime = davosconf.FFIConfig.injection_time
     jdesc.PopulationSize = float(1)*Injector.EssentialBitsPerBlockType[jdesc.Blocktype]
+    jdesc.WorkloadDuration = int(davosconf.SBFIConfig.genconf.std_workload_time / davosconf.SBFIConfig.genconf.std_clk_period)
     jdesc.SamplingWithouRepetition = 1
+    jdesc.DetailedLog = 1
 
     if 'Injections' in model.Metrics['Implprop']: 
         jdesc.StartIndex =    int(model.Metrics['Implprop']['Injections'])
@@ -224,7 +233,7 @@ def estimate_robustness(model, Device, stat, config, lock):
         model.Metrics['Implprop']['Masked'] = int(res.Masked)
         model.Metrics['Implprop']['MaskedRate'] = float(res.masked_rate)
         model.Metrics['Implprop']['MaskedRateMargin'] = float(res.masked_error)
-        model.Metrics['Implprop']['EssentialBits'] = int(res.EssentialBitsCount)
+        model.Metrics['Implprop']['EssentialBits'] = int(Injector.EssentialBitsPerBlockType[jdesc.Blocktype])
         model.Metrics['Implprop']['FIT'] = EvalEngineParameters.FIT_DEVICE * model.Metrics['Implprop']['EssentialBits'] * (model.Metrics['Implprop']['FailureRate'] / 100.0)
         model.Metrics['Implprop']['FITMargin'] = EvalEngineParameters.FIT_DEVICE * model.Metrics['Implprop']['EssentialBits'] * (model.Metrics['Implprop']['FailureRateMargin'] / 100.0)
         model.Metrics['Implprop']['Lambda'] = model.Metrics['Implprop']['FIT']/float(1000000000)
@@ -333,11 +342,16 @@ def export_DatamodelStatistics(datamodel, fname):
         f.write(res)
 
 
-def evaluate(config_list, config, JM, datamodel, force_evaluate = False):
+def evaluate(config_list, davosconf, JM, datamodel, force_evaluate = False):
     configurations_to_implement = []   
     configurations_to_inject = []   
     configurations_implemented = []
+
     for individual in config_list:
+        #try recover results from XML statfile
+        if (not 'Implprop' in individual.Metrics) or (not isinstance(individual.Metrics['Implprop'], dict)):
+            ImplementationTool.update_metrics(individual)
+        if not 'Error' in individual.Metrics: individual.Metrics['Error'] = ''
         #Check availability of all metrics, required for score computation
         impl_complete = True
         faulteval_complete = True
@@ -353,11 +367,13 @@ def evaluate(config_list, config, JM, datamodel, force_evaluate = False):
                 if not p in individual.Metrics['Implprop']:                    
                     faulteval_complete = False
                     break
+            if 'Injections' in individual.Metrics['Implprop'] and individual.Metrics['Implprop']['Injections']==0: 
+                faulteval_complete = False
             if faulteval_complete:
                 if ('SampleSizeGoal' in individual.Metrics)  and (individual.Metrics['SampleSizeGoal'] > 0)  and (individual.Metrics['Implprop']['Injections'] < individual.Metrics['SampleSizeGoal']):         faulteval_complete = False
                 if ('ErrorMarginGoal' in individual.Metrics) and (individual.Metrics['ErrorMarginGoal'] > 0) and (individual.Metrics['Implprop']['FailureRateMargin'] > individual.Metrics['ErrorMarginGoal']): faulteval_complete = False
-        if (not impl_complete) and ('Error' in individual.Metrics) and (individual.Metrics['Error'] != ''):      impl_complete = True
-        if (not faulteval_complete) and ('Error' in individual.Metrics) and (individual.Metrics['Error'] != ''): faulteval_complete = True
+        if (not impl_complete) and ('Error' in individual.Metrics) and (individual.Metrics['Error'] != '' and individual.Metrics['Error'] != 0):      impl_complete = True
+        if (not faulteval_complete) and ('Error' in individual.Metrics) and (individual.Metrics['Error'] != '' and individual.Metrics['Error'] != 0): faulteval_complete = True
         if (not impl_complete) or force_evaluate:
             configurations_to_implement.append(individual)
         elif (not faulteval_complete) or force_evaluate:
@@ -365,8 +381,8 @@ def evaluate(config_list, config, JM, datamodel, force_evaluate = False):
         else:
             configurations_implemented.append(individual)            
     #Implement all inviduals with missing metrics
-    allocate_gui_global(config)
-    buf = ImplementationTool.ImplementConfigurationsManaged(configurations_to_implement, configurations_to_inject, config, JM, datamodel.SaveHdlModels(), 100)
+    allocate_gui_global(davosconf.ExperimentalDesignConfig)
+    buf = ImplementationTool.ImplementConfigurationsManaged(configurations_to_implement, configurations_to_inject, davosconf, JM, datamodel.SaveHdlModels(), 100)
     res = []
     for i in buf:
         m = datamodel.GetHdlModel(i.Label)
@@ -387,8 +403,8 @@ def evaluate(config_list, config, JM, datamodel, force_evaluate = False):
     return(individuals)
 
 
-def ComputeScore(ind):
-    if ind.Metrics['Error'] == '' and ind.Metrics['Implprop']['VerificationSuccess'] > 0 and ind.Metrics['Implprop']['FIT'] > 0:
+def ComputeScore(ind):    
+    if (ind.Metrics['Error'] == '' or ind.Metrics['Error'] == 0)  and ind.Metrics['Implprop']['VerificationSuccess'] > 0 and ind.Metrics['Implprop']['FIT'] > 0:
         ind.Metrics['Implprop']['FITMargin'] = EvalEngineParameters.FIT_DEVICE * ind.Metrics['Implprop']['EssentialBits'] * (ind.Metrics['Implprop']['FailureRateMargin'] / 100.0)
         ind.Metrics['ScoreMean'] = 1.0/(ind.Metrics['Implprop']['FIT'])
         ind.Metrics['ScoreLow'] =  1.0/(ind.Metrics['Implprop']['FIT']+ind.Metrics['Implprop']['FITMargin'])

@@ -49,6 +49,9 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
         if inj_dump.build_vectors_from_file(os.path.join(conf.work_dir, toolconf.result_dir, item.dumpfile)) == None:
             InjDesc.Status = 'E'    #error
         else:
+            inj_dump.replaceval("proc_error", "X", "0")
+            inj_dump.replaceval("enable_trap", "X", "0")
+            #inj_dump.replaceval("trap_type", "XX", "XX")
             InjDesc.Status = 'S'    #Simulted and dumpfile exists
             inj_dump.join_output_columns(datamodel.reference.JnGrLst.copy())
             failure_flag = False

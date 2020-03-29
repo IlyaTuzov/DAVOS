@@ -514,9 +514,12 @@ class Table:
         self.delete_columns([column_index])
 
     def reorder_columns(self, labelsequence):
-        order = [self.labels.index(l) for l in labelsequence]
-        self.columns = [self.columns[i] for i in  order]
-        self.labels = [self.labels[i] for i in  order]
+        try:
+            order = [self.labels.index(l) for l in labelsequence]
+            self.columns = [self.columns[i] for i in  order]
+            self.labels = [self.labels[i] for i in  order]
+        except:
+            print('Error')
 
     def search_row(self, value_sequence, column_align=0):
         for row_index in range(self.rownum()):

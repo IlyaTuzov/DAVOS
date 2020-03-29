@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(os.getcwd(), './SupportScripts'))
 import VendorSpecific
 
 TIMEOUT_IMPL_PHASE = 1000
-
+MAXCONSTRVAL = 220.0
 
 def implement_model(config, model, adjust_constraints, stat, ForceReimplement = False):
     os.chdir(config.design_genconf.design_dir)    
@@ -37,6 +37,8 @@ def implement_model(config, model, adjust_constraints, stat, ForceReimplement = 
     if not isinstance(model.Metrics['EvalTime'], dict): model.Metrics['EvalTime'] = dict()
     for k,v in model.Metrics['EvalTime'].iteritems():
         stat.update(str(k), '{} sec'.format(v), 'ok')
+
+    if model.ModelPath == '': model.ModelPath = os.path.join(config.design_genconf.design_dir, model.Label)
 
     #If this configuration has not been implemented previously - implement it, retrieve the results, update statistics for monitoring interface
     if ForceReimplement:
@@ -76,6 +78,11 @@ def implement_model(config, model, adjust_constraints, stat, ForceReimplement = 
                 constraint_content = constraint_content.replace(ce.placeholder, str(ce.current_value))
                 stat.update('Iteration', ce.iteration, 'ok')
                 ce.iteration += 1
+                if ce.iteration > 14:
+                    model.Metrics['Implprop']['Error'] = 'ImplError'
+                    phase = None
+                    log.write('\n{0}\tImplementation failed: too many iterations (hang detected)'.format(str(datetime.datetime.now().replace(microsecond=0))))
+                    break
             if os.path.exists(config.design_genconf.constraint_file):
                 with open(config.design_genconf.constraint_file, 'w') as f:
                     f.write(constraint_content)
@@ -140,6 +147,10 @@ def implement_model(config, model, adjust_constraints, stat, ForceReimplement = 
                         phase.constraint_to_adjust.current_value -= phase.constraint_to_adjust.adjust_step
                     elif phase.constraint_to_adjust.goal == AdjustGoal.max:
                         phase.constraint_to_adjust.current_value += phase.constraint_to_adjust.adjust_step
+                        if phase.constraint_to_adjust.current_value > MAXCONSTRVAL:
+                            model.Metrics['Implprop']['Error'] = 'ImplError'
+                            phase = None
+                            break
                     log.write('\n{0}\tConstraint adjusted: {1} = {2}'.format(str(timestart), phase.constraint_to_adjust.placeholder, phase.constraint_to_adjust.current_value))
                     if phase.constraint_to_adjust.current_value <= 0:
                          #mask config as non implementable and exit
@@ -168,6 +179,10 @@ def implement_model(config, model, adjust_constraints, stat, ForceReimplement = 
                     #relax the constraint until satisfied
                     if phase.constraint_to_adjust.goal == AdjustGoal.min:
                         phase.constraint_to_adjust.current_value += phase.constraint_to_adjust.adjust_step
+                        if phase.constraint_to_adjust.current_value > MAXCONSTRVAL:
+                            model.Metrics['Implprop']['Error'] = 'ImplError'
+                            phase = None
+                            break
                     elif phase.constraint_to_adjust.goal == AdjustGoal.max:
                         phase.constraint_to_adjust.current_value -= phase.constraint_to_adjust.adjust_step
                     if phase.constraint_to_adjust.current_value <= 0:
@@ -252,8 +267,6 @@ def allocate_gui_local(config):
 
 
 def update_metrics(m):
-
-
     if os.path.isfile(os.path.join(m.ModelPath, HDLModelDescriptor.std_dumpfile_name)):
         tag = ET.parse(os.path.join(m.ModelPath, HDLModelDescriptor.std_dumpfile_name)).getroot()
         res = HDLModelDescriptor.deserialize(SerializationFormats.XML, tag).Metrics
@@ -380,7 +393,7 @@ def implement_models_multicore(config, models, recover_state = True):
 
 
 
-def ImplementConfigurationsManaged(configlist_implement, configlist_inject, config, JM, callback_func = None, callback_period = 0):
+def ImplementConfigurationsManaged(configlist_implement, configlist_inject, davosconf, JM, callback_func = None, callback_period = 0):
     BaseManager.register('ProcStatus', ProcStatus)
     manager = BaseManager()
     manager.start()
@@ -397,22 +410,22 @@ def ImplementConfigurationsManaged(configlist_implement, configlist_inject, conf
         stat = manager.ProcStatus('Config')   #shared proxy-object for process status monitoring
         stat.update('Label', i.Label,'')
         configstat.append(stat)
-        JM.queue_faulteval.put([i, stat, config])
+        JM.queue_faulteval.put([i, stat, davosconf])
     for i in configlist_implement:
         stat = manager.ProcStatus('Config')   #shared proxy-object for process status monitoring
         stat.update('Label', i.Label,'')
         configstat.append(stat)
-        JM.queue_implement.put([i, stat, config])
+        JM.queue_implement.put([i, stat, davosconf])
     tmark = time.time()
     while(JM.queue_result.qsize() < conf_count):
         with JM.console_lock: 
             console_message('Implementation_Queue = {0:d}, SeuInjection_Queue = {1:d}, Result_Queue = {2:d} / {3:d}\r'.format(JM.queue_implement.qsize(), JM.queue_faulteval.qsize(), JM.queue_result.qsize(),  conf_count), ConsoleColors.Green, True)
-        save_statistics( [val for key, val in sorted(globalstatdict.items())] + configstat, os.path.join(config.design_genconf.design_dir, config.statfile) )
+        save_statistics( [val for key, val in sorted(globalstatdict.items())] + configstat, os.path.join(davosconf.ExperimentalDesignConfig.design_genconf.design_dir, davosconf.ExperimentalDesignConfig.statfile) )
         time.sleep(1)
         if callback_func != None and int(time.time()-tmark) >= callback_period:
             callback_func()
             tmark = time.time()
-    save_statistics( [val for key, val in sorted(globalstatdict.items())] + configstat, os.path.join(config.design_genconf.design_dir, config.statfile) )
+    save_statistics( [val for key, val in sorted(globalstatdict.items())] + configstat, os.path.join(davosconf.ExperimentalDesignConfig.design_genconf.design_dir, davosconf.ExperimentalDesignConfig.statfile) )
     impl_results = []
     for i in range(conf_count):
         c = JM.queue_result.get()[0]

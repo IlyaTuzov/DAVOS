@@ -20,7 +20,7 @@ from EvalEngine import *
 from itertools import combinations
 import math
 from FactorialDesignBuilder import *
-
+import ImplementationTool
 
 POPULATION_SIZE = int(18)
 SELECTION_SIZE  = int(6)
@@ -50,7 +50,7 @@ def init_from_file(datamodel, config):
         T = Table('FactorialDesign')        
         T.build_from_csv(os.path.normpath(os.path.join(config.call_dir, config.factorial_config.table_of_factors)))
     else:
-        return(None)
+        return([])
     flist = T.labels
     flist.sort()
     for i in range(T.rownum()):
@@ -198,36 +198,34 @@ def mutate(chromosomes, config, probability, factor_diversity = False):
     return(chromosomes)
 
 
-def create_individuals(chromosomes, datamodel):
+def create_individuals(davosconf, chromosomes, datamodel):
     res = []
     for i in chromosomes:
         m = datamodel.GetOrCreateHDLModel(i)
-        if m.Label == '': m.Label = '{0}{1:03d}'.format(config.design_genconf.design_label, m.ID)
-        if m.ModelPath == '': m.ModelPath = os.path.abspath(os.path.join(config.design_genconf.design_dir, m.Label))
+        if m.Label == '': m.Label = '{0}{1:03d}'.format(davosconf.ExperimentalDesignConfig.design_genconf.design_label, m.ID)
+        if m.ModelPath == '': m.ModelPath = os.path.abspath(os.path.join(davosconf.ExperimentalDesignConfig.design_genconf.design_dir, m.Label))
         res.append(m)
     return(res)
 
 
-def create_individual(chromosome, datamodel):
+def create_individual(davosconf, chromosome, datamodel):
     m = datamodel.GetOrCreateHDLModel(chromosome)
-    if m.Label == '': m.Label = '{0}{1:03d}'.format(config.design_genconf.design_label, m.ID)
-    if m.ModelPath == '': m.ModelPath = os.path.abspath(os.path.join(config.design_genconf.design_dir, m.Label))
+    if m.Label == '': m.Label = '{0}{1:03d}'.format(davosconf.ExperimentalDesignConfig.design_genconf.design_label, m.ID)
+    if m.ModelPath == '': m.ModelPath = os.path.abspath(os.path.join(davosconf.ExperimentalDesignConfig.design_genconf.design_dir, m.Label))
     return(m)
 
 
 
-def log_results(iteration, timemark, selected, rest):
+def log_results(config, iteration, timemark, selected, rest):
     labels = sorted([x.FactorName for x in selected[0].Factors])
-    if iteration == 1:
-        with open(os.path.join(config.design_genconf.tool_log_dir, 'Log.csv'), 'w') as f:
-            f.write('sep = ;\nIteration;Time;Label;Status;Frequency;EssentialBits;Injection;Failures;FailureRate;FailureRateMargin;FIT;FITMargin;MTTF;Error;SynthesisTime;ImplementationTime;RobustnessAssessmentTime;'+ ';'.join(labels))    
-    with open(os.path.join(config.design_genconf.tool_log_dir, 'Log.csv'), 'a') as f:
+    with open(os.path.join(config.design_genconf.tool_log_dir, 'Iteration_{0}.csv').format(str(iteration)), 'w') as f:
+        f.write('sep = ;\nIteration;Time;Label;Status;Frequency;EssentialBits;Injection;Failures;FailureRate;FailureRateMargin;FIT;FITMargin;MTTF;Error;SynthesisTime;ImplementationTime;RobustnessAssessmentTime;'+ ';'.join(labels))    
         for i in selected:
             f.write('\n{0};{1};{2};{3};{4:.4f};{5:d};{6:d};{7:d};{8:.4f};{9:.4f};{10:.4f};{11:.4f};{12:.4f};{13};{14};{15};{16}'.format(iteration, str(int(timemark)), i.Label, 'Selected', i.Metrics['Implprop']['FREQUENCY'], i.Metrics['Implprop']['EssentialBits'], i.Metrics['Implprop']['Injections'], i.Metrics['Implprop']['Failures'], i.Metrics['Implprop']['FailureRate'], i.Metrics['Implprop']['FailureRateMargin'], i.Metrics['Implprop']['FIT'], i.Metrics['Implprop']['FITMargin'], i.Metrics['Implprop']['MTTF'], i.Metrics['Error'], str(i.Metrics['EvalTime']['Synthesis']), str(i.Metrics['EvalTime']['Implementation']), str(i.Metrics['EvalTime']['RobustnessAssessment']) ) )
             for l in labels: f.write(';{0:d}'.format(i.get_factor_by_name(l).FactorVal))
         for i in rest:
             if not 'RobustnessAssessment' in i.Metrics['EvalTime']: i.Metrics['EvalTime']['RobustnessAssessment']=int(0)
-            f.write('\n{0};{1};{2};{3};{4:.4f};{5:d};{6:d};{7:d};{8:.4f};{9:.4f};{10:.4f};{11:.4f};{12:.4f};{13};{14};{15};{16}'.format(iteration, str(int(timemark)), i.Label, '-', i.Metrics['Implprop']['FREQUENCY'], i.Metrics['Implprop']['EssentialBits'], i.Metrics['Implprop']['Injections'], i.Metrics['Implprop']['Failures'], i.Metrics['Implprop']['FailureRate'], i.Metrics['Implprop']['FailureRateMargin'], i.Metrics['Implprop']['FIT'], i.Metrics['Implprop']['FITMargin'], i.Metrics['Implprop']['MTTF'], i.Metrics['Error'], str(i.Metrics['EvalTime']['Synthesis']), str(i.Metrics['EvalTime']['Implementation']), str(i.Metrics['EvalTime']['RobustnessAssessment']) ) )
+            f.write('\n{0};{1};{2};{3};{4:.4f};{5:d};{6:d};{7:d};{8:.4f};{9:.4f};{10:.4f};{11:.4f};{12:.4f};{13};{14};{15};{16}'.format(iteration, str(int(timemark)), i.Label, '-', i.Metrics['Implprop']['FREQUENCY'], i.Metrics['Implprop']['EssentialBits'], i.Metrics['Implprop']['Injections'], i.Metrics['Implprop']['Failures'], i.Metrics['Implprop']['FailureRate'], i.Metrics['Implprop']['FailureRateMargin'], i.Metrics['Implprop']['FIT'], i.Metrics['Implprop']['FITMargin'], i.Metrics['Implprop']['MTTF'], i.Metrics['Error'], str(i.Metrics['EvalTime']['Synthesis']), str(i.Metrics['EvalTime']['Implementation']) if 'Implementation' in i.Metrics['EvalTime'] else '0', str(i.Metrics['EvalTime']['RobustnessAssessment']) if 'RobustnessAssessment' in  i.Metrics['EvalTime'] else '0') )
             for l in labels: f.write(';{0:d}'.format(i.get_factor_by_name(l).FactorVal))
         with open(os.path.join(config.design_genconf.tool_log_dir, 'MODELS.xml'), 'w') as f: 
             f.write('<?xml version="1.0"?>\n<data>\n{0}\n</data>'.format('\n\n'.join([m.log_xml() for m in (datamodel.HdlModel_lst) ])))
@@ -247,7 +245,7 @@ def GeneticSearch_PresiceRanking(config, JM, datamodel):
         population = evaluate(population, config, JM, datamodel)
         datamodel.SaveHdlModels()
         parents, rest    = selection_simple(population)
-        log_results(iteration, time.time()-timestart, parents, rest)
+        log_results(config, iteration, time.time()-timestart, parents, rest)
         print 'Iteration: {0:d}, Selected: {1}\n\n'.format(iteration, ', '.join([str(x.Metrics['Implprop']['Failures']) for x in parents]))       
         new_ind_cnt = POPULATION_SIZE - len(parents)
         if len(parents) > 1:
@@ -271,7 +269,7 @@ def GeneticSearch_PresiceRanking(config, JM, datamodel):
 
 
 #select M best individuals by iteratively refining the confidence intervals for their metrics
-def selection_adaptive(Input_Population, M, config, JM, datamodel):
+def selection_adaptive(Input_Population, M, davosconf, JM, datamodel):
     T, P = [], []
     for i in Input_Population: 
         T.append(i)
@@ -280,7 +278,7 @@ def selection_adaptive(Input_Population, M, config, JM, datamodel):
         for i in T:
             if not 'SampleSizeGoal'  in i.Metrics: i.Metrics['SampleSizeGoal']  = int(SAMPLE_INCREMENT)
             if not 'ErrorMarginGoal' in i.Metrics: i.Metrics['ErrorMarginGoal'] = float(0)           
-        T = evaluate(T, config, JM, datamodel)
+        T = evaluate(T, davosconf, JM, datamodel)
         datamodel.SaveHdlModels()
         #filter by Frequency
         P = filter(P)
@@ -337,27 +335,41 @@ def crossover_exhaustive(individuals, CrossType):
 
 
 
-def GeneticSearch_AdaptiveRanking(config, JM, datamodel, starting_population, continue_iteration):
+def GeneticSearch_AdaptiveRanking(davosconf, JM, datamodel, starting_population, continue_iteration):
+
+    #population = []
+    #timestart = time.time()    
+    #for i in datamodel.HdlModel_lst:
+    #    if i.Label in ['AVR042','AVR047','AVR046','AVR054','AVR049','AVR032','AVR048','AVR053','AVR043','AVR055','AVR056','AVR057','AVR058','AVR059','AVR060','AVR061','AVR062','AVR063']:
+    #        population.append(i)
+
+    #population.sort(key=lambda x: x.Label, reverse=False)
+    #iteration = 0
+
+
+
+    
     population = []
-    timestart = time.time()
+    timestart = time.time()    
     iteration = continue_iteration if continue_iteration > 0 else 0        
     if len(starting_population) > 0:
         for i in starting_population:
             population.append(i)
     else:
         #Build initial random population    
-        #population = init_from_file(datamodel, config)    
-        pass
+        population = init_from_file(datamodel, davosconf.ExperimentalDesignConfig)
     while len(population) < POPULATION_SIZE:
-        print 'INternally generating random configuration'
-        ind = get_random_individual(datamodel, config)
+        print 'Generating initial random population'
+        ind = get_random_individual(datamodel, davosconf.ExperimentalDesignConfig)
         population.append(ind)
     for ind in population:
         ind.Metrics['CreatedAtIteration'] = iteration
+    print('INIT population: \n{0}'.format('\n\n\n'.join([', '.join(['{0}={1}'.format(j.FactorName, j.FactorVal) for j in i.Factors]) for i in population])))
+    raw_input('Any key to proceed...')    
 
     while(True):
-        parents, rest = selection_adaptive(population, SELECTION_SIZE, config, JM, datamodel)
-        log_results(iteration, time.time()-timestart, parents, rest)
+        parents, rest = selection_adaptive(population, SELECTION_SIZE, davosconf, JM, datamodel)
+        log_results(davosconf.ExperimentalDesignConfig, iteration, time.time()-timestart, parents, rest)
         datamodel.SaveHdlModels()
         print 'Iteration: {0:d}, Selected: {1}\n\n'.format(iteration, ', \n\n'.join([str(x.Metrics['Implprop']) for x in parents]))       
         new_ind_cnt = POPULATION_SIZE - len(parents)
@@ -366,15 +378,15 @@ def GeneticSearch_AdaptiveRanking(config, JM, datamodel, starting_population, co
         while len(children) < new_ind_cnt:            
             if len(parents) > 1:
                 chromosomes = crossover_exhaustive(parents, CrossoverTypes.Uniform)              
-                chromosomes = mutate(chromosomes, config, 50, False)
+                chromosomes = mutate(chromosomes, davosconf.ExperimentalDesignConfig, 50, False)
                 for ch in chromosomes:
                     if len(children) < new_ind_cnt:
-                        child = create_individual(ch, datamodel)    #select inviduals with matching chromosomes from DB, otherwise create new ones to be evaluated(implemented)
+                        child = create_individual(davosconf, ch, datamodel)    #select inviduals with matching chromosomes from DB, otherwise create new ones to be evaluated(implemented)
                         if (not 'ScoreMean' in child.Metrics) or ('CreatedAtIteration' in  child.Metrics and child.Metrics['CreatedAtIteration'] == iteration):        #new individual
                             child.Metrics['CreatedAtIteration'] = iteration
                             children.append(child)
             else:
-                child = get_random_individual(datamodel, config)
+                child = get_random_individual(datamodel, davosconf.ExperimentalDesignConfig)
                 if (not 'ScoreMean' in child.Metrics) or ('CreatedAtIteration' in  child.Metrics and child.Metrics['CreatedAtIteration'] == iteration):
                     child.Metrics['CreatedAtIteration'] = iteration
                     children.append(child)
@@ -386,43 +398,26 @@ def GeneticSearch_AdaptiveRanking(config, JM, datamodel, starting_population, co
 #Entry point for the parent process
 if __name__ == '__main__':           
     call_dir = os.getcwd()
+    toolconf = ToolOptions(ET.parse('tool_config.xml').getroot().findall('ToolOptions')[0])
     normconfig = (sys.argv[1]).replace('.xml','_normalized.xml')
     normalize_xml(os.path.join(os.getcwd(), sys.argv[1]), os.path.join(os.getcwd(), normconfig))
     xml_conf = ET.parse(os.path.join(os.getcwd(), normconfig))
     tree = xml_conf.getroot()
     davosconf = DavosConfiguration(tree.findall('DAVOS')[0])
-    config = davosconf.ExperimentalDesignConfig
-    config.ConfigFile = normconfig
+    davosconf.toolconf = toolconf
+    davosconf.file = normconfig
+
     datamodel = DataModel()
     datamodel.ConnectDatabase( davosconf.get_DBfilepath(False), davosconf.get_DBfilepath(True) )
     datamodel.RestoreHDLModels(None)
-    if not os.path.exists(config.design_genconf.tool_log_dir):
-        os.makedirs(config.design_genconf.tool_log_dir)
+    for i in datamodel.HdlModel_lst: i.ModelPath = os.path.join(davosconf.ExperimentalDesignConfig.design_genconf.design_dir, i.Label)
 
-    #invalidate_robustness_metrics(datamodel.HdlModel_lst)
-    #datamodel.SaveHdlModels()
-
-    #synt = {'min':1000000.0, 'max':0.0, 'mean':0.0}
-    #impl = {'min':1000000.0, 'max':0.0, 'mean':0.0}
-    #total = {'min':1000000.0, 'max':0.0, 'mean':0.0}
-    #for i in range(36):
-    #    m = datamodel.HdlModel_lst[i].Metrics['EvalTime']
-    #    if m['Synthesis'] < synt['min']: synt['min'] = m['Synthesis']
-    #    if m['Synthesis'] > synt['max']: synt['max'] = m['Synthesis']
-    #    synt['mean'] += m['Synthesis']
-    #    if m['Implementation'] < impl['min']: impl['min'] = m['Implementation']
-    #    if m['Implementation'] > impl['max']: impl['max'] = m['Implementation']
-    #    impl['mean'] += m['Implementation']
-
-    #    total['mean'] += (m['Synthesis'] + m['Implementation'])
-
-    #synt['mean'] = synt['mean']/36
-    #impl['mean'] = impl['mean']/36
-    #total['mean'] = total['mean']/36
+    if not os.path.exists(davosconf.ExperimentalDesignConfig.design_genconf.tool_log_dir):
+        os.makedirs(davosconf.ExperimentalDesignConfig.design_genconf.tool_log_dir)
 
     #Build Worker processes
-    JM = JobManager(config.max_proc)
-    random.seed(100)
+    JM = JobManager(davosconf)
+    random.seed(1234)
     #GeneticSearch_PresiceRanking(config, JM, datamodel)
     c_population = []
     #for i in datamodel.HdlModel_lst:
@@ -431,11 +426,11 @@ if __name__ == '__main__':
     #       c_population.append(i)
 
 
-    #DefConf = CreateDefaultConfig(datamodel, config)
+    #DefConf = CreateDefaultConfig(datamodel, davosconf.ExperimentalDesignConfig)
     #DefConf.Metrics['SampleSizeGoal']=300000
     #DefConf.Metrics['ErrorMarginGoal']=float(0.001)
-    #evaluate([DefConf], config, JM, datamodel, False)
+    #evaluate([DefConf], davosconf, JM, datamodel, False)
     
-    GeneticSearch_AdaptiveRanking(config, JM, datamodel, [], 0)
+    GeneticSearch_AdaptiveRanking(davosconf, JM, datamodel, [], 0)
 
     datamodel.SaveHdlModels()

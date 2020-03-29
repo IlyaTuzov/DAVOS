@@ -416,9 +416,11 @@ def MapLutToBitstream(LutDescTab, BIN_FrameList, DutScope=''):
         BITSTREAM, node['globalmap'] = SetCustomLutMask(node['top'], node['row'], node['major'], node['minor'], node['lutindex'], BIN_FrameList, res, skip_mask)
         BIT_INIT = 0x0000000000000000
         w = 2**len(node['connections'])
-        for bit in range(w): 
-            BIT_INIT = BIT_INIT | (((BITSTREAM>>res[bit][0])&0x1)<<bit)
-
+        try:
+            for bit in range(w): 
+                BIT_INIT = BIT_INIT | (((BITSTREAM>>res[bit][0])&0x1)<<bit)
+        except:
+            pass
         node['bit_i'] =  '{bits}\'h{num:0{width}X}'.format(bits=w,num=BIT_INIT, width=w/4)
         node['match'] = 'Y' if node['init'] == node['bit_i'] else 'N'
 

@@ -54,7 +54,7 @@ def ParseVivadoNetlist(VivadoProjectFile, ImplementationRun, targetDir):
 					[get_property NAME $cr] \
 					[get_property NAME $tile] ]
 				foreach pin $cellpins {{ 
-					puts -nonewline $fout [format \"{{I0:%s}}\" [lindex [split [lindex [get_bel_pins -of_objects $pin] 0] '/'] end] ] 
+					puts -nonewline $fout [format \"{{I0:%s}}\" [lindex [split [lindex [get_bel_pins -of_objects $pin -filter {{NAME =~ *LUT*}}] 0] '/'] end] ] 
 				}} 		
 				puts $fout \";\"
 			}}  elseif {{ [llength $eqn] > 0}} {{
