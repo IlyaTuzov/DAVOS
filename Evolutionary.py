@@ -21,6 +21,8 @@ from itertools import combinations
 import math
 from FactorialDesignBuilder import *
 import ImplementationTool
+import DecisionSupport
+
 
 POPULATION_SIZE = int(18)
 SELECTION_SIZE  = int(6)
@@ -219,13 +221,17 @@ def create_individual(davosconf, chromosome, datamodel):
 def log_results(config, iteration, timemark, selected, rest):
     labels = sorted([x.FactorName for x in selected[0].Factors])
     with open(os.path.join(config.design_genconf.tool_log_dir, 'Iteration_{0}.csv').format(str(iteration)), 'w') as f:
-        f.write('sep = ;\nIteration;Time;Label;Status;Frequency;EssentialBits;Injection;Failures;FailureRate;FailureRateMargin;FIT;FITMargin;MTTF;Error;SynthesisTime;ImplementationTime;RobustnessAssessmentTime;'+ ';'.join(labels))    
+        f.write('sep = ;\nIteration;Time;Label;Status;ParetoRank;CrowdingDistance;Frequency;EssentialBits;Injection;Failures;FailureRate;FailureRateMargin;FIT;FITMargin;MTTF;Error;SynthesisTime;ImplementationTime;RobustnessAssessmentTime;'+ ';'.join(labels))    
         for i in selected:
-            f.write('\n{0};{1};{2};{3};{4:.4f};{5:d};{6:d};{7:d};{8:.4f};{9:.4f};{10:.4f};{11:.4f};{12:.4f};{13};{14};{15};{16}'.format(iteration, str(int(timemark)), i.Label, 'Selected', i.Metrics['Implprop']['FREQUENCY'], i.Metrics['Implprop']['EssentialBits'], i.Metrics['Implprop']['Injections'], i.Metrics['Implprop']['Failures'], i.Metrics['Implprop']['FailureRate'], i.Metrics['Implprop']['FailureRateMargin'], i.Metrics['Implprop']['FIT'], i.Metrics['Implprop']['FITMargin'], i.Metrics['Implprop']['MTTF'], i.Metrics['Error'], str(i.Metrics['EvalTime']['Synthesis']), str(i.Metrics['EvalTime']['Implementation']), str(i.Metrics['EvalTime']['RobustnessAssessment']) ) )
+            f.write('\n{0};{1};{2};{3};{4:d};{5:.4f};{6:.4f};{7:d};{8:d};{9:d};{10:.4f};{11:.4f};{12:.4f};{13:.4f};{14:.4f};{15};{16};{17};{18}'.format(
+                iteration, str(int(timemark)), i.Label, 'Selected', i.Metrics['ParetoRank'] if 'ParetoRank' in i.Metrics else '-', i.Metrics['CrowdingDistance'] if 'CrowdingDistance' in i.Metrics else '-',
+                i.Metrics['Implprop']['FREQUENCY'], i.Metrics['Implprop']['EssentialBits'], i.Metrics['Implprop']['Injections'], i.Metrics['Implprop']['Failures'], i.Metrics['Implprop']['FailureRate'], i.Metrics['Implprop']['FailureRateMargin'], i.Metrics['Implprop']['FIT'], i.Metrics['Implprop']['FITMargin'], i.Metrics['Implprop']['MTTF'], i.Metrics['Error'], str(i.Metrics['EvalTime']['Synthesis']), str(i.Metrics['EvalTime']['Implementation']), str(i.Metrics['EvalTime']['RobustnessAssessment']) ) )
             for l in labels: f.write(';{0:d}'.format(i.get_factor_by_name(l).FactorVal))
         for i in rest:
             if not 'RobustnessAssessment' in i.Metrics['EvalTime']: i.Metrics['EvalTime']['RobustnessAssessment']=int(0)
-            f.write('\n{0};{1};{2};{3};{4:.4f};{5:d};{6:d};{7:d};{8:.4f};{9:.4f};{10:.4f};{11:.4f};{12:.4f};{13};{14};{15};{16}'.format(iteration, str(int(timemark)), i.Label, '-', i.Metrics['Implprop']['FREQUENCY'], i.Metrics['Implprop']['EssentialBits'], i.Metrics['Implprop']['Injections'], i.Metrics['Implprop']['Failures'], i.Metrics['Implprop']['FailureRate'], i.Metrics['Implprop']['FailureRateMargin'], i.Metrics['Implprop']['FIT'], i.Metrics['Implprop']['FITMargin'], i.Metrics['Implprop']['MTTF'], i.Metrics['Error'], str(i.Metrics['EvalTime']['Synthesis']), str(i.Metrics['EvalTime']['Implementation']) if 'Implementation' in i.Metrics['EvalTime'] else '0', str(i.Metrics['EvalTime']['RobustnessAssessment']) if 'RobustnessAssessment' in  i.Metrics['EvalTime'] else '0') )
+            f.write('\n{0};{1};{2};{3};{4:d};{5:.4f};{6:.4f};{7:d};{8:d};{9:d};{10:.4f};{11:.4f};{12:.4f};{13:.4f};{14:.4f};{15};{16};{17};{18}'.format(
+                iteration, str(int(timemark)), i.Label, '-', i.Metrics['ParetoRank'] if 'ParetoRank' in i.Metrics else '-', i.Metrics['CrowdingDistance'] if 'CrowdingDistance' in i.Metrics else '-',
+                i.Metrics['Implprop']['FREQUENCY'], i.Metrics['Implprop']['EssentialBits'], i.Metrics['Implprop']['Injections'], i.Metrics['Implprop']['Failures'], i.Metrics['Implprop']['FailureRate'], i.Metrics['Implprop']['FailureRateMargin'], i.Metrics['Implprop']['FIT'], i.Metrics['Implprop']['FITMargin'], i.Metrics['Implprop']['MTTF'], i.Metrics['Error'], str(i.Metrics['EvalTime']['Synthesis']), str(i.Metrics['EvalTime']['Implementation']) if 'Implementation' in i.Metrics['EvalTime'] else '0', str(i.Metrics['EvalTime']['RobustnessAssessment']) if 'RobustnessAssessment' in  i.Metrics['EvalTime'] else '0') )
             for l in labels: f.write(';{0:d}'.format(i.get_factor_by_name(l).FactorVal))
         with open(os.path.join(config.design_genconf.tool_log_dir, 'MODELS.xml'), 'w') as f: 
             f.write('<?xml version="1.0"?>\n<data>\n{0}\n</data>'.format('\n\n'.join([m.log_xml() for m in (datamodel.HdlModel_lst) ])))
@@ -335,8 +341,10 @@ def crossover_exhaustive(individuals, CrossType):
 
 
 
-def GeneticSearch_AdaptiveRanking(davosconf, JM, datamodel, starting_population, continue_iteration):
 
+
+
+def GeneticSearch_AdaptiveRanking(davosconf, JM, datamodel, starting_population, continue_iteration):
     #population = []
     #timestart = time.time()    
     #for i in datamodel.HdlModel_lst:
@@ -345,9 +353,6 @@ def GeneticSearch_AdaptiveRanking(davosconf, JM, datamodel, starting_population,
 
     #population.sort(key=lambda x: x.Label, reverse=False)
     #iteration = 0
-
-
-
     
     population = []
     timestart = time.time()    
@@ -395,6 +400,85 @@ def GeneticSearch_AdaptiveRanking(davosconf, JM, datamodel, starting_population,
 
 
 
+
+def binary_tournament_selection(individuals):
+    a, b = random.choice(individuals), random.choice(individuals)
+    if a.Metrics['ParetoRank'] < b.Metrics['ParetoRank']:
+        return(a)
+    elif a.Metrics['ParetoRank'] > b.Metrics['ParetoRank']:
+        return(b)
+    else:   #if both pertain to the same Pareto frontier - check 
+        if a.Metrics['CrowdingDistance'] > b.Metrics['CrowdingDistance']:
+            return(a)
+        elif a.Metrics['CrowdingDistance'] < b.Metrics['CrowdingDistance']:
+            return(b)
+        else: 
+            return(a)
+
+
+def crossover_couples(couples, CrossType):
+    res = []
+    for c in couples:
+        chromosoma_1, chromosoma_2  = [], []
+        if CrossType == CrossoverTypes.Uniform:
+            for i in range(len(c[0].Factors)):
+                point = random.choice([0,1])
+                gene_1 = c[0].Factors[i] if point==0 else c[1].Factors[i]
+                gene_2 = c[0].Factors[i] if point==1 else c[1].Factors[i]
+                chromosoma_1.append(copy.copy(gene_1))
+                chromosoma_2.append(copy.copy(gene_2))
+        res.append(chromosoma_1)
+        res.append(chromosoma_2)
+    return(res)
+
+
+
+def NGSA(davosconf, JM, datamodel):
+    population = []
+    timestart = time.time()
+    iteration=0    
+    for i in datamodel.HdlModel_lst:
+        if i.Label in ['AVR001','AVR002','AVR003','AVR004','AVR005','AVR006','AVR007','AVR008','AVR009','AVR010','AVR011','AVR012','AVR013','AVR014','AVR015','AVR016','AVR017','AVR018']:
+            population.append(i)
+    
+
+    while(True):
+        population, rest = selection_adaptive(population, len(population), davosconf, JM, datamodel)
+        pareto_fronts, sorted_population = DecisionSupport.pareto_sort(population, ['MTTF', 'FREQUENCY'])
+        parents, rest = sorted_population[:len(sorted_population)/2], sorted_population[len(sorted_population)/2:]
+        log_results(davosconf.ExperimentalDesignConfig, iteration, time.time()-timestart, parents, rest)
+        datamodel.SaveHdlModels()
+
+        new_ind_cnt = POPULATION_SIZE - len(parents)
+        iteration+=1
+        children = []
+
+        while len(children) < new_ind_cnt:
+            if len(parents) > 1:
+                couples = []
+                for i in range(int(math.ceil(POPULATION_SIZE/2.0))):
+                    a, b = binary_tournament_selection(parents), binary_tournament_selection(parents)
+                    while (a==b): b = binary_tournament_selection(parents)
+                    couples.append((a,b))
+                chromosomes = crossover_couples(couples, CrossoverTypes.Uniform)              
+                chromosomes = mutate(chromosomes, davosconf.ExperimentalDesignConfig, 50, False)
+                for ch in chromosomes:
+                    if len(children) < new_ind_cnt:
+                        child = create_individual(davosconf, ch, datamodel)    #select inviduals with matching chromosomes from DB, otherwise create new ones to be evaluated(implemented)
+                        if (not 'ScoreMean' in child.Metrics) or ('CreatedAtIteration' in  child.Metrics and child.Metrics['CreatedAtIteration'] == iteration):        #new individual
+                            child.Metrics['CreatedAtIteration'] = iteration
+                            children.append(child)
+            else:
+                child = get_random_individual(datamodel, davosconf.ExperimentalDesignConfig)
+                if (not 'ScoreMean' in child.Metrics) or ('CreatedAtIteration' in  child.Metrics and child.Metrics['CreatedAtIteration'] == iteration):
+                    child.Metrics['CreatedAtIteration'] = iteration
+                    children.append(child)
+        population = parents + children
+
+
+
+
+
 #Entry point for the parent process
 if __name__ == '__main__':           
     call_dir = os.getcwd()
@@ -419,11 +503,8 @@ if __name__ == '__main__':
     JM = JobManager(davosconf)
     random.seed(1234)
     #GeneticSearch_PresiceRanking(config, JM, datamodel)
-    c_population = []
-    #for i in datamodel.HdlModel_lst:
-    #   if i.ID in [30, 25, 27, 24, 29, 21, 31, 32, 33, 34, 35, 36]:
-    #       if i.ModelPath == '': i.ModelPath = os.path.abspath(os.path.join(config.design_genconf.design_dir, i.Label))
-    #       c_population.append(i)
+
+    NGSA(davosconf, JM, datamodel)
 
 
     #DefConf = CreateDefaultConfig(datamodel, davosconf.ExperimentalDesignConfig)

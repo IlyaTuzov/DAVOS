@@ -1,4 +1,4 @@
-# Automation of multicriteria decision making (module under active refactoring - functionality from previous version in ./DesicionSupport folder)
+﻿# Automation of multicriteria decision making (module under active refactoring - functionality from previous version in ./DesicionSupport folder)
 # 1. Computation of custom benchmarking metric (derived in the basis of raw PPA and Dependability attributes)
 # 2. Ranking of configurations under study by weighted sum method (Dependability benchmarking)
 # 3. Inference of regression models - currently requries matlab
@@ -27,7 +27,7 @@ import DerivedMetrics
 from RegressionModel_Manager import *
 from EvalEngine import *
 from FactorialDesignBuilder import *
-import XilinxInjectorHost 
+import FFI.FFI_HostLib 
 import EvalEngine
 
 RmodelStdFolder = 'RegressionModels'
@@ -141,6 +141,62 @@ def compute_score(configurations):
         c.Metrics['Implprop']['Score_Balanced'] = (0.3*c.Metrics['Implprop']['FREQUENCY']/max_freq) + (0.7*min_fit/c.Metrics['Implprop']['FIT'])
     for c in excluded:
         c.Metrics['Implprop']['Score_Balanced'] = 0.0
+
+
+
+def is_dominated(candidate, individuals, properties):
+    for i in individuals:
+        flags = [i.Metrics['Implprop'][p] >= candidate.Metrics['Implprop'][p] for p in properties]
+        if not False in flags:
+            #print('{0} dominated by {1}'.format(candidate.Label, i.Label))
+            return(True)
+    return(False)
+
+
+
+
+def pareto_sort(population, properties):
+    pool = population[:]
+    pool = sorted(pool, key = lambda x: (x.Metrics['Implprop'][properties[0]], x.Metrics['Implprop'][properties[1]]), reverse=True)
+    pareto_fronts = []
+    
+    while len(pool)>0:
+        #add best individuals for each metric to pareto set 
+        pareto=[]
+        for p in properties:
+            item = sorted(pool, key = lambda x: (x.Metrics['Implprop'][p]), reverse=True)[0]
+            if not item in pareto: pareto.append( item )
+        for item in pool:
+            if not is_dominated(item, pareto, properties):
+                if not item in pareto:
+                    pareto.append(item)
+        pareto_fronts.append(pareto)
+        for item in pareto:
+            if item in pool:
+                pool.remove(item)
+    for rank in range(len(pareto_fronts)):
+        for i in pareto_fronts[rank]: i.Metrics['ParetoRank']=rank
+    for i in population:
+        i.Metrics['CrowdingDistance']=0.0
+    for pareto in pareto_fronts:
+        for p in properties:
+            pmax = sorted(population, key = lambda x: x.Metrics['Implprop'][p], reverse=True)[0].Metrics['Implprop'][p]
+            pmin = sorted(population, key = lambda x: x.Metrics['Implprop'][p], reverse=False)[0].Metrics['Implprop'][p]
+
+            pareto.sort(key = lambda x: (x.Metrics['Implprop'][p]), reverse=False)
+            pareto[0].Metrics['CrowdingDistance'], pareto[-1].Metrics['CrowdingDistance'] = 1000.0, 1000.0
+            if len(pareto)>2:
+                for i in range(1,len(pareto)-1):
+                    if not 'CrowdingDistance' in pareto[i].Metrics: pareto[i].Metrics['CrowdingDistance']=0.0
+                    pareto[i].Metrics['CrowdingDistance'] = pareto[i].Metrics['CrowdingDistance'] + (pareto[i+1].Metrics['Implprop'][p]-pareto[i-1].Metrics['Implprop'][p])/(pmax-pmin)
+        print('\n'.join(['{0}\t{1}\t{2}\t{3}\t{4}'.format(i.Label, i.Metrics['Implprop'][properties[0]], i.Metrics['Implprop'][properties[1]], i.Metrics['ParetoRank'], i.Metrics['CrowdingDistance']) for i in pareto]) + '\n-\n')
+    for i in population: 
+        i.Metrics['CrowdingDistanceInv']=1.0/i.Metrics['CrowdingDistance']
+    return(pareto_fronts, sorted(population, key=lambda x: (x.Metrics['ParetoRank'], x.Metrics['CrowdingDistanceInv']), reverse=False))
+
+        
+
+
 
 
 if __name__ == "__main__": 
