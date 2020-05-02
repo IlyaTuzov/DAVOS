@@ -199,16 +199,23 @@ def configs_to_table(configs, varlist=[]):
             x = configs[row].get_factor_by_name(T.labels[col])
             T.put(row,col, x.FactorVal)
     #append responce variables
-    metrics = configs[0].get_flattened_metric_dict()
+    for c in configs:
+        if c.Metrics['Error'] == '' or c.Metrics['Error'] == 0:
+            metrics = c.get_flattened_metric_dict()
+            break
     for k, v in metrics.iteritems():
         if len(varlist) > 0 and k in varlist: ResponceVariableLabels.append(k)
+    print('ResponceVariableLabels: {0}'.format(str(ResponceVariableLabels)))
+    ResponceVariableLabels.sort()
     for respvar_ind in range(len(ResponceVariableLabels)):
+        if respvar_ind in['BestConf']: 
+            continue
         lbl = ResponceVariableLabels[respvar_ind]
         T.add_column(lbl)   
         for row in range(len(configs)):
             #if configs[row].Metrics['Implprop']['VerificationSuccess'] > 0:
             metrics = configs[row].get_flattened_metric_dict()
-            T.put(row, len(FactorLabels)+respvar_ind, metrics[lbl])
+            T.put(row, len(FactorLabels)+respvar_ind, metrics[lbl] if lbl in metrics else '-')
     return(T)
 
 

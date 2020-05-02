@@ -235,11 +235,11 @@ class HDLModelDescriptor:
     def get_flattened_metric_dict(self):
         res = dict()
         for k, v in self.Metrics.iteritems():
-            if isinstance(v, int) or isinstance(v, float):
+            if isinstance(v, int) or isinstance(v, float) or isinstance(v, str):
                 res[k] = v
             if isinstance(v, dict):
                 for k1, v1 in v.iteritems():
-                    if isinstance(v1, int) or isinstance(v1, float):
+                    if isinstance(v1, int) or isinstance(v1, float) or isinstance(v1, str):
                         res[k1] = v1
         return(res)
 

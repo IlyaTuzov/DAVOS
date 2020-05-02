@@ -11,8 +11,8 @@ FullFactorSet = #FACTORLABELS;
 ResponseVariableArray= #RESPONSEVARIABLELABELS;
 %define distribution type for each variable: continuous or discrete
 ResponceVarType = #RESPONSEVARIABLETYPES;
-%DistributionContinuous = {'normal', 'gamma', 'inverse gaussian'};
-DistributionContinuous = {'normal'};
+DistributionContinuous = {'normal', 'gamma'};
+%DistributionContinuous = {'gamma'};
 DistributionDiscrete = {'poisson'};
 %significance theshold for ANOVA
 treshold = double(1.0);
@@ -59,40 +59,53 @@ rsquared_treshold = double(0.9);
         z_data = Tdata(:,z_vect);
 
         if strcmp(ResponceVarType{x}, 'continuous')
-            for ds = 1:num_dist_cont
-                Models{x} = fitglm(z_data,model_type,'ResponseVar',ResponseVariableArray{x},'CategoricalVars',Factors,'Distribution',DistributionContinuous{ds});
-    %            if(Models{x}.Rsquared.Adjusted < rsquared_treshold)
-    %                Models{x} = stepwiseglm(z_data,'interactions','ResponseVar',ResponseVariableArray{x},'CategoricalVars',Factors,'Distribution',DistributionContinuous{ds});                
-    %            end
-                dist_lbl = strrep(DistributionContinuous{ds}, ' ', '');
-                ident = strcat(ResponseVariableArray{x},'_',dist_lbl);
-                fname = strcat('RegressionModel=(',ResponseVariableArray{x},')(',dist_lbl,').csv');
-                resfile = strcat(resfolder,fname);
-                writetable(Models{x}.Coefficients,resfile,'WriteRowNames',true);
-                data_desc = strcat(data_desc, '\n\t\t<responce_variable name = "', ident,'"\t\tdistribution="',dist_lbl,'"\t\tfile="',resfile,'"\t\tvalue_treshold = "0.00000001" />' ); 
-                summary = strcat(summary, '\n\n\t<Model \n\t\tVariable="', Models{x}.ResponseName,'"\n\t\tDistribution="', dist_lbl,'"\n\t\tSignificant_Factors="');
-                for j=1:FactNum
-                    summary = [summary, Factors{j},' '];
-                end
-                summary = strcat(summary, '"\n\t\tDeviance="', num2str(Models{x}.Deviance),'"\n\t\tRsquared_Ordinary="', num2str(Models{x}.Rsquared.Ordinary),'"\n\t\tRsquared_Adjusted="',num2str(Models{x}.Rsquared.Adjusted),'"\n\t\tRsquared_LLR="',num2str(Models{x}.Rsquared.LLR), '"\n\t\tRsquared_Deviance="', num2str(Models{x}.Rsquared.Deviance),'"\n\t/>');
+            indx=1;
+            for ds = 1:num_dist_cont                
+				Mod = stepwiseglm(z_data,'constant','upper','linear','ResponseVar',ResponseVariableArray{x},'CategoricalVars',Factors,'Distribution',DistributionContinuous{ds}, 'PEnter',0.09999);
+                if(ds == 1)
+                    Models{x} = Mod;
+                elseif(ds>1)
+                   if(Mod.Rsquared.Ordinary >  Models{x}.Rsquared.Ordinary)
+                       Models{x} = Mod;
+                       indx = ds;
+                   end
+                end                    
             end        
+            dist_lbl = strrep(DistributionContinuous{indx}, ' ', '');
+            ident = strcat(ResponseVariableArray{x},'_',dist_lbl);
+            fname = strcat('RegressionModel=(',ResponseVariableArray{x},')(',dist_lbl,').csv');
+            resfile = strcat(resfolder,fname);
+            writetable(Models{x}.Coefficients,resfile,'WriteRowNames',true);
+            data_desc = strcat(data_desc, '\n\t\t<responce_variable name = "', ident,'"\t\tdistribution="',dist_lbl,'"\t\tfile="',resfile,'"\t\tvalue_treshold = "0.00000001" />' ); 
+            summary = strcat(summary, '\n\n\t<Model \n\t\tVariable="', Models{x}.ResponseName,'"\n\t\tDistribution="', dist_lbl,'"\n\t\tSignificant_Factors="');
+            for j=1:FactNum
+                summary = [summary, Factors{j},' '];
+            end
+            summary = strcat(summary, '"\n\t\tDeviance="', num2str(Models{x}.Deviance),'"\n\t\tRsquared_Ordinary="', num2str(Models{x}.Rsquared.Ordinary),'"\n\t\tRsquared_Adjusted="',num2str(Models{x}.Rsquared.Adjusted),'"\n\t\tRsquared_LLR="',num2str(Models{x}.Rsquared.LLR), '"\n\t\tRsquared_Deviance="', num2str(Models{x}.Rsquared.Deviance),'"\n\t/>');            
         else
-            for ds = 1:num_dist_disc
-                Models{x} = fitglm(z_data,model_type,'ResponseVar',ResponseVariableArray{x},'CategoricalVars',Factors,'Distribution',DistributionDiscrete{ds});
-    %            if(Models{x}.Rsquared.Adjusted < rsquared_treshold)
-    %                    Models{x} = stepwiseglm(z_data,'interactions','ResponseVar',ResponseVariableArray{x},'CategoricalVars',Factors,'Distribution',DistributionDiscrete{ds});
-    %            end            
-                ident = strcat(ResponseVariableArray{x},'_',DistributionDiscrete{ds});
-                fname = strcat('RegressionModel=(',ResponseVariableArray{x},')(',DistributionDiscrete{ds},').csv');
-                resfile = strcat(resfolder,fname);
-                writetable(Models{x}.Coefficients,resfile,'WriteRowNames',true);
-                data_desc = strcat(data_desc, '\n\t\t<responce_variable name = "', ident,'"\t\tdistribution="',DistributionDiscrete{ds},'"\t\tfile="',fname,'"\t\tvalue_treshold = "0.00000001" />' );            
-                summary = strcat(summary, '\n\n\t<Model \n\t\tVariable="', Models{x}.ResponseName,'"\n\t\tDistribution="', DistributionDiscrete{ds},'"\n\t\tSignificant_Factors="');
-                for j=1:FactNum
-                    summary = [summary, Factors{j},' '];
-                end
-                summary = strcat(summary, '"\n\t\tDeviance="', num2str(Models{x}.Deviance),'"\n\t\tRsquared_Ordinary="', num2str(Models{x}.Rsquared.Ordinary),'"\n\t\tRsquared_Adjusted="',num2str(Models{x}.Rsquared.Adjusted),'"\n\t\tRsquared_LLR="',num2str(Models{x}.Rsquared.LLR), '"\n\t\tRsquared_Deviance="', num2str(Models{x}.Rsquared.Deviance),'"\n\t/>');
+            indx=1;
+            for ds = 1:num_dist_disc                
+				Mod = stepwiseglm(z_data,'constant','upper','linear','ResponseVar',ResponseVariableArray{x},'CategoricalVars',Factors,'Distribution',DistributionDiscrete{ds}, 'PEnter',0.09999);
+                if(ds == 1)
+                    Models{x} = Mod;
+                elseif(ds>1)
+                   if(Mod.Rsquared.Ordinary >  Models{x}.Rsquared.Ordinary)
+                       Models{x} = Mod;
+                       indx = ds;
+                   end
+                end                    
             end        
+            dist_lbl = strrep(DistributionDiscrete{indx}, ' ', '');
+            ident = strcat(ResponseVariableArray{x},'_',dist_lbl);
+            fname = strcat('RegressionModel=(',ResponseVariableArray{x},')(',dist_lbl,').csv');
+            resfile = strcat(resfolder,fname);
+            writetable(Models{x}.Coefficients,resfile,'WriteRowNames',true);
+            data_desc = strcat(data_desc, '\n\t\t<responce_variable name = "', ident,'"\t\tdistribution="',dist_lbl,'"\t\tfile="',resfile,'"\t\tvalue_treshold = "0.00000001" />' ); 
+            summary = strcat(summary, '\n\n\t<Model \n\t\tVariable="', Models{x}.ResponseName,'"\n\t\tDistribution="', dist_lbl,'"\n\t\tSignificant_Factors="');
+            for j=1:FactNum
+                summary = [summary, Factors{j},' '];
+            end
+            summary = strcat(summary, '"\n\t\tDeviance="', num2str(Models{x}.Deviance),'"\n\t\tRsquared_Ordinary="', num2str(Models{x}.Rsquared.Ordinary),'"\n\t\tRsquared_Adjusted="',num2str(Models{x}.Rsquared.Adjusted),'"\n\t\tRsquared_LLR="',num2str(Models{x}.Rsquared.LLR), '"\n\t\tRsquared_Deviance="', num2str(Models{x}.Rsquared.Deviance),'"\n\t/>');            
         end
 
     end

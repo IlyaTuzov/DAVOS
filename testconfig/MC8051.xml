@@ -5,8 +5,8 @@
         DesignBuilder = "off"
         SBFI = "off"
 		FFI  = "on"
-        DecisionSupport = "off"
-        report_dir = "#RUNDIR/../../HTWEB/FFI/MC8051/"        
+        DecisionSupport = "on"
+        report_dir = "#RUNDIR/../../HTWEB/Doptimal/MC8051/"        
         dbfile = "MC8051.db"  >
         
 
@@ -30,13 +30,13 @@
                 'ImplementationScriptTemplate' : 'ImplementationPhase.tcl',
                 'GenBitstreamScriptTemplate' : 'GenBitstreamPhase.tcl'
                 }"                      
-                design_label = "Zynq_MC8051_"
-                design_dir = "../../Projects/Checkpointing/MC8051"
-                template_dir = "Zync_Template"
+                design_label = "MC8051_"
+                design_dir = "../../Projects/TESIS/MC8051"
+                template_dir = "MC8051_Template"
                 log_dir = "./log"
                 netlist_dir = "./netgen"
                 constraint_file = ""    
-                uut_root   = "/design_1_wrapper/design_1_i/mc8051_top_0/U0"   
+                uut_root   = "mc8051_top_0"   
             />        
 
             
@@ -95,7 +95,7 @@
                     <Constraint
                         placeholder = "#CONSTRAINT"
                         goal = "max"
-                        start_value = "28"
+                        start_value = "24"
                         adjust_step = "2"
                         return_to_phase = "Synthesis"
                         check_handler = "VivadoCheckTimingSatisfied" />
@@ -373,7 +373,7 @@
             reportbuilder_phase = "on" 
 
 			dut_scope 						= 'design_1_i/mc8051_top_0/U0/'			
-			target_logic 					= "FF"
+			target_logic 					= "TYPE0"
 			custom_lut_mask 				= 'on' 
 			profiling 						= 'off'
 
@@ -381,14 +381,14 @@
 			mode 							= "101"
 			error_margin_goal 				= "2.0"
 			fault_multiplicity				= "1"
-			injection_time 					= "0"
+			injection_time 					= "1"
 			
 			post_injection_recovery_nodes 	= "['i_mc8051_rom']"			
 			hdf_path 						= "./MC8051.sdk/design_1_wrapper_hw_platform_0/system.hdf"
 			init_tcl_path 					= "./MC8051.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"
 			injectorapp_path 				= "./MC8051.sdk/InjectorApp/Debug/InjectorApp.elf"
 			memory_buffer_address 			= "0x3E000000"
-			platformconf 					= "[{'TargetId':'2', 'PortID':'COM3'}]"
+			platformconf 					= "[{'TargetId':'6', 'PortID':'COM3'}, {'TargetId':'2', 'PortID':'COM13'}]"
 		>
 		
 		
@@ -551,8 +551,8 @@
 	
 	
 		<ModelConfig
-			work_dir = "../../Projects/Checkpointing/MC8051"
-			label = "MC8051_RTL"
+			work_dir = "../../Projects/TESIS/MC8051/MC8051_Template"
+			label = "MC8051"
 			compile_options = ""
 			run_options = ""
 			clk_period = "50.0"
@@ -580,6 +580,32 @@
                 custom_arg = "{'k': 21, 'fit.x_lut': 107E-15, 'fit.x_ff': 2E-15}"
             />
         </DerivedMetrics>
+        
+        
+        <MCDM>
+            <Scenario name = "Score_MissionCritical" scoremodel = "WSM">
+                <variable goal = "min" name = "FIT" 	    weight = "0.60"/>
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.20"/>
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.20"/>                              
+            </Scenario>
+            
+            <Scenario name = "Score_Mobile" scoremodel = "WSM">
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.60"/>
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.30"/>
+                <variable goal = "min" name = "FIT" 	    weight = "0.10"/>        
+            </Scenario>
+
+            <Scenario name = "Score_CostCritical" scoremodel = "WSM">
+                <variable goal = "min" name = "UTIL_FF" 	weight = "0.30"/>
+                <variable goal = "min" name = "UTIL_LUT" 	weight = "0.30"/>                               
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.20"/>
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.10"/>                                              
+                <variable goal = "min" name = "FIT" 	    weight = "0.10"/>        
+            </Scenario>        
+        </MCDM>        
+        
+        
+        
         
     </DecisionSupport>
     

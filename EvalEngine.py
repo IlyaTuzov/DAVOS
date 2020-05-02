@@ -22,7 +22,7 @@ from FFI.FFI_HostLib import *
 class EvalEngineParameters:
     FIT_DEVICE = (75.0/float(1024*1024))
     requires_properties_implement = ['FREQUENCY', 'POWER_DYNAMIC', 'POWER_PL', 'UTIL_FF', 'UTIL_LUT', 'UTIL_BRAM', 'UTIL_DSP']
-    require_properties_faulteval = ['VerificationSuccess', 'Injections', 'EssentialBits', 'Failures', 'FailureRate', 'FailureRateMargin', 'FIT', 'FITMargin', 'Lambda', 'MTTF']
+    require_properties_faulteval = ['VerificationSuccess', 'Injections', 'EssentialBits', 'Failures', 'FailureRate', 'FailureRateMargin', 'FIT', 'FITMargin', 'Lambda', 'MTTF', 'CriticalBits']
     #require_properties_faulteval = ['VerificationSuccess', 'Injections', 'EssentialBits', 'Failures', 'FailureRate', 'FailureRateMargin', 'FIT', 'Lambda', 'MTTF']
     require_properties = requires_properties_implement + require_properties_faulteval
 
@@ -39,6 +39,7 @@ def invalidate_robustness_metrics(configurations):
             c.Metrics['Implprop']['FailureRate']=0.0
             c.Metrics['Implprop']['FailureRateMargin']=0.0
             c.Metrics['Implprop']['FIT']=0.0
+            c.Metrics['Implprop']['CriticalBits']=0
             c.Metrics['Implprop']['FITMargin']=0.0
             c.Metrics['Implprop']['Lambda']=0.0
             c.Metrics['Implprop']['MTTF']=0.0
@@ -92,7 +93,7 @@ def worker_Implement(idx, queue_i, queue_o, lock):
         ImplementationTool.implement_model(davosconf.ExperimentalDesignConfig, model, True, stat, False)
         #dummy_implement(config, model, True, stat)
 
-        model.Metrics['Error'] = ''
+        if not 'Error' in model.Metrics: model.Metrics['Error'] = ''
         for i in EvalEngineParameters.requires_properties_implement:
             if not i in model.Metrics['Implprop']:
                 model.Metrics['Implprop'][i] = 0
@@ -234,7 +235,8 @@ def estimate_robustness(model, Device, stat, davosconf, lock):
         model.Metrics['Implprop']['MaskedRate'] = float(res.masked_rate)
         model.Metrics['Implprop']['MaskedRateMargin'] = float(res.masked_error)
         model.Metrics['Implprop']['EssentialBits'] = int(Injector.EssentialBitsPerBlockType[jdesc.Blocktype])
-        model.Metrics['Implprop']['FIT'] = EvalEngineParameters.FIT_DEVICE * model.Metrics['Implprop']['EssentialBits'] * (model.Metrics['Implprop']['FailureRate'] / 100.0)
+        model.Metrics['Implprop']['CriticalBits'] = int(model.Metrics['Implprop']['EssentialBits'] * (model.Metrics['Implprop']['FailureRate'] / 100.0))
+        model.Metrics['Implprop']['FIT'] = EvalEngineParameters.FIT_DEVICE * model.Metrics['Implprop']['CriticalBits']
         model.Metrics['Implprop']['FITMargin'] = EvalEngineParameters.FIT_DEVICE * model.Metrics['Implprop']['EssentialBits'] * (model.Metrics['Implprop']['FailureRateMargin'] / 100.0)
         model.Metrics['Implprop']['Lambda'] = model.Metrics['Implprop']['FIT']/float(1000000000)
         model.Metrics['Implprop']['MTTF'] = 0.0 if model.Metrics['Implprop']['Lambda'] == 0 else (1.0 / model.Metrics['Implprop']['Lambda'])
@@ -279,6 +281,7 @@ def dummy_estimate_robustness(model, Device, stat):
     model.Metrics['Implprop']['Failures'] = 500
     model.Metrics['Implprop']['FailureRate'] = 5.01
     model.Metrics['Implprop']['FIT'] = 3.14
+    model.Metrics['Implprop']['CriticalBits'] = 1000
     model.Metrics['Implprop']['Lambda'] = 1.1
     model.Metrics['Implprop']['MTTF'] = 100000.1
 

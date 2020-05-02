@@ -29,26 +29,16 @@ from EvalEngine import *
 from FactorialDesignBuilder import *
 import FFI.FFI_HostLib 
 import EvalEngine
+import ImplementationTool
+import MCDM
 
 RmodelStdFolder = 'RegressionModels'
 ModelSummary = 'Summary.xml'
 
-VERITY_CONFIGURATIONS = False
+VERIFY_CONFIGURATIONS = True
 
 
-
-def derive_metrics(davosconf, datamodel):
-    for d in davosconf.DecisionSupportConfig.DerivedMetrics:        
-        for m in datamodel.HdlModel_lst:
-            impl = None if 'Implprop' not in m.Metrics else m.Metrics['Implprop']
-            inj =  None if 'Injectionstat' not in m.Metrics else m.Metrics['Injectionstat']
-            v = getattr(DerivedMetrics, d.handler)(inj, impl, d.custom_arg)
-            if v != None:
-                m.Metrics[d.name] = v
-
-
-
-def infer_regression_models(davosconf, configurations, resdir, varlist = [] ):
+def infer_regression_models(davosconf, configurations, resdir, varlist = [] , vartype = {}):
     summaryfile = os.path.normpath(os.path.join(resdir, ModelSummary))
     if os.path.exists(summaryfile): os.remove(summaryfile)
     if not os.path.exists(resdir): os.makedirs(resdir)
@@ -78,10 +68,13 @@ def infer_regression_models(davosconf, configurations, resdir, varlist = [] ):
     metrics = valid_individuals[-1].get_flattened_metric_dict()
     for k, v in metrics.iteritems():
         if (len(varlist) > 0 and k in varlist) or varlist == []:
-            if isinstance(v, int):
+            if k in vartype.keys():
+                ResponceVariableLabels.append(k)
+                ResponceVariableTypes.append(vartype[k])
+            elif isinstance(v, int):
                 ResponceVariableLabels.append(k)
                 ResponceVariableTypes.append('discrete')
-            if isinstance(v, float):
+            elif isinstance(v, float):
                 ResponceVariableLabels.append(k)
                 ResponceVariableTypes.append('continuous')
     for respvar_ind in range(len(ResponceVariableLabels)):
@@ -120,82 +113,6 @@ def compute_degrees_of_freedom(config, order_or_effects = 1):
         return( sum(df) + 1)
 
 
-#filter-out invalid configurations
-def filter_population(population):
-    valid, excluded = [], []
-    for i in population:
-        if ('Error' in i.Metrics) and ('Implprop' in i.Metrics) and ('VerificationSuccess' in i.Metrics['Implprop']) and ('FIT' in i.Metrics['Implprop']) and (i.Metrics['Error'] == '') and (i.Metrics['Implprop']['VerificationSuccess'] > 0) and (i.Metrics['Implprop']['FIT'] > 0):
-            valid.append(i)
-        else:
-            excluded.append(i)
-    return((valid, excluded))
-
-
-
-
-def compute_score(configurations):
-    valid, excluded = filter_population(configurations) 
-    max_freq = max(c.Metrics['Implprop']['FREQUENCY'] for c in valid)
-    min_fit  = min(c.Metrics['Implprop']['FIT'] for c in valid)
-    for c in valid:
-        c.Metrics['Implprop']['Score_Balanced'] = (0.3*c.Metrics['Implprop']['FREQUENCY']/max_freq) + (0.7*min_fit/c.Metrics['Implprop']['FIT'])
-    for c in excluded:
-        c.Metrics['Implprop']['Score_Balanced'] = 0.0
-
-
-
-def is_dominated(candidate, individuals, properties):
-    for i in individuals:
-        flags = [i.Metrics['Implprop'][p] >= candidate.Metrics['Implprop'][p] for p in properties]
-        if not False in flags:
-            #print('{0} dominated by {1}'.format(candidate.Label, i.Label))
-            return(True)
-    return(False)
-
-
-
-
-def pareto_sort(population, properties):
-    pool = population[:]
-    pool = sorted(pool, key = lambda x: (x.Metrics['Implprop'][properties[0]], x.Metrics['Implprop'][properties[1]]), reverse=True)
-    pareto_fronts = []
-    
-    while len(pool)>0:
-        #add best individuals for each metric to pareto set 
-        pareto=[]
-        for p in properties:
-            item = sorted(pool, key = lambda x: (x.Metrics['Implprop'][p]), reverse=True)[0]
-            if not item in pareto: pareto.append( item )
-        for item in pool:
-            if not is_dominated(item, pareto, properties):
-                if not item in pareto:
-                    pareto.append(item)
-        pareto_fronts.append(pareto)
-        for item in pareto:
-            if item in pool:
-                pool.remove(item)
-    for rank in range(len(pareto_fronts)):
-        for i in pareto_fronts[rank]: i.Metrics['ParetoRank']=rank
-    for i in population:
-        i.Metrics['CrowdingDistance']=0.0
-    for pareto in pareto_fronts:
-        for p in properties:
-            pmax = sorted(population, key = lambda x: x.Metrics['Implprop'][p], reverse=True)[0].Metrics['Implprop'][p]
-            pmin = sorted(population, key = lambda x: x.Metrics['Implprop'][p], reverse=False)[0].Metrics['Implprop'][p]
-
-            pareto.sort(key = lambda x: (x.Metrics['Implprop'][p]), reverse=False)
-            pareto[0].Metrics['CrowdingDistance'], pareto[-1].Metrics['CrowdingDistance'] = 1000.0, 1000.0
-            if len(pareto)>2:
-                for i in range(1,len(pareto)-1):
-                    if not 'CrowdingDistance' in pareto[i].Metrics: pareto[i].Metrics['CrowdingDistance']=0.0
-                    pareto[i].Metrics['CrowdingDistance'] = pareto[i].Metrics['CrowdingDistance'] + (pareto[i+1].Metrics['Implprop'][p]-pareto[i-1].Metrics['Implprop'][p])/(pmax-pmin)
-        print('\n'.join(['{0}\t{1}\t{2}\t{3}\t{4}'.format(i.Label, i.Metrics['Implprop'][properties[0]], i.Metrics['Implprop'][properties[1]], i.Metrics['ParetoRank'], i.Metrics['CrowdingDistance']) for i in pareto]) + '\n-\n')
-    for i in population: 
-        i.Metrics['CrowdingDistanceInv']=1.0/i.Metrics['CrowdingDistance']
-    return(pareto_fronts, sorted(population, key=lambda x: (x.Metrics['ParetoRank'], x.Metrics['CrowdingDistanceInv']), reverse=False))
-
-        
-
 
 
 
@@ -212,33 +129,34 @@ if __name__ == "__main__":
     datamodel.ConnectDatabase( davosconf.get_DBfilepath(False), davosconf.get_DBfilepath(True) )
     datamodel.RestoreHDLModels(None)
     random.seed(1)   
+    mcdm_vars = [c.name for c in davosconf.DecisionSupportConfig.MCDM]
+    
 
+    
+    for c in datamodel.HdlModel_lst:
+        c.Metrics['Predicted'] = dict()
+    DefConf = CreateDefaultConfig(datamodel, config)
     for m in datamodel.HdlModel_lst:        
         if ('Error' in m.Metrics) and (not isinstance(m.Metrics['Error'], str)):
             m.Metrics['Error']  = ''
-
-    DefConf = CreateDefaultConfig(datamodel, config)
     
-    FactorLabels = ['X01', 'X02', 'X03', 'X04', 'X05', 'X06', 'X07', 'X08', 'X09', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17', 'X18', 'X19', 'X20', 'X21', 'X22', 'X23', 'X24', 'X25', 'X26', 'X27', 'X28', 'X29', 'X30']
-    resdir = 'C:\Projects\Controllers\Doptimal\RegressionModels_sample_196'
-    RM = RegressionModelManager(FactorLabels)
-    RM.load_significant(os.path.join(davosconf.report_dir, resdir), 1.0)
-    RM.compile_estimator_script_multilevel(resdir)
-
-
-    defres = RM.evaluate_python([0,2,0,3,3,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,7,0,17,0,0,0,5,0,3])
-    print(str(defres))
-
-    stat = RM.get_min_max_terms()
-    with open(os.path.join(resdir, 'Stat_v1.txt'), 'w') as file:
-        for k, v in stat.iteritems():
-            file.write('\n\nModel: {}'.format(str(k)))
-            for term in v:
-                file.write('\n{0}\t\t{1:.3f} : {2:.3f}'.format(str(term[0]), term[1], term[2]))
+    #FactorLabels = ['X01', 'X02', 'X03', 'X04', 'X05', 'X06', 'X07', 'X08', 'X09', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17', 'X18', 'X19', 'X20', 'X21', 'X22', 'X23', 'X24', 'X25', 'X26', 'X27', 'X28', 'X29', 'X30']
+    #resdir = 'C:\Projects\Controllers\Doptimal\RegressionModels_sample_196'
+    #RM = RegressionModelManager(FactorLabels)
+    #RM.load_significant(os.path.join(davosconf.report_dir, resdir), 1.0)
+    #RM.compile_estimator_script_multilevel(resdir)
+    #defres = RM.evaluate_python([0,2,0,3,3,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,7,0,17,0,0,0,5,0,3])
+    #print(str(defres))
+    #stat = RM.get_min_max_terms()
+    #with open(os.path.join(resdir, 'Stat_v1.txt'), 'w') as file:
+    #    for k, v in stat.iteritems():
+    #        file.write('\n\nModel: {}'.format(str(k)))
+    #        for term in v:
+    #            file.write('\n{0}\t\t{1:.3f} : {2:.3f}'.format(str(term[0]), term[1], term[2]))
 
 
 
-
+    
 
     if davosconf.DecisionSupport:
         if davosconf.DecisionSupportConfig.task == 'DSE':
@@ -248,24 +166,35 @@ if __name__ == "__main__":
                 new_models.append(DefConf)                                                                                                                           
                 os.chdir(config.call_dir)
                 #Instantiate evaluation engine and initialize it
-                JM = JobManager(config.max_proc)
+                JM = JobManager(davosconf)
 
                 if config.factorial_config.design_type == 'Doptimal':
                     sample_size = compute_degrees_of_freedom(config, 1)   
                     excluded = []                 
-                    for i in range(10):
-                        print '\nTrying sample size {0:d}\n'.format(sample_size)
+                    for i in range(5):
+                        print '\nAdjusted sample size {0:d}\n'.format(sample_size)
                         valid_sample = False
                         while not valid_sample:
                             for c in existing_models + new_models:
                                 c.Metrics['SampleSizeGoal'] = int(0)
                                 c.Metrics['ErrorMarginGoal'] = float(0.10)
                             #supply configurations to the evaluation engine
-                            configurations = evaluate(existing_models + new_models, config, JM, datamodel, False)
+                            configurations = evaluate(existing_models + new_models, davosconf, JM, datamodel, False)
+
+                            #for dut in configurations:
+                            #    try:
+                            #        if ('Implprop' in dut.Metrics) and ('Error' in dut.Metrics) and (dut.Metrics['Error'] == '' or dut.Metrics['Error'] == 0):
+                            #            ImplementationTool.power_simulation(dut, davosconf)
+                            #            datamodel.SaveHdlModels()
+                            #    except:
+                            #        print('Exception in power_simulation: {0}'.format(str(sys.exc_info()[0])))
+                            #datamodel.SaveHdlModels()
+                            MCDM.compute_score(configurations, davosconf)
+
                             configurations = [item for item in configurations if item.Label != DefConf.Label]
                             datamodel.SaveHdlModels()
                             export_DatamodelStatistics(datamodel, os.path.join(config.design_genconf.design_dir, config.statfile))
-                            configurations, buf = filter_population(configurations)
+                            configurations, buf = MCDM.filter_population(configurations)
                             if len(configurations) == 0:
                                 print 'Warning: all configurations filtered-out'
                             excluded = excluded + buf
@@ -276,9 +205,9 @@ if __name__ == "__main__":
                             else:
                                 valid_sample = True
 
-                        compute_score(configurations)
+                        MCDM.compute_score(configurations, davosconf)
                         resdir = os.path.join(davosconf.report_dir, '{}_sample_{}'.format(RmodelStdFolder, str(sample_size)))
-                        FactorLabels, ResponceVariableLabels = infer_regression_models(davosconf, configurations, resdir,  ['FREQUENCY', 'EssentialBits', 'FailureRate', 'FIT', 'POWER_PL', 'Score_Balanced'])
+                        FactorLabels, ResponceVariableLabels = infer_regression_models(davosconf, configurations, resdir,  ['FREQUENCY', 'FIT', 'CriticalBits', 'FailureRate', 'POWER_PL', 'UTIL_LUT', 'UTIL_FF']+mcdm_vars, {'CriticalBits':'continuous', 'UTIL_DSP':'discrete', 'UTIL_BRAM':'discrete'})
                         RM = RegressionModelManager(FactorLabels)
                         RM.load_significant(os.path.join(davosconf.report_dir, resdir), 1.0)
                         RM.compile_estimator_script_multilevel(resdir)
@@ -291,12 +220,12 @@ if __name__ == "__main__":
 
 
 
-                        if VERITY_CONFIGURATIONS and (sample_size in [124, 160, 196]):
+                        if VERIFY_CONFIGURATIONS and (sample_size in [168, 224]):
                             predicted = RM.get_min_max_linear(DefConf.get_setting_dict())
                             bestconflist = []
                             if predicted != None:
-                                for varmane, prop in predicted.iteritems():
-                                    if varmane in ['FREQUENCY', 'Score_Balanced']:
+                                for varname, prop in predicted.iteritems():
+                                    if varname in ['FREQUENCY']+mcdm_vars:
                                         best_val = prop[1]
                                         best_conf = prop[3]
                                     else:
@@ -304,14 +233,18 @@ if __name__ == "__main__":
                                         best_conf = prop[2]
                                     bestconf = CreateConfigForSetting(datamodel, config, best_conf)
                                     if bestconf != None:
-                                        bestconf.Metrics['Predicted'] = dict()
-                                        for k,v in RM.evaluate_python(best_conf).iteritems():
-                                            bestconf.Metrics['Predicted'][k+'_Predicted'] = v
-                                        bestconf.Metrics['Predicted']['BestVar'] = varmane
-                                        bestconf.Metrics['Predicted']['BestVal'] = best_val
-                                        bestconf.Metrics['Predicted']['BestConf'] = ','.join(map(str, best_conf))
-                                        bestconf.Metrics['Predicted']['SampleSize'] = sample_size
-                                        bestconflist.append(bestconf)
+                                        if ('Predicted' in bestconf.Metrics) and len(bestconf.Metrics['Predicted']) > 0:
+                                            #best config for this response var coincides with the best config for some other var
+                                            bestconf.Metrics['Predicted']['BestVar'] += '+{0}'.format(varname)
+                                        else: 
+                                            bestconf.Metrics['Predicted'] = dict()
+                                            for k,v in RM.evaluate_python(best_conf).iteritems():
+                                                bestconf.Metrics['Predicted'][k+'_Predicted'] = v
+                                            bestconf.Metrics['Predicted']['BestVar'] = varname
+                                            bestconf.Metrics['Predicted']['BestVal'] = best_val
+                                            bestconf.Metrics['Predicted']['BestConf'] = ','.join(map(str, best_conf))
+                                            bestconf.Metrics['Predicted']['SampleSize'] = sample_size
+                                            bestconflist.append(bestconf)
 
                             datamodel.SaveHdlModels()
                             #print(str(bestconflist))
@@ -320,16 +253,17 @@ if __name__ == "__main__":
                                 for c in bestconflist:
                                     c.Metrics['SampleSizeGoal'] = int(0)
                                     c.Metrics['ErrorMarginGoal'] = float(0.10)
-                                bestconflist = evaluate(bestconflist, config, JM, datamodel, False)
+                                bestconflist = evaluate(bestconflist, davosconf, JM, datamodel, False)
                                 datamodel.SaveHdlModels()
+
 
                                 #if some best configurations are invalid - check suboptimal configurations
                                 altconfigs = []
                                 for c in bestconflist:
                                     if c.Metrics['Error'] != '':
                                         bestvar = c.Metrics['Predicted']['BestVar']
-                                        goal = OptimizationGoals.min if c.Metrics['Predicted']['BestVar'] in ['EssentialBits', 'FailureRate', 'FIT', 'POWER_PL'] else OptimizationGoals.max
-                                        altern_settings = RM.get_alternative_configurations(bestvar, c.get_setting_dict(), goal)
+                                        goal = OptimizationGoals.min if c.Metrics['Predicted']['BestVar'] in ['EssentialBits', 'CriticalBits', 'FailureRate', 'FIT', 'POWER_PL', 'UTIL_LUT', 'UTIL_FF', 'UTIL_BRAM', 'UTIL_DSP'] else OptimizationGoals.max
+                                        altern_settings = RM.get_alternative_configurations(bestvar.split('+')[0], c.get_setting_dict(), goal)
                                         for s in altern_settings:
                                             AltConf = CreateConfigForSetting(datamodel, config, s)
                                             if AltConf!= None:
@@ -337,20 +271,24 @@ if __name__ == "__main__":
                                                 for k,v in RM.evaluate_python(s).iteritems():
                                                     AltConf.Metrics['Predicted'][k+'_Predicted'] = v
                                                 AltConf.Metrics['Predicted']['BestVar'] = bestvar 
-                                                AltConf.Metrics['Predicted']['BestVal'] = AltConf.Metrics['Predicted'][bestvar+'_Predicted']
+                                                AltConf.Metrics['Predicted']['BestVal'] = AltConf.Metrics['Predicted'][bestvar.split('+')[0]+'_Predicted']
                                                 AltConf.Metrics['Predicted']['BestConf'] = ','.join(map(str, s))
                                                 AltConf.Metrics['Predicted']['SampleSize'] = sample_size
                                                 AltConf.Metrics['SampleSizeGoal'], AltConf.Metrics['ErrorMarginGoal'] = int(0), float(0.10)
                                                 altconfigs.append(AltConf)
-                                bestconflist = evaluate(bestconflist+altconfigs, config, JM, datamodel, False)
+                                bestconflist = evaluate(bestconflist+altconfigs, davosconf, JM, datamodel, False)
 
-                                compute_score(bestconflist)                                    
-                                varlist =  ['FREQUENCY', 'EssentialBits', 'FailureRate', 'FIT', 'Score_Balanced', 'POWER_PL'] + bestconflist[0].Metrics['Predicted'].keys()
-#                                for k, v in bestconflist[0].Metrics['Predicted'].iteritems():
-#                                    varlist.append(k)
+                                #for dut in bestconflist+altconfigs:
+                                #    ImplementationTool.power_simulation(dut, davosconf)
+                                #    datamodel.SaveHdlModels()
+
+                                MCDM.compute_score(bestconflist, davosconf)                                    
+                                varlist =  ['FREQUENCY', 'FIT', 'CriticalBits', 'FailureRate', 'POWER_PL', 'UTIL_LUT', 'UTIL_FF'] +mcdm_vars + bestconflist[0].Metrics['Predicted'].keys()
+                                #varlist =  bestconflist[0].Metrics['Implprop'] + bestconflist[0].Metrics['Predicted'].keys()
                                 T = configs_to_table(bestconflist, varlist)
                                 with open(os.path.join(resdir,'Predicted.csv'), 'w') as f:
-                                    f.write(T.to_csv(',', False))                            
+                                    f.write(T.to_csv(';', False))                            
+                                raw_input('Predicted config evaluated for sample size {0}, press any key to continue...'.format(str(sample_size)))
                             datamodel.SaveHdlModels()
 
 
@@ -359,7 +297,7 @@ if __name__ == "__main__":
 
 
 
-                        sample_size+=int(math.ceil(0.1*compute_degrees_of_freedom(config, 1)))
+                        sample_size+=int(math.ceil(0.5*compute_degrees_of_freedom(config, 1)))
                 
 
                 #Derive custom metrics

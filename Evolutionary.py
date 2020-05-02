@@ -25,7 +25,7 @@ import DecisionSupport
 
 
 POPULATION_SIZE = int(18)
-SELECTION_SIZE  = int(6)
+SELECTION_SIZE  = int(9)
 SAMPLE_INCREMENT = 10000
 
 def get_random_individual(datamodel, config):
@@ -91,11 +91,14 @@ def init_from_file(datamodel, config):
 
 
 def filter(P):
-    res = []
+    res, filtered_out  = [], []
     for i in P:
-        if i.Metrics['Implprop']['FREQUENCY'] >= 20.0:
+        if i.Metrics['Implprop']['FREQUENCY'] >= 2.0 and (i.Metrics['Error']=='' or i.Metrics['Error']==0):
             res.append(i)
-    return(res)
+        else:
+            #print('\nFilter: {0} filtered out by frequency = {1}'.format(i.Label, str(i.Metrics['Implprop']['FREQUENCY'])))
+            filtered_out.append(i)
+    return(res, filtered_out)
 
 
 
@@ -229,9 +232,23 @@ def log_results(config, iteration, timemark, selected, rest):
             for l in labels: f.write(';{0:d}'.format(i.get_factor_by_name(l).FactorVal))
         for i in rest:
             if not 'RobustnessAssessment' in i.Metrics['EvalTime']: i.Metrics['EvalTime']['RobustnessAssessment']=int(0)
-            f.write('\n{0};{1};{2};{3};{4:d};{5:.4f};{6:.4f};{7:d};{8:d};{9:d};{10:.4f};{11:.4f};{12:.4f};{13:.4f};{14:.4f};{15};{16};{17};{18}'.format(
-                iteration, str(int(timemark)), i.Label, '-', i.Metrics['ParetoRank'] if 'ParetoRank' in i.Metrics else '-', i.Metrics['CrowdingDistance'] if 'CrowdingDistance' in i.Metrics else '-',
-                i.Metrics['Implprop']['FREQUENCY'], i.Metrics['Implprop']['EssentialBits'], i.Metrics['Implprop']['Injections'], i.Metrics['Implprop']['Failures'], i.Metrics['Implprop']['FailureRate'], i.Metrics['Implprop']['FailureRateMargin'], i.Metrics['Implprop']['FIT'], i.Metrics['Implprop']['FITMargin'], i.Metrics['Implprop']['MTTF'], i.Metrics['Error'], str(i.Metrics['EvalTime']['Synthesis']), str(i.Metrics['EvalTime']['Implementation']) if 'Implementation' in i.Metrics['EvalTime'] else '0', str(i.Metrics['EvalTime']['RobustnessAssessment']) if 'RobustnessAssessment' in  i.Metrics['EvalTime'] else '0') )
+            f.write('\n{0};{1};{2};{3};{4};{5:.4f};{6:.4f};{7:d};{8:d};{9:d};{10:.4f};{11:.4f};{12:.4f};{13:.4f};{14:.4f};{15};{16};{17};{18}'.format(
+                iteration, str(int(timemark)), i.Label, '-', 
+                i.Metrics['ParetoRank'] if 'ParetoRank' in i.Metrics else '-', 
+                i.Metrics['CrowdingDistance'] if 'CrowdingDistance' in i.Metrics else 0.0,
+                i.Metrics['Implprop']['FREQUENCY'] if 'FREQUENCY' in i.Metrics['Implprop'] else 0.0, 
+                i.Metrics['Implprop']['EssentialBits'] if 'EssentialBits' in i.Metrics['Implprop'] else 0, 
+                i.Metrics['Implprop']['Injections'] if 'Injections' in i.Metrics['Implprop'] else 0,
+                i.Metrics['Implprop']['Failures'] if 'Failures' in i.Metrics['Implprop'] else 0, 
+                i.Metrics['Implprop']['FailureRate'] if 'FailureRate' in i.Metrics['Implprop'] else 0.0,
+                i.Metrics['Implprop']['FailureRateMargin'] if 'FailureRateMargin' in i.Metrics['Implprop'] else 0.0, 
+                i.Metrics['Implprop']['FIT'] if 'FIT' in i.Metrics['Implprop'] else 0.0, 
+                i.Metrics['Implprop']['FITMargin'] if 'FITMargin' in i.Metrics['Implprop'] else 0.0, 
+                i.Metrics['Implprop']['MTTF'] if 'MTTF' in i.Metrics['Implprop'] else 0.0, 
+                i.Metrics['Error'], 
+                str(i.Metrics['EvalTime']['Synthesis']) if 'Synthesis' in i.Metrics['EvalTime'] else '0', 
+                str(i.Metrics['EvalTime']['Implementation']) if 'Implementation' in i.Metrics['EvalTime'] else '0',
+                str(i.Metrics['EvalTime']['RobustnessAssessment']) if 'RobustnessAssessment' in  i.Metrics['EvalTime'] else '0') )
             for l in labels: f.write(';{0:d}'.format(i.get_factor_by_name(l).FactorVal))
         with open(os.path.join(config.design_genconf.tool_log_dir, 'MODELS.xml'), 'w') as f: 
             f.write('<?xml version="1.0"?>\n<data>\n{0}\n</data>'.format('\n\n'.join([m.log_xml() for m in (datamodel.HdlModel_lst) ])))
@@ -274,12 +291,13 @@ def GeneticSearch_PresiceRanking(config, JM, datamodel):
 
 
 
+
+
+
+
 #select M best individuals by iteratively refining the confidence intervals for their metrics
-def selection_adaptive(Input_Population, M, davosconf, JM, datamodel):
-    T, P = [], []
-    for i in Input_Population: 
-        T.append(i)
-        P.append(i)
+def selection_adaptive(Input_Population, M, davosconf, JM, datamodel, rank_selected=False):
+    T, P = Input_Population[:], Input_Population[:]
     while len(T) > 0:
         for i in T:
             if not 'SampleSizeGoal'  in i.Metrics: i.Metrics['SampleSizeGoal']  = int(SAMPLE_INCREMENT)
@@ -287,26 +305,35 @@ def selection_adaptive(Input_Population, M, davosconf, JM, datamodel):
         T = evaluate(T, davosconf, JM, datamodel)
         datamodel.SaveHdlModels()
         #filter by Frequency
-        P = filter(P)
+        P, fc = filter(P)
         P.sort(key = lambda x: x.Metrics['ScoreMean'], reverse = True)
-        T, IND = [], []
-        #select
-        if len(P) <= M:
-            #select all remaining
-            break
-        else:
-            for i in range(0,M):
-                for j in range(M,len(P)):
-                    overlap, l = intersect_intervals(P[i].Metrics['ScoreLow'], P[i].Metrics['ScoreHigh'], P[j].Metrics['ScoreLow'], P[j].Metrics['ScoreHigh'])
-                    if overlap:
-                        print "\t{0:d}:{1:.4f}->{2:.4f} overlaps {3:d}:{4:.4f}->{5:.4f}".format(P[i].ID,P[i].Metrics['ScoreLow'], P[i].Metrics['ScoreHigh'], P[j].ID, P[j].Metrics['ScoreLow'], P[j].Metrics['ScoreHigh'])
-                        if P[i].Metrics['Implprop']['FailureRateMargin'] >= 0.1 and (not i in IND): 
-                            P[i].Metrics['SampleSizeGoal'] += int(SAMPLE_INCREMENT)
-                            IND.append(i)                           
-                        if P[j].Metrics['Implprop']['FailureRateMargin'] >= 0.1 and (not j in IND): 
-                            P[j].Metrics['SampleSizeGoal'] += int(SAMPLE_INCREMENT)
-                            IND.append(j)
-        for i in IND: T.append(P[i])
+        T = []
+        #check intersection of confidence intervals of top M individuals with the rest of population 
+        for top in P[:M]:
+            for bottom in P[M:]:
+                overlap, l = intersect_intervals(top.Metrics['ScoreLow'], top.Metrics['ScoreHigh'], bottom.Metrics['ScoreLow'], bottom.Metrics['ScoreHigh'])
+                if overlap:
+                    print "\t{0}:{1:.4f}->{2:.4f} overlaps {3}:{4:.4f}->{5:.4f}".format(top.Label,top.Metrics['ScoreLow'], top.Metrics['ScoreHigh'], bottom.Label, bottom.Metrics['ScoreLow'], bottom.Metrics['ScoreHigh'])
+                    if top.Metrics['Implprop']['FailureRateMargin'] >= 0.1 and (not top in T):
+                         top.Metrics['SampleSizeGoal'] += int(SAMPLE_INCREMENT)
+                         T.append(top)
+                    if bottom.Metrics['Implprop']['FailureRateMargin'] >= 0.1 and (not bottom in T):
+                         bottom.Metrics['SampleSizeGoal'] += int(SAMPLE_INCREMENT)
+                         T.append(bottom) 
+        #check intersection of confidence intervals of top M individuals amont themselves
+        if rank_selected:
+            for a in P[:M]:
+                for b in P[:M]:
+                    if a != b:
+                        overlap, l = intersect_intervals(a.Metrics['ScoreLow'], a.Metrics['ScoreHigh'], b.Metrics['ScoreLow'], b.Metrics['ScoreHigh'])
+                        if overlap:
+                            print "\tRank Selected {0}:{1:.4f}->{2:.4f} overlaps {3}:{4:.4f}->{5:.4f}".format(a.Label, a.Metrics['ScoreLow'], a.Metrics['ScoreHigh'], b.Label, b.Metrics['ScoreLow'], b.Metrics['ScoreHigh'])
+                            if a.Metrics['Implprop']['FailureRateMargin'] >= 0.1 and (not a in T):
+                                 a.Metrics['SampleSizeGoal'] += int(SAMPLE_INCREMENT)
+                                 T.append(a)
+                            if b.Metrics['Implprop']['FailureRateMargin'] >= 0.1 and (not b in T):
+                                 b.Metrics['SampleSizeGoal'] += int(SAMPLE_INCREMENT)
+                                 T.append(b)             
         T.sort(key = lambda x: x.ID, reverse = False)
         print("Individuals to refine: \n\t{}".format("\n\t".join(["{0:3d} ({1:6d})".format(x.ID, x.Metrics['SampleSizeGoal']) for x in T])))
     selected = P[0:M]
@@ -316,7 +343,6 @@ def selection_adaptive(Input_Population, M, davosconf, JM, datamodel):
             rest.append(i)
     rest.sort(key = lambda x: x.Metrics['ScoreMean'], reverse = True)
     return (selected, rest)
-
 
 
 def crossover_exhaustive(individuals, CrossType):
@@ -436,17 +462,30 @@ def crossover_couples(couples, CrossType):
 def NGSA(davosconf, JM, datamodel):
     population = []
     timestart = time.time()
-    iteration=0    
+    iteration=0   
+
+
     for i in datamodel.HdlModel_lst:
-        if i.Label in ['AVR001','AVR002','AVR003','AVR004','AVR005','AVR006','AVR007','AVR008','AVR009','AVR010','AVR011','AVR012','AVR013','AVR014','AVR015','AVR016','AVR017','AVR018']:
-            population.append(i)
+        if i.Label in ['Microblaze_030']:
+            i.Metrics['Implprop']= dict()
     
 
+    #Build initial random population    
+    population = init_from_file(datamodel, davosconf.ExperimentalDesignConfig)
+    while len(population) < POPULATION_SIZE:
+        print 'Generating initial random population'
+        ind = get_random_individual(datamodel, davosconf.ExperimentalDesignConfig)
+        population.append(ind)
+    for ind in population:
+        ind.Metrics['CreatedAtIteration'] = iteration
+    print('INIT population: \n{0}'.format('\n\n\n'.join([', '.join(['{0}={1}'.format(j.FactorName, j.FactorVal) for j in i.Factors]) for i in population])))
+    raw_input('Any key to proceed...')    
+
     while(True):
-        population, rest = selection_adaptive(population, len(population), davosconf, JM, datamodel)
+        population, rest = selection_adaptive(population, len(population), davosconf, JM, datamodel, True)
         pareto_fronts, sorted_population = DecisionSupport.pareto_sort(population, ['MTTF', 'FREQUENCY'])
-        parents, rest = sorted_population[:len(sorted_population)/2], sorted_population[len(sorted_population)/2:]
-        log_results(davosconf.ExperimentalDesignConfig, iteration, time.time()-timestart, parents, rest)
+        parents, rejected = sorted_population[:SELECTION_SIZE], sorted_population[SELECTION_SIZE:]
+        log_results(davosconf.ExperimentalDesignConfig, iteration, time.time()-timestart, parents, rejected+rest)
         datamodel.SaveHdlModels()
 
         new_ind_cnt = POPULATION_SIZE - len(parents)
@@ -501,7 +540,7 @@ if __name__ == '__main__':
 
     #Build Worker processes
     JM = JobManager(davosconf)
-    random.seed(1234)
+    random.seed(130)
     #GeneticSearch_PresiceRanking(config, JM, datamodel)
 
     NGSA(davosconf, JM, datamodel)

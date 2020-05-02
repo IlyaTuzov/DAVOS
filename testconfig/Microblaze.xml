@@ -5,9 +5,9 @@
         DesignBuilder = "off"
         SBFI = "off"
 		FFI  = "on"
-        DecisionSupport = "off"
-        report_dir = "#RUNDIR/../../HTWEB/Genetic/AVR/"        
-        dbfile = "AVR.db"  >
+        DecisionSupport = "on"
+        report_dir = "#RUNDIR/../../HTWEB/Doptimal/Microblaze/"        
+        dbfile = "Microblaze.db"  >
         
 
         <ExperimentalDesign
@@ -26,17 +26,17 @@
             
             <generic            
                 custom_parameters = "{ 
-                &apos;SynthesisScriptTemplate&apos;:&apos;SynthesisPhase.tcl&apos;, 
-                &apos;ImplementationScriptTemplate&apos;:&apos;ImplementationPhase.tcl&apos;,
-                &apos;GenBitstreamScriptTemplate&apos;:&apos;GenBitstreamPhase.tcl&apos;
+                'SynthesisScriptTemplate' : 'SynthesisPhase.tcl', 
+                'ImplementationScriptTemplate' : 'ImplementationPhase.tcl',
+                'GenBitstreamScriptTemplate' : 'GenBitstreamPhase.tcl'
                 }"                      
-                design_label = "AVR"
-                design_dir = "../../Projects/TESIS/AVR"
-                template_dir = "AVR_Template"
+                design_label = "Microblaze_"
+                design_dir = "../../Projects/TESIS/Microblaze"
+                template_dir = "Microblaze_Template"
                 log_dir = "./log"
                 netlist_dir = "./netgen"
                 constraint_file = ""    
-                uut_root   = "cpu_core_0"   
+                uut_root   = "microblaze_0"   
             />        
 
             
@@ -95,8 +95,8 @@
                     <Constraint
                         placeholder = "#CONSTRAINT"
                         goal = "max"
-                        start_value = "45"
-                        adjust_step = "5"
+                        start_value = "120"
+                        adjust_step = "10"
                         return_to_phase = "Synthesis"
                         check_handler = "VivadoCheckTimingSatisfied" />
                 </phase>
@@ -372,7 +372,7 @@
             injector_phase 		= "on"
             reportbuilder_phase = "on" 
 
-			dut_scope 						= 'ZynqEnv_i/cpu_core_0/U0/'			
+			dut_scope 						= 'BD_i/microblaze_0'			
 			target_logic 					= "TYPE0"
 			custom_lut_mask 				= 'on' 
 			profiling 						= 'off'
@@ -384,11 +384,11 @@
 			injection_time 					= "1"
 			
 			post_injection_recovery_nodes 	= "['prog_mem_even_inst', 'prog_mem_odd_inst']"			
-			hdf_path 						= "./AVR_ZC.sdk/ZynqEnv_wrapper_hw_platform_0/system.hdf"
-			init_tcl_path 					= "./AVR_ZC.sdk/ZynqEnv_wrapper_hw_platform_0/ps7_init.tcl"
-			injectorapp_path 				= "./AVR_ZC.sdk/InjectorApp/Debug/InjectorApp.elf"
+			hdf_path 						= "./MicZC.sdk/BD_wrapper_hw_platform_0/system.hdf"
+			init_tcl_path 					= "./MicZC.sdk/BD_wrapper_hw_platform_0/ps7_init.tcl"
+			injectorapp_path 				= "./MicZC.sdk/InjectorApp/Debug/InjectorApp.elf"
 			memory_buffer_address 			= "0x3E000000"
-			platformconf 					= "[{&apos;TargetId&apos;:&apos;2&apos;, &apos;PortID&apos;:&apos;COM13&apos;}, {&apos;TargetId&apos;:&apos;6&apos;, &apos;PortID&apos;:&apos;COM3&apos;}]"
+			platformconf 					= "[{'TargetId':'2', 'PortID':'COM13'}, {'TargetId':'6', 'PortID':'COM3'}]"
 		>
 		
 		
@@ -422,7 +422,7 @@
                 std_clk_period = "50.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
-                std_workload_time = "700000"
+                std_workload_time = "1250000"
 				std_trace_time =     "0"
                 finish_flag = "/design_1_wrapper/design_1_i/FinishFlag"
             />
@@ -551,7 +551,7 @@
 	
 	
 		<ModelConfig
-			work_dir = "../../Projects/TESIS/AVR/AVRDefault"
+			work_dir = "../../Projects/TESIS/Microblaze/Microblaze_Default"
 			label = "AVR"
 			compile_options = ""
 			run_options = ""
@@ -567,10 +567,10 @@
 			
 			
     
-		<DecisionSupport
+    <DecisionSupport
 			task = "DSE"
 			method = "Statistical"
-		>
+    >
     
     
         <DerivedMetrics>
@@ -580,6 +580,30 @@
                 custom_arg = "{'k': 21, 'fit.x_lut': 107E-15, 'fit.x_ff': 2E-15}"
             />
         </DerivedMetrics>
+        
+        <MCDM>
+            <Scenario name = "Score_MissionCritical" scoremodel = "WSM">
+                <variable goal = "min" name = "FIT" 	    weight = "0.60"/>
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.20"/>
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.20"/>                              
+            </Scenario>
+            
+            <Scenario name = "Score_Mobile" scoremodel = "WSM">
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.60"/>
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.30"/>
+                <variable goal = "min" name = "FIT" 	    weight = "0.10"/>        
+            </Scenario>
+
+            <Scenario name = "Score_CostCritical" scoremodel = "WSM">
+                <variable goal = "min" name = "UTIL_FF" 	weight = "0.30"/>
+                <variable goal = "min" name = "UTIL_LUT" 	weight = "0.30"/>                               
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.20"/>
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.10"/>                                              
+                <variable goal = "min" name = "FIT" 	    weight = "0.10"/>        
+            </Scenario>        
+        </MCDM>        
+        
+        
         
     </DecisionSupport>
     

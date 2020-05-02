@@ -22,7 +22,7 @@ from Datamanager import *
 sys.path.insert(0, os.path.join(os.getcwd(), './SupportScripts'))
 import VendorSpecific
 
-TIMEOUT_IMPL_PHASE = 1000
+TIMEOUT_IMPL_PHASE = 2500
 MAXCONSTRVAL = 220.0
 
 def implement_model(config, model, adjust_constraints, stat, ForceReimplement = False):
@@ -80,9 +80,12 @@ def implement_model(config, model, adjust_constraints, stat, ForceReimplement = 
                 ce.iteration += 1
                 if ce.iteration > 14:
                     model.Metrics['Implprop']['Error'] = 'ImplError'
+                    model.Metrics['Error']='ImplError'
                     phase = None
                     log.write('\n{0}\tImplementation failed: too many iterations (hang detected)'.format(str(datetime.datetime.now().replace(microsecond=0))))
-                    break
+                    stat.update('Progress', 'Error', 'err')
+                    model.serialize(SerializationFormats.XML, model.std_dumpfile_name)
+                    return
             if os.path.exists(config.design_genconf.constraint_file):
                 with open(config.design_genconf.constraint_file, 'w') as f:
                     f.write(constraint_content)
@@ -119,8 +122,12 @@ def implement_model(config, model, adjust_constraints, stat, ForceReimplement = 
                 if attempt > config.retry_attempts:
                     #report an error and stop
                     stat.update(phase.name, 'Error', 'err')
+                    model.Metrics['Implprop']['Error'] = 'ImplError'
+                    model.Metrics['Error']='ImplError'
+                    model.serialize(SerializationFormats.XML, model.std_dumpfile_name)
                     log.write("\nPostcondition/Timeout error at {0}: , exiting".format(phase.name) )
                     log.close()
+                    phase = None
                     return      
 
         res = getattr(VendorSpecific, phase.result_handler)(phase, config, model)
@@ -149,12 +156,14 @@ def implement_model(config, model, adjust_constraints, stat, ForceReimplement = 
                         phase.constraint_to_adjust.current_value += phase.constraint_to_adjust.adjust_step
                         if phase.constraint_to_adjust.current_value > MAXCONSTRVAL:
                             model.Metrics['Implprop']['Error'] = 'ImplError'
+                            model.Metrics['Error']='ImplError'
                             phase = None
                             break
                     log.write('\n{0}\tConstraint adjusted: {1} = {2}'.format(str(timestart), phase.constraint_to_adjust.placeholder, phase.constraint_to_adjust.current_value))
                     if phase.constraint_to_adjust.current_value <= 0:
                          #mask config as non implementable and exit
                          model.Metrics['Implprop']['Error'] = 'ImplError'
+                         model.Metrics['Error']='ImplError'
                          completed = True
                          phase = None
                          break
@@ -163,13 +172,14 @@ def implement_model(config, model, adjust_constraints, stat, ForceReimplement = 
                 if (not implentability_checked) and phase.constraint_to_adjust.goal == AdjustGoal.max:
                     if impl_test:
                         model.Metrics['Implprop']['Error'] = 'ImplError'
+                        model.Metrics['Error']='ImplError'
                         completed = True
                         phase = None
                         log.write('\n{0}\tImplementation test failed'.format(str(timestart)))
                         break
                     else:    
                         saved_constraint = phase.constraint_to_adjust.current_value - phase.constraint_to_adjust.adjust_step           
-                        phase.constraint_to_adjust.current_value = 15.0
+                        phase.constraint_to_adjust.current_value = 2.0
                         impl_test = True
                         phase = phase.constraint_to_adjust.return_to_phase
                         log.write('\n{0}\tImplementation test started'.format(str(timestart)))
@@ -181,6 +191,7 @@ def implement_model(config, model, adjust_constraints, stat, ForceReimplement = 
                         phase.constraint_to_adjust.current_value += phase.constraint_to_adjust.adjust_step
                         if phase.constraint_to_adjust.current_value > MAXCONSTRVAL:
                             model.Metrics['Implprop']['Error'] = 'ImplError'
+                            model.Metrics['Error']='ImplError'
                             phase = None
                             break
                     elif phase.constraint_to_adjust.goal == AdjustGoal.max:
@@ -188,6 +199,7 @@ def implement_model(config, model, adjust_constraints, stat, ForceReimplement = 
                     if phase.constraint_to_adjust.current_value <= 0:
                          #mask config as non implementable and exit
                          model.Metrics['Implprop']['Error'] = 'ImplError'
+                         model.Metrics['Error']='ImplError'
                          completed = True
                          phase = None
                          break
@@ -199,6 +211,69 @@ def implement_model(config, model, adjust_constraints, stat, ForceReimplement = 
     model.serialize(SerializationFormats.XML, model.std_dumpfile_name)
     stat.update('Progress', 'Completed', 'ok')
     log.close()
+
+
+
+
+def power_simulation(dut, davosconf):
+    os.chdir(davosconf.ExperimentalDesignConfig.design_genconf.design_dir)
+    dut.ModelPath = os.path.join(davosconf.ExperimentalDesignConfig.design_genconf.design_dir, dut.Label)
+    if not os.path.exists(dut.ModelPath):
+        print('power_simulation: path {0} not found, skipping {1}'.format(dut.ModelPath, dut.Label))
+        return()
+    if os.path.exists( os.path.join(dut.ModelPath,'pwrsim.saif') ):
+        print('Activity file exists for config {0}, skipping simulation step'.format(dut.Label))
+    else:
+        print('Simulating switching activity for config {0}'.format(dut.Label))
+        workloadcyles = 14500
+        clockperiod = 1000.0/dut.Metrics['Implprop']['FREQUENCY']
+        with open(os.path.join(davosconf.ExperimentalDesignConfig.design_genconf.design_dir, davosconf.ExperimentalDesignConfig.design_genconf.template_dir, 'TbTop.v'), 'r') as src, open(os.path.join(dut.ModelPath, 'TbTop.v'), 'w') as dst:
+            content = src.read()
+            for k,v in {'#CLOCKPERIOD' : '{0:.3f}'.format(clockperiod)}.iteritems(): content=content.replace(k,v)
+            dst.write(content)
+        with open(os.path.join(davosconf.ExperimentalDesignConfig.design_genconf.design_dir, davosconf.ExperimentalDesignConfig.design_genconf.template_dir, 'simrun.do'), 'r') as src, open(os.path.join(dut.ModelPath, 'simrun.do'), 'w') as dst:
+            content = src.read()
+            for k,v in {'#PATH':dut.ModelPath.replace("\\","/"), '#WORKLOADTIME':'{0:d}ns'.format(int(workloadcyles*clockperiod))}.iteritems(): content=content.replace(k,v)
+            dst.write(content)
+        with open(os.path.join(davosconf.ExperimentalDesignConfig.design_genconf.design_dir, davosconf.ExperimentalDesignConfig.design_genconf.template_dir, 'pwrsim.do'), 'r') as src, open(os.path.join(dut.ModelPath, 'pwrsim.do'), 'w') as dst:
+            content = src.read()
+            for k,v in {'#PATH':dut.ModelPath.replace("\\","/"), '#WORKLOADTIME':'{0:d}ns'.format(int(workloadcyles*clockperiod))}.iteritems(): content=content.replace(k,v)
+            dst.write(content)
+        os.chdir(dut.ModelPath)
+        start_t = time.time()
+        script='vivado -mode batch -source {0} > {1} 2> {2}'.format(os.path.join(dut.ModelPath, 'pwrsim.do'), davosconf.ExperimentalDesignConfig.design_genconf.log_dir + '/powersim.log', davosconf.ExperimentalDesignConfig.design_genconf.log_dir + '/powersim.err')
+        proc = subprocess.Popen(script, shell=True)
+        time.sleep(1)
+        while (proc.poll() == None) and (time.time() - start_t < 2000):
+            time.sleep(1)
+        if proc.poll() == None:
+            proc.kill()
+            print('power_simulation : TIMEOUT DUT: {0}'.format(dut.Label))
+            dut.Metrics['Implprop']['POWER_PL'] = 0.0
+            return()
+        #check and fix swithing activity file
+        with open(os.path.join(dut.ModelPath,'pwrsim.saif'),'r') as f:
+            content = f.read()
+        content = content.replace('(INSTANCE  TbTop', '   (INSTANCE  design_1_wrapper\n\t\t(INSTANCE design_1_i') + ')'
+        #content = content.replace('(INSTANCE  TbTop', '      (INSTANCE  ZynqEnv_wrapper\n\t\t(INSTANCE  ZynqEnv_i') + ')'
+        with open(os.path.join(dut.ModelPath,'pwrsim.saif'),'w') as f:
+            f.write(content)
+        script = """open_project MC8051.xpr 
+                    open_run [get_runs {1}]
+                    read_saif {{{0}/pwrsim.saif}} -strip_path design_1_wrapper -out_file rds.log
+                    report_power -file {0}/pwr.log
+                 """.format(dut.ModelPath, 'ImplementationPhase')
+        proc = subprocess.Popen('vivado -mode tcl'.format(), stdin=subprocess.PIPE, stdout=subprocess.PIPE , shell=True)
+        out, err = proc.communicate(script.replace('\\','/').encode())
+    with open(os.path.join(dut.ModelPath, 'pwr.log'), 'r') as f:
+        content = f.read()
+        dut.Metrics['Implprop']['POWER_DYNAMIC'] = float(re.findall("Dynamic \(W\).*?([0-9\.]+)", content)[0])
+        dut.Metrics['Implprop']['POWER_PL'] = float(re.findall(davosconf.ExperimentalDesignConfig.design_genconf.uut_root+".*?([0-9\.]+)", content)[0])
+    shutil.rmtree(os.path.join(dut.ModelPath, 'AVR_ZC.sim', 'sim_1'), ignore_errors=True, onerror=None)
+    print('Power simulated for {0}: {1:.4f} W'.format(dut.Label, dut.Metrics['Implprop']['POWER_PL']))
+
+
+
 
 
 

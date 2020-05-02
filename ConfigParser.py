@@ -807,10 +807,25 @@ class DerivedMetric:
 
 
 
+class McdmScenario:
+    def __init__(self, xnode):
+        self.name = ''
+        self.scoremodel = ''
+        self.variables = dict()
+        if xnode != None:
+            self.build_from_xml(xnode)
+
+    def build_from_xml(self, xnode):
+        self.name = xnode.get('name')
+        self.scoremodel = xnode.get('scoremodel')
+        for i in xnode.findall('variable'):
+            self.variables[str(i.get('name'))] = {'goal':AdjustGoal.min if i.get('goal').lower()=='min' else AdjustGoal.max, 'weight':float(i.get('weight'))}
+
 class DecisionSupportConfiguration:
     def __init__(self, xnode):
         self.call_dir = os.getcwd()
         self.DerivedMetrics = []
+        self.MCDM = []
         if xnode != None:
             self.build_from_xml(xnode)
 
@@ -821,6 +836,8 @@ class DecisionSupportConfiguration:
         if len(a) > 0:
             for x in a[0].findall('DerivedMetric'):
                 self.DerivedMetrics.append(DerivedMetric(x))
+        for i in xnode.findall('MCDM')[0].findall('Scenario'):
+            self.MCDM.append(McdmScenario(i))
 
 
 
@@ -865,6 +882,8 @@ class FFIConfiguration:
         self.injection_time = int(xnode.get('injection_time','0'))
         cp = xnode.get('platformconf','')
         if cp != '': self.platformconf = ast.literal_eval(cp)
+
+
 
 class DavosConfiguration:
     def __init__(self, xnode):

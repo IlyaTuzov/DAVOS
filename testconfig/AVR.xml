@@ -5,8 +5,8 @@
         DesignBuilder = "off"
         SBFI = "off"
 		FFI  = "on"
-        DecisionSupport = "off"
-        report_dir = "#RUNDIR/../../HTWEB/Genetic/AVR/"        
+        DecisionSupport = "on"
+        report_dir = "#RUNDIR/../../HTWEB/Doptimal/AVR/"        
         dbfile = "AVR.db"  >
         
 
@@ -565,7 +565,6 @@
 			
 			
 			
-			
     
 		<DecisionSupport
 			task = "DSE"
@@ -581,7 +580,31 @@
             />
         </DerivedMetrics>
         
+        
+        <MCDM>
+            <Scenario name = "Score_MissionCritical" scoremodel = "WSM">
+                <variable goal = "min" name = "FIT" 	    weight = "0.60"/>
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.20"/>
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.20"/>                              
+            </Scenario>
+            
+            <Scenario name = "Score_Mobile" scoremodel = "WSM">
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.60"/>
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.30"/>
+                <variable goal = "min" name = "FIT" 	    weight = "0.10"/>        
+            </Scenario>
+
+            <Scenario name = "Score_CostCritical" scoremodel = "WSM">
+                <variable goal = "min" name = "UTIL_FF" 	weight = "0.30"/>
+                <variable goal = "min" name = "UTIL_LUT" 	weight = "0.30"/>                               
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.20"/>
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.10"/>                                              
+                <variable goal = "min" name = "FIT" 	    weight = "0.10"/>        
+            </Scenario>        
+        </MCDM>
+        
     </DecisionSupport>
+
     
     </DAVOS>
     

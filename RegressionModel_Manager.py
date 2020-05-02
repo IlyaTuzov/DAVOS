@@ -111,14 +111,21 @@ class RegressionModelManager:
             t0=Term(); t0.coefficient = 0.0; t0.factors=[[factor, '0']]
             terms.append(t0)
             if goal == OptimizationGoals.min:
-                terms.sort(key=lambda x: x.coefficient, reverse = False)
+                if model.distribution in [Distributions.normal, Distributions.poisson]:
+                    terms.sort(key=lambda x: x.coefficient, reverse = False)
+                else:
+                    terms.sort(key=lambda x: x.coefficient, reverse = True)
             else:
-                terms.sort(key=lambda x: x.coefficient, reverse = True)
+                if model.distribution in [Distributions.normal, Distributions.poisson]:
+                    terms.sort(key=lambda x: x.coefficient, reverse = True)
+                else:
+                    terms.sort(key=lambda x: x.coefficient, reverse = False)
             for term in terms:
                 if int(term.factors[0][1]) != conf[i]:
                     conf[i] = int(term.factors[0][1])
                     break
-            res.append(conf)
+            if not conf in res:
+                res.append(conf)
         return(res)
 
 
@@ -308,7 +315,24 @@ class RegressionModelManager:
                         max_val = int(math.exp(max_val))
                 #max term - min result
                 else:
-                    pass
+                    for term in model.terms:
+                        if term.coefficient < setting_min[term.factors[0][0]][1]:
+                            setting_min[term.factors[0][0]] = [ int(term.factors[0][1]), term.coefficient ]
+                        if term.coefficient > setting_max[term.factors[0][0]][1]:
+                            setting_max[term.factors[0][0]] = [ int(term.factors[0][1]), term.coefficient ]
+                    min_val, max_val = model.intercept, model.intercept
+                    min_conf, max_conf = [], []
+
+                    if model.distribution == Distributions.gamma:
+                        for f in factors:
+                            min_conf.append(setting_max[f][0])
+                            min_val += setting_max[f][1]
+                            max_conf.append(setting_min[f][0])
+                            max_val += setting_min[f][1]
+
+                        min_val = 1.0/min_val
+                        max_val = 1.0/max_val
+
                 min_conf_complete = pattern[:]
                 max_conf_complete = pattern[:]
                 for i in range(len(adjust_indexes)):

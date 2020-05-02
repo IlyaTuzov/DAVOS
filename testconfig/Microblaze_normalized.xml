@@ -5,8 +5,8 @@
         DesignBuilder = "off"
         SBFI = "off"
 		FFI  = "on"
-        DecisionSupport = "off"
-        report_dir = "#RUNDIR/../../HTWEB/Genetic/Microblaze/"        
+        DecisionSupport = "on"
+        report_dir = "#RUNDIR/../../HTWEB/Doptimal/Microblaze/"        
         dbfile = "Microblaze.db"  >
         
 
@@ -95,8 +95,8 @@
                     <Constraint
                         placeholder = "#CONSTRAINT"
                         goal = "max"
-                        start_value = "140"
-                        adjust_step = "20"
+                        start_value = "120"
+                        adjust_step = "10"
                         return_to_phase = "Synthesis"
                         check_handler = "VivadoCheckTimingSatisfied" />
                 </phase>
@@ -116,7 +116,7 @@
             
 
             <!-- design types:  Fractional, Doptimal -->
-            <factorial_design table_of_factors = "C:/Projects/TESIS/Microblaze/RandomConf.csv" design_type = "Doptimal" resolution = "4" >
+            <factorial_design table_of_factors = "" design_type = "Doptimal" resolution = "4" >
 
         
 
@@ -567,10 +567,10 @@
 			
 			
     
-		<DecisionSupport
+    <DecisionSupport
 			task = "DSE"
 			method = "Statistical"
-		>
+    >
     
     
         <DerivedMetrics>
@@ -580,6 +580,30 @@
                 custom_arg = "{'k': 21, 'fit.x_lut': 107E-15, 'fit.x_ff': 2E-15}"
             />
         </DerivedMetrics>
+        
+        <MCDM>
+            <Scenario name = "Score_MissionCritical" scoremodel = "WSM">
+                <variable goal = "min" name = "FIT" 	    weight = "0.60"/>
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.20"/>
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.20"/>                              
+            </Scenario>
+            
+            <Scenario name = "Score_Mobile" scoremodel = "WSM">
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.60"/>
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.30"/>
+                <variable goal = "min" name = "FIT" 	    weight = "0.10"/>        
+            </Scenario>
+
+            <Scenario name = "Score_CostCritical" scoremodel = "WSM">
+                <variable goal = "min" name = "UTIL_FF" 	weight = "0.30"/>
+                <variable goal = "min" name = "UTIL_LUT" 	weight = "0.30"/>                               
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.20"/>
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.10"/>                                              
+                <variable goal = "min" name = "FIT" 	    weight = "0.10"/>        
+            </Scenario>        
+        </MCDM>        
+        
+        
         
     </DecisionSupport>
     

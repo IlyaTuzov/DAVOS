@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{47bcee03-0500-4221-8cef-36997cfb0a85}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>Evolutionary.py</StartupFile>
+    <StartupFile>DecisionSupport.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -13,7 +13,7 @@
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterId />
     <InterpreterVersion />
-    <CommandLineArguments>testconfig/AVR.xml</CommandLineArguments>
+    <CommandLineArguments>testconfig/MC8051.xml</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
     <IsWindowsApplication>False</IsWindowsApplication>
   </PropertyGroup>
@@ -44,6 +44,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="ImplementationTool.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="MCDM.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="NetlistParser.py">
