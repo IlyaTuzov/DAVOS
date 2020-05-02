@@ -139,6 +139,18 @@ if __name__ == "__main__":
     for m in datamodel.HdlModel_lst:        
         if ('Error' in m.Metrics) and (not isinstance(m.Metrics['Error'], str)):
             m.Metrics['Error']  = ''
+
+    resdir = os.path.join(davosconf.report_dir, '{}_sample_{}'.format(RmodelStdFolder, str(168)))
+    FactorLabels = [f.factor_name for f in davosconf.ExperimentalDesignConfig.factorial_config.factors]
+    RM = RegressionModelManager(FactorLabels)
+    RM.load_significant(os.path.join(davosconf.report_dir, resdir), 1.0)
+    RM.compile_estimator_script_multilevel(resdir)
+    stat = RM.get_min_max_terms()
+    DefSettingDict = DefConf.get_setting_dict()
+    
+    RM.export_summary(davosconf, os.path.join(resdir,'summary_models.csv'), [DefSettingDict[key] for key in sorted(DefSettingDict.keys())])
+    raw_input('Custom script success')
+
     
     #FactorLabels = ['X01', 'X02', 'X03', 'X04', 'X05', 'X06', 'X07', 'X08', 'X09', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17', 'X18', 'X19', 'X20', 'X21', 'X22', 'X23', 'X24', 'X25', 'X26', 'X27', 'X28', 'X29', 'X30']
     #resdir = 'C:\Projects\Controllers\Doptimal\RegressionModels_sample_196'

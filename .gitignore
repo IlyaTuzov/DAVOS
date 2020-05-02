@@ -10,3 +10,4 @@ DecisionSupport/Pareto/Pareto/Debug/
 DecisionSupport/Pareto/Debug
 DecisionSupport/Python/Logs
 /testconfig/obsolete
+*.suo
