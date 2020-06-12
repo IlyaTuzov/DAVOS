@@ -30,9 +30,9 @@
             
             <generic            
                 custom_parameters = "{ 
-                'SynthesisScriptTemplate' : 'SynthesisPhase.tcl', 
-                'ImplementationScriptTemplate' : 'ImplementationPhase.tcl',
-                'GenBitstreamScriptTemplate' : 'GenBitstreamPhase.tcl'
+                &apos;SynthesisScriptTemplate&apos;:&apos;SynthesisPhase.tcl&apos;, 
+                &apos;ImplementationScriptTemplate&apos;:&apos;ImplementationPhase.tcl&apos;,
+                &apos;GenBitstreamScriptTemplate&apos;:&apos;GenBitstreamPhase.tcl&apos;
                 }"                      
                 design_label = "LEON3"
                 design_dir = "../../Projects/Checkpointing/MC8051"
@@ -381,7 +381,7 @@
 			memory_buffer_address = "0x3E000000"
 			custom_lut_mask = 'off' 
 			profiling = 'off'
-			platformconf = "[{'TargetId':'2', 'PortID':'COM3'}]"
+			platformconf = "[{&apos;TargetId&apos;:&apos;2&apos;, &apos;PortID&apos;:&apos;COM3&apos;}]"
 			dut_scope = 'design_1_i/'
 		>
 		
@@ -448,7 +448,7 @@
                 <GenericObservationNodes>
                 <signal   		location = "INTERNALS" 	options = "" 			label = "proc_error"  		path= "/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_p0_iu_dbgo_error1_INV_0/O" comment="Error signalling flag" />	
                 <signal   		location = "INTERNALS" 	options = "" 			label = "enable_trap" 		path= "/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_et/O"  comment="Enable trap code" />				
-                <virtual_signal 	location = "INTERNALS" 	options = "" 			label = "trap_type" 		env = "/testbench/d3/" 			expression = "{ ((concat_range (7 downto 0))(l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_7/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_6/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_5/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_4/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_3/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_2/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_1/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_0/O ))}" comment="Concatenated trap type signal" />
+                <virtual_signal 	location = "INTERNALS" 	options = "" 			label = "trap_type" 		env = "/testbench/d3/" 			expression = "{ ((concat_range (7 downto 0))(l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_7/O &amp; l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_6/O &amp; l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_5/O &amp; l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_4/O &amp; l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_3/O &amp; l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_2/O &amp; l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_1/O &amp; l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_0/O ))}" comment="Concatenated trap type signal" />
                 <memarray 		location = "INTERNALS" 	options = "-notrigger" 		label = "regfile" 		path= "sim:/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_rf0_s1_rhu_s1_dp_x0_xc2v_x0_a6_x0_a9_x_0_r0_RAMB16/SDP/WWB36/X_RAMB18E1_SDP_inst/prcs_clk/mem" low_address = "0" high_address = "135" comment="Register File"/>
                 <memarray 		location = "INTERNALS" 	options = "-notrigger" 		label = "regfile_d" 		path= "sim:/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_rf0_s1_rhu_s1_dp_x1_xc2v_x0_a6_x0_a9_x_0_r0_RAMB16/SDP/WWB36/X_RAMB18E1_SDP_inst/prcs_clk/mem" low_address = "0" high_address = "135" comment="Register File"/>
                 <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_0" 		path= "sim:/testbench/sbanks(0)/sram0(0)/sr0/MEM_TST" low_address = "0" high_address = "11" comment="RAM_0" />		

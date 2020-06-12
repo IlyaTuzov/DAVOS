@@ -20,7 +20,7 @@ from threading import Thread
 from Davos_Generic import *
 from Datamanager import *
 
-
+EnhancedAnalysisOfLatentErrors = True
 
 
 def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseindex):
@@ -65,8 +65,8 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
                 finish_flag ='FinishFlag'                
            
             if finish_flag != '':
-                fin_vect_ref = datamodel.reference.reference_dump.get_first_vector_by_key(finish_flag, '1')            
-                fin_vect_inj = inj_dump.get_first_vector_by_key(finish_flag, '1')
+                fin_vect_ref, ref_indx = datamodel.reference.reference_dump.get_first_vector_by_key(finish_flag, '1')            
+                fin_vect_inj, inj_indx = inj_dump.get_first_vector_by_key(finish_flag, '1')
             else:   #if finish flag not present - assume vector at workload finish is the last vector in the dump
                 fin_vect_ref = datamodel.reference.reference_dump.vectors[-1]
                 fin_vect_inj = inj_dump.get_closest_forward(fin_vect_ref.time)
@@ -100,11 +100,17 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
                      if InjDesc.FaultToFailureLatency < 0:  InjDesc.FaultToFailureLatency = float(0)
 
             InjDesc.ErrorCount = 0
-            #Compute number of errors comparing vector of internals at finish_time inj==ref
-            if fin_vect_inj != None:
-                for i in range(0, len(fin_vect_inj.internals), 1):
-                    if(fin_vect_inj.internals[i] != fin_vect_ref.internals[i]):
+            if EnhancedAnalysisOfLatentErrors and ref_indx>0 and inj_indx>0:
+                ref_prev_vec, inj_prev_vec = datamodel.reference.reference_dump.vectors[ref_indx-1], inj_dump.vectors[inj_indx-1]
+                for i in range(0, len(inj_prev_vec.internals), 1):
+                    if(inj_prev_vec.internals[i] != ref_prev_vec.internals[i]):
                         InjDesc.ErrorCount += 1
+            #Compute number of errors comparing vector of internals at finish_time inj==ref
+            else:
+                if fin_vect_inj != None:
+                    for i in range(0, len(fin_vect_inj.internals), 1):
+                        if(fin_vect_inj.internals[i] != fin_vect_ref.internals[i]):
+                            InjDesc.ErrorCount += 1
 
             #Determine failure mode                    
             if not failure_flag:

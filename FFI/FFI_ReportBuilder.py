@@ -47,13 +47,11 @@ def build_lut_coord_dict(LutMapList, SimResFile=''):
 
 def build_regmem_coord_dict(LLfname, Beldescfname):
     ff_coord_dict, ram_coord_dict = {}, {}
-
     ramblocation_dict = {}
     T = Table('Bels')
     T.build_from_csv(Beldescfname)
     for i in T.query({'BellType':'RAMB'}):
         ramblocation_dict[i['CellLocation']] = i['Node']
-
     with open(LLfname, 'r') as f:
         for line in f:
             matchDesc , t = re.search(ram_search_ptn,line), 1
@@ -69,6 +67,19 @@ def build_regmem_coord_dict(LLfname, Beldescfname):
                 elif t==2:
                     ff_coord_dict[(FAR, word, bit)]  = {'node' : matchDesc.group(5), 'case' : ''} 
     return(ff_coord_dict, ram_coord_dict)
+
+
+
+def load_Map_dict(fname):
+    res = {}
+    if os.path.exists(fname):
+        Tab = Table('MapList')
+        Tab.build_from_csv(fname)
+        for i in range(Tab.rownum()):
+            res[(int(Tab.getByLabel('FAR', i)), int(Tab.getByLabel('word', i)), int(Tab.getByLabel('bit', i)))] = {'node': Tab.getByLabel('Node', i), 'case': Tab.getByLabel('Case', i)}
+    return(res)
+
+
 
 
 def AggregateLutResults(LutMapList, EmulResFile, SimResFile=''):
@@ -153,7 +164,11 @@ def build_FFI_report(DavosConfig, ExportLutCsv=False):
                 ExportProfilingStatistics(LutMapList, os.path.join(conf.work_dir,'PerFrame.csv'))
 
         lut_dict = build_lut_coord_dict(LutMapList, '')
-        ff_dict, ram_dict = build_regmem_coord_dict(os.path.join(conf.work_dir, 'Bitstream.ll'), os.path.join(conf.work_dir, 'Bels.csv'))
+        ff_dict = load_Map_dict(os.path.join(conf.work_dir, 'FFMapList.csv'))
+        ram_dict = load_Map_dict(os.path.join(conf.work_dir, 'BramMapList.csv'))
+        lutram_dict = load_Map_dict(os.path.join(conf.work_dir, 'LutramMapList.csv'))
+
+        #ff_dict, ram_dict = build_regmem_coord_dict(os.path.join(conf.work_dir, 'Bitstream.ll'), os.path.join(conf.work_dir, 'Bels.csv'))
 
         ExpDescIdCnt=datamodel.GetMaxKey(DataDescriptors.InjectionExp) + 1
         with open(os.path.join(conf.work_dir,'./log/Injector.log'), 'rU') as f:
@@ -168,6 +183,8 @@ def build_FFI_report(DavosConfig, ExportLutCsv=False):
                     target = datamodel.GetOrAppendTarget(ff_dict[coord]['node'], 'FF', ff_dict[coord]['case'])
                 elif coord in ram_dict:
                     target = datamodel.GetOrAppendTarget(ram_dict[coord]['node'], 'BRAM', ram_dict[coord]['case'])
+                elif coord in lutram_dict:
+                    target = datamodel.GetOrAppendTarget(lutram_dict[coord]['node'], 'LUTRAM', lutram_dict[coord]['case'])
                 else:
                     target = datamodel.GetOrAppendTarget('root/unknown', 'ANY', '')
 

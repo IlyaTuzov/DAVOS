@@ -171,11 +171,11 @@ def process_activity_dumps(procid, LutMapList, DAVOS_Config, resdict):
 
 #update LutMapList records with switching_activity [Address/ComplementaryAddress:AcTime] 
 def Estimate_LUT_switching_activity(LutMapList, DAVOS_Config):
-        
+    raw_input('We are here')
     #InitializeHDLModels(DAVOS_Config.SBFIConfig, DAVOS_Config.toolconf)
     CellTypes = list(set([i['celltype'].lower() for i in LutMapList]))
-    nodetree = ET.parse(os.path.join(DAVOS_Config.SBFIConfig.parconf[0].work_dir, DAVOS_Config.toolconf.injnode_list)).getroot()
-    inj_nodes = ConfigNodes(DAVOS_Config.SBFIConfig.parconf[0].label, nodetree)        
+    nodetree = ET.parse(os.path.join(DAVOS_Config.parconf[0].work_dir, DAVOS_Config.toolconf.injnode_list)).getroot()
+    inj_nodes = ConfigNodes(DAVOS_Config.parconf[0].label, nodetree)        
     nodelist = inj_nodes.get_all_by_typelist(CellTypes)
 
     #f = open('Log.txt','w')
@@ -230,7 +230,7 @@ def Estimate_LUT_switching_activity(LutMapList, DAVOS_Config):
             trace_script += "\nwrite list -window ${0} ./Traces/{0}.lst".format(lut['Label'])
     trace_script += "\nquit\n"
 
-    os.chdir(DAVOS_Config.SBFIConfig.parconf[0].work_dir)
+    os.chdir(DAVOS_Config.parconf[0].work_dir)
     with open('Profiling.do', 'w') as f:
         f.write(trace_script)
 

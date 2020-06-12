@@ -179,7 +179,13 @@ try:
         os.mkdir(os.path.join(os.getcwd(), 'cache'))    
     log.write(signature)
     
-    
+    populationsize = None
+    if os.path.exists('Summary.xml'):
+        tree = ET.parse('Summary.xml').getroot()
+        for i in tree.findall('Experiment'):
+            if i.get('HDLModel','')==form.getvalue('model') and i.get('FaultModel','')==form.getvalue('faultmodel'):
+                populationsize = float(i.get('population','0'))
+                log.write('\n\nPopulation size: ' + str(populationsize))    
     
     if not os.path.exists(os.path.join(os.getcwd(), 'cache', signature)):
         os.mkdir(os.path.join(os.getcwd(), 'cache', signature))
@@ -282,7 +288,7 @@ try:
         for k, v  in fmodes.items():
             if k in failuremodes_alias:
                 statistic_content += '\n\t' + failuremodes_alias[k] + '_abs=\"' + str(v) + '\"'                
-                statistic_content += '\n\t' + failuremodes_alias[k] + '_err=\"' + str( '%.2f' % (100*get_error_margin(total, 0.99, v*1.0/total)) ) + '\"'
+                statistic_content += '\n\t' + failuremodes_alias[k] + '_err=\"' + str( '%.2f' % (100*get_error_margin(total, 0.95, v*1.0/total, populationsize)) ) + '\"'
                 statistic_content += '\n\t' + failuremodes_alias[k] + '=\"' + str('%.2f' % (v*100.0/total)) + '\"'
         statistic_content += ' />'
         

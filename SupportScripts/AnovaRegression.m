@@ -11,8 +11,8 @@ FullFactorSet = #FACTORLABELS;
 ResponseVariableArray= #RESPONSEVARIABLELABELS;
 %define distribution type for each variable: continuous or discrete
 ResponceVarType = #RESPONSEVARIABLETYPES;
-DistributionContinuous = {'normal', 'gamma'};
-%DistributionContinuous = {'gamma'};
+DistributionContinuous = {'normal', 'gamma', 'inverse gaussian'};
+%DistributionContinuous = {'gamma', 'inverse gaussian'};
 DistributionDiscrete = {'poisson'};
 %significance theshold for ANOVA
 treshold = double(1.0);
@@ -60,7 +60,10 @@ rsquared_treshold = double(0.9);
 
         if strcmp(ResponceVarType{x}, 'continuous')
             indx=1;
-            for ds = 1:num_dist_cont                
+            for ds = 1:num_dist_cont       
+                if(strcmp(DistributionContinuous{ds}, 'inverse gaussian')==true && strcmp(ResponseVariableArray{x}, 'Score_Mobile') == false)
+                    continue;
+                end			         
 				Mod = stepwiseglm(z_data,'constant','upper','linear','ResponseVar',ResponseVariableArray{x},'CategoricalVars',Factors,'Distribution',DistributionContinuous{ds}, 'PEnter',0.09999);
                 if(ds == 1)
                     Models{x} = Mod;
@@ -85,7 +88,7 @@ rsquared_treshold = double(0.9);
         else
             indx=1;
             for ds = 1:num_dist_disc                
-				Mod = stepwiseglm(z_data,'constant','upper','linear','ResponseVar',ResponseVariableArray{x},'CategoricalVars',Factors,'Distribution',DistributionDiscrete{ds}, 'PEnter',0.09999);
+				Mod = stepwiseglm(z_data,'constant','upper','linear','ResponseVar',ResponseVariableArray{x},'CategoricalVars',Factors,'Distribution',DistributionDiscrete{ds}, 'PEnter',0.09999, 'DispersionFlag',true);
                 if(ds == 1)
                     Models{x} = Mod;
                 elseif(ds>1)

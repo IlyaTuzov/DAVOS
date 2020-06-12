@@ -6,7 +6,7 @@
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "on"
-        report_dir = "#RUNDIR/../../HTWEB/Doptimal/Microblaze/"        
+        report_dir = "#RUNDIR/../../HTWEB/Bench/Microblaze/FFI_1"        
         dbfile = "Microblaze.db"  >
         
 
@@ -372,16 +372,16 @@
             injector_phase 		= "on"
             reportbuilder_phase = "on" 
 
-			dut_scope 						= 'BD_i/microblaze_0'			
-			target_logic 					= "TYPE0"
+			dut_scope 						= 'BD_i/microblaze_0/U0'			
+			target_logic 					= "FF+LUTRAM"
 			custom_lut_mask 				= 'on' 
 			profiling 						= 'off'
 
 
 			mode 							= "101"
-			error_margin_goal 				= "1.0"
+			error_margin_goal 				= "2.0"
 			fault_multiplicity				= "1"
-			injection_time 					= "1"
+			injection_time 					= "0"
 			
 			post_injection_recovery_nodes 	= "['prog_mem_even_inst', 'prog_mem_odd_inst']"			
 			hdf_path 						= "./MicZC.sdk/BD_wrapper_hw_platform_0/system.hdf"
@@ -415,16 +415,16 @@
             -->
             <Generic
                 design_type = "NETLIST"
-                library_specification = "./FaultDictionaries/Xilinx_Simprim_Ver.xml"
+                library_specification = "./FaultDictionaries/Xilinx_Unisim_Ver.xml"
                 compile_script = "./par_compile.do"
                 run_script = "./par_run.do"	
 				trace_script = ""
-                std_clk_period = "50.0"
+                std_clk_period = "10.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
-                std_workload_time = "1250000"
+                std_workload_time = "465000"
 				std_trace_time =     "0"
-                finish_flag = "/design_1_wrapper/design_1_i/FinishFlag"
+                finish_flag = "/BD_wrapper/BD_i/FinishFlag"
             />
             
 
@@ -445,14 +445,14 @@
                 
                     
             <!-- unit path: withing the design scope-->            
-                <InjectionScope node_prefix = ""   unit_path = "/design_1_wrapper/design_1_i/mc8051_top_0/U0" />
+                <InjectionScope node_prefix = ""   unit_path = "/BD_wrapper/BD_i/microblaze_0/U0" />
 
-                <ObservationScope node_prefix = "" unit_path = "/design_1_wrapper/design_1_i/mc8051_top_0/U0" label_prefix = "" sampling_options = "-notrigger"/>
+                <ObservationScope node_prefix = "" unit_path = "/BD_wrapper/BD_i/microblaze_0/U0" label_prefix = "" sampling_options = "-notrigger"/>
 
                     
                     <!-- location: INTERNALS / OUTPUTS -->            
                 <GenericObservationNodes>
-                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "sim:/design_1_wrapper/design_1_i/ResultArray" low_address = "0" high_address = "19" comment="External Memory" />		
+                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "/BD_wrapper/BD_i/ResultArray" low_address = "0" high_address = "19" comment="External Memory" />		
                 </GenericObservationNodes>
             </Initializer>
 
@@ -463,7 +463,7 @@
                     checkpont_mode = "ColdRestore"
                     maxproc = "4"
                     workload_split_factor = "10"			
-                    campaign_label = "AVR"		
+                    campaign_label = "Microblaze"		
                     cleanup_folders="off"
                     compile_project = "off"
                     create_scripts="off"
@@ -490,15 +490,15 @@
 
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
                 <fault_model
-                    model = "upset_cmem"
-                    target_logic = "lut1, lut2, lut3, lut4, lut5, lut6"
+                    model = "BitFlip"
+                    target_logic = "RAMD32, RAMS32, FDRE, FDCE, FDPE, FDSE"
                     faults_per_target = "1"
-                    time_mode = "Relative"
-                    injection_time_start = "0.0"            
-                    injection_time_end = "0.0"
+                    time_mode = "ClockCycle"
+                    injection_time_start = "100.0"            
+                    injection_time_end = "25000.0"
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
-                    sample_size = "0"
+                    sample_size = "1000"
                     rand_seed	= "2"					
                 />	
         
@@ -552,10 +552,10 @@
 	
 		<ModelConfig
 			work_dir = "../../Projects/TESIS/Microblaze/Microblaze_Default"
-			label = "AVR"
+			label = "Microblaze_Default"
 			compile_options = ""
 			run_options = ""
-			clk_period = "50.0"
+			clk_period = "10.0"
 			start_from = ""
 			stop_at = ""
 		/>

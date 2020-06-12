@@ -40,8 +40,8 @@ VERIFY_CONFIGURATIONS = True
 
 def infer_regression_models(davosconf, configurations, resdir, varlist = [] , vartype = {}):
     summaryfile = os.path.normpath(os.path.join(resdir, ModelSummary))
-    if os.path.exists(summaryfile): os.remove(summaryfile)
-    if not os.path.exists(resdir): os.makedirs(resdir)
+    #if os.path.exists(summaryfile): os.remove(summaryfile)
+    #if not os.path.exists(resdir): os.makedirs(resdir)
     #1. Export Table of Samples (.csv)
     T = Table('Samples')
     if len(configurations) == 0:
@@ -94,13 +94,13 @@ def infer_regression_models(davosconf, configurations, resdir, varlist = [] , va
     matlabscript = matlabscript.replace('#FACTORLABELS', '{{{0}}}'.format(", ".join(["'{0}'".format(c) for c in FactorLabels])))
     matlabscript = matlabscript.replace('#RESPONSEVARIABLELABELS', '{{ {0} }}'.format(", ".join(["'{0}'".format(c) for c in ResponceVariableLabels])))
     matlabscript = matlabscript.replace('#RESPONSEVARIABLETYPES', '{{{0}}}'.format(", ".join(["'{0}'".format(c) for c in ResponceVariableTypes])))
-    with open(os.path.join(davosconf.report_dir, 'AnovaRegression.m'), 'w') as f:
-        f.write(matlabscript)
-    shellcmd = 'matlab.exe -nosplash -nodesktop -minimize -r \"cd {0}; run (\'{1}\'); quit\"'.format( davosconf.report_dir, 'AnovaRegression.m' )
-    proc = subprocess.Popen(shellcmd, shell=True)
-    proc.wait()
-    while not os.path.exists(summaryfile):
-        time.sleep(1)
+    #with open(os.path.join(davosconf.report_dir, 'AnovaRegression.m'), 'w') as f:
+    #    f.write(matlabscript)
+    #shellcmd = 'matlab.exe -nosplash -nodesktop -minimize -r \"cd {0}; run (\'{1}\'); quit\"'.format( davosconf.report_dir, 'AnovaRegression.m' )
+    #proc = subprocess.Popen(shellcmd, shell=True)
+    #proc.wait()
+    #while not os.path.exists(summaryfile):
+    #    time.sleep(1)
     return((FactorLabels, ResponceVariableLabels))
 
 
@@ -111,7 +111,6 @@ def compute_degrees_of_freedom(config, order_or_effects = 1):
         df.append(len(f.setting) - 1)
     if order_or_effects == 1:
         return( sum(df) + 1)
-
 
 
 
@@ -133,13 +132,29 @@ if __name__ == "__main__":
     
 
     
-    for c in datamodel.HdlModel_lst:
-        c.Metrics['Predicted'] = dict()
+    #for c in datamodel.HdlModel_lst:
+    #    c.Metrics['Predicted'] = dict()
     DefConf = CreateDefaultConfig(datamodel, config)
-    for m in datamodel.HdlModel_lst:        
-        if ('Error' in m.Metrics) and (not isinstance(m.Metrics['Error'], str)):
-            m.Metrics['Error']  = ''
+    #for m in datamodel.HdlModel_lst:        
+    #    if ('Error' in m.Metrics) and (not isinstance(m.Metrics['Error'], str)):
+    #        m.Metrics['Error']  = ''
+
+
+    MCDM.compute_score(datamodel.HdlModel_lst+[DefConf], davosconf)   
+    print('\n'.join(['{0} = {1}'.format(k, str(v)) for k,v in DefConf.Metrics['Implprop'].iteritems()]))
+    raw_input('...')
+    resdir = os.path.join(davosconf.report_dir, '{}_sample_{}'.format(RmodelStdFolder, str(168)))
+    FactorLabels = [f.factor_name for f in davosconf.ExperimentalDesignConfig.factorial_config.factors]
+    RM = RegressionModelManager(FactorLabels)
+    RM.load_significant(os.path.join(davosconf.report_dir, resdir), 1.0)
+    RM.compile_estimator_script_multilevel(resdir)
+    stat = RM.get_min_max_terms()
+    DefSettingDict = DefConf.get_setting_dict()
+    RM.export_summary(davosconf, os.path.join(resdir,'summary_models.csv'), [DefSettingDict[key] for key in sorted(DefSettingDict.keys())])
+    raw_input('Custom script success')
     
+
+
     #FactorLabels = ['X01', 'X02', 'X03', 'X04', 'X05', 'X06', 'X07', 'X08', 'X09', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17', 'X18', 'X19', 'X20', 'X21', 'X22', 'X23', 'X24', 'X25', 'X26', 'X27', 'X28', 'X29', 'X30']
     #resdir = 'C:\Projects\Controllers\Doptimal\RegressionModels_sample_196'
     #RM = RegressionModelManager(FactorLabels)
@@ -154,9 +169,18 @@ if __name__ == "__main__":
     #        for term in v:
     #            file.write('\n{0}\t\t{1:.3f} : {2:.3f}'.format(str(term[0]), term[1], term[2]))
 
+    for c in datamodel.HdlModel_lst:
+        if not 'Implprop' in c.Metrics:
+            c.Metrics['Implprop'] = dict()
+        elif not isinstance(c.Metrics['Implprop'], dict):
+            c.Metrics['Implprop'] = dict()
+        c.Metrics['Predicted'] = dict()
 
 
-    
+    for c in datamodel.HdlModel_lst:
+        if 'FIT' in c.Metrics['Implprop']:
+            ReComputeMetrics(c)
+    MCDM.compute_score(datamodel.HdlModel_lst, davosconf)
 
     if davosconf.DecisionSupport:
         if davosconf.DecisionSupportConfig.task == 'DSE':
@@ -169,7 +193,7 @@ if __name__ == "__main__":
                 JM = JobManager(davosconf)
 
                 if config.factorial_config.design_type == 'Doptimal':
-                    sample_size = compute_degrees_of_freedom(config, 1)   
+                    sample_size = 168 #compute_degrees_of_freedom(config, 1)   
                     excluded = []                 
                     for i in range(5):
                         print '\nAdjusted sample size {0:d}\n'.format(sample_size)
@@ -205,23 +229,31 @@ if __name__ == "__main__":
                             else:
                                 valid_sample = True
 
+
+                        for c in configurations:
+                            if 'FIT' in c.Metrics['Implprop']:
+                                ReComputeMetrics(c)
                         MCDM.compute_score(configurations, davosconf)
+                        datamodel.SaveHdlModels()
+                        raw_input('SAVED: {0}......'.format(sample_size))
+
+
                         resdir = os.path.join(davosconf.report_dir, '{}_sample_{}'.format(RmodelStdFolder, str(sample_size)))
                         FactorLabels, ResponceVariableLabels = infer_regression_models(davosconf, configurations, resdir,  ['FREQUENCY', 'FIT', 'CriticalBits', 'FailureRate', 'POWER_PL', 'UTIL_LUT', 'UTIL_FF']+mcdm_vars, {'CriticalBits':'continuous', 'UTIL_DSP':'discrete', 'UTIL_BRAM':'discrete'})
                         RM = RegressionModelManager(FactorLabels)
-                        RM.load_significant(os.path.join(davosconf.report_dir, resdir), 1.0)
+                        RM.load_significant(os.path.join(davosconf.report_dir, resdir), 0.1)
                         RM.compile_estimator_script_multilevel(resdir)
                         stat = RM.get_min_max_terms()
-                        with open(os.path.join(resdir, 'Stat_v1.txt'), 'w') as file:
-                            for k, v in stat.iteritems():
-                                file.write('\n\nModel: {}'.format(str(k)))
-                                for term in v:
-                                    file.write('\n{0}\t\t{1:.3f} : {2:.3f}'.format(str(term[0]), term[1]*1000, term[2]*1000))
+                        #with open(os.path.join(resdir, 'Stat_v1.txt'), 'w') as file:
+                        #    for k, v in stat.iteritems():
+                        #        file.write('\n\nModel: {}'.format(str(k)))
+                        #        for term in v:
+                        #            file.write('\n{0}\t\t{1:.3f} : {2:.3f}'.format(str(term[0]), term[1]*1000, term[2]*1000))
 
 
 
                         if VERIFY_CONFIGURATIONS and (sample_size in [168, 224]):
-                            predicted = RM.get_min_max_linear(DefConf.get_setting_dict())
+                            predicted = RM.get_min_max_linear(DefConf.get_setting_dict(), davosconf.ExperimentalDesignConfig.factorial_config)
                             bestconflist = []
                             if predicted != None:
                                 for varname, prop in predicted.iteritems():
@@ -260,13 +292,13 @@ if __name__ == "__main__":
                                 #if some best configurations are invalid - check suboptimal configurations
                                 altconfigs = []
                                 for c in bestconflist:
-                                    if c.Metrics['Error'] != '':
+                                    if not c.Metrics['Error'] in ['', 0]:
                                         bestvar = c.Metrics['Predicted']['BestVar']
-                                        goal = OptimizationGoals.min if c.Metrics['Predicted']['BestVar'] in ['EssentialBits', 'CriticalBits', 'FailureRate', 'FIT', 'POWER_PL', 'UTIL_LUT', 'UTIL_FF', 'UTIL_BRAM', 'UTIL_DSP'] else OptimizationGoals.max
+                                        goal = OptimizationGoals.min if bestvar.split('+')[0] in ['EssentialBits', 'CriticalBits', 'FailureRate', 'FIT', 'POWER_PL', 'UTIL_LUT', 'UTIL_FF', 'UTIL_BRAM', 'UTIL_DSP'] else OptimizationGoals.max
                                         altern_settings = RM.get_alternative_configurations(bestvar.split('+')[0], c.get_setting_dict(), goal)
                                         for s in altern_settings:
                                             AltConf = CreateConfigForSetting(datamodel, config, s)
-                                            if AltConf!= None:
+                                            if AltConf!= None: 
                                                 AltConf.Metrics['Predicted'] = dict()
                                                 for k,v in RM.evaluate_python(s).iteritems():
                                                     AltConf.Metrics['Predicted'][k+'_Predicted'] = v
@@ -282,7 +314,7 @@ if __name__ == "__main__":
                                 #    ImplementationTool.power_simulation(dut, davosconf)
                                 #    datamodel.SaveHdlModels()
 
-                                MCDM.compute_score(bestconflist, davosconf)                                    
+                                MCDM.compute_score(bestconflist+configurations, davosconf)                                    
                                 varlist =  ['FREQUENCY', 'FIT', 'CriticalBits', 'FailureRate', 'POWER_PL', 'UTIL_LUT', 'UTIL_FF'] +mcdm_vars + bestconflist[0].Metrics['Predicted'].keys()
                                 #varlist =  bestconflist[0].Metrics['Implprop'] + bestconflist[0].Metrics['Predicted'].keys()
                                 T = configs_to_table(bestconflist, varlist)

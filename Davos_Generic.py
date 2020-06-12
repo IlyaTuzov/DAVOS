@@ -847,26 +847,34 @@ class ConfigInitNodes:
     
     
     def match_to_xml(self, matchlist):
-        buflist = []
-        for c in self.specific_nodes:
-            buflist.append(c)
-        res = "<CommonNodes>"
-        for d in matchlist:
-            found = False
-            for c in buflist:
-                if remove_delimiters(d.name) == remove_delimiters(c.unit_path + c.name) :
-                    res+="\n\t<Node type = \"" + c.type + "\"\tname = \"" + c.unit_path + c.name + "\" />"
-                    buflist.remove(c)
-                    found = True
+        matching_groups = dict()
+        not_matched = []
+        for impl in matchlist:
+            matchflag = False
+            for rtl in self.all_nodes:
+                if impl.ptn == rtl.unit_path.replace(rtl.group+'/','') + rtl.name:
+                    if rtl not in matching_groups:
+                        matching_groups[rtl] = []
+                    matching_groups[rtl].append(impl)
+                    matchflag = True
                     break
-            if(not found):
-                 res+="\n\t<Node type = \"._EMPTY\"\tname = \"._NAME\" />"
-        res += "\n</CommonNodes>\n<PseudoCommonNodes>\n</PseudoCommonNodes>"
-        res += "\n<SpecificNodes>"
-        for c in buflist:
-            res += "\n\t<Node type = \"" + c.type + "\"\tname = \"" + c.unit_path + c.name + "\" />"
-        res += "\n</SpecificNodes>"
-        return(res)
+            if not matchflag:
+                not_matched.append(impl)
+
+        unique_match, multiple_match_rtl, multiple_match_impl = [], [], []
+        for k,v in matching_groups.iteritems():
+            if len(v)==1:
+                unique_match.append(k)
+            elif len(v)>1:
+                multiple_match_rtl.append(k)
+                multiple_match_impl += v
+        res =  "<CommonNodes>\n\t{0}\n</CommonNodes>".format('\n\t'.join(['<Node type=\"{0}\"\tname=\"{1}\" />'.format(c.type, c.unit_path + c.name) for c in unique_match]))
+        res += "\n\n<ReplicatedNodes>\n\t{0}\n</ReplicatedNodes>".format('\n\t'.join(['<Node type=\"{0}\"\tname=\"{1}\" />'.format(c.type, c.unit_path + c.name) for c in multiple_match_rtl]))
+        res += "\n\n<Replicas>\n\t{0}\n</Replicas>".format('\n\t'.join(['<Node type=\"{0}\"\tname=\"{1}\" />'.format(c.type, c.name) for c in multiple_match_impl]))
+        res += "\n\n<Inferred>\n\t{0}\n</Inferred>".format('\n\t'.join(['<Node type=\"{0}\"\tname=\"{1}\" />'.format(c.type, c.name) for c in not_matched]))
+        res += "\n\n<PseudoCommonNodes>\n</PseudoCommonNodes>"
+        res += "\n\n<SpecificNodes>\n</SpecificNodes>"
+        return(res, unique_match+multiple_match_rtl)
   
 
 class ObservableMacrocellType:

@@ -20,11 +20,20 @@ import ImplementationTool
 from FFI.FFI_HostLib import *
 
 class EvalEngineParameters:
-    FIT_DEVICE = (75.0/float(1024*1024))
+    FIT_DEVICE = (75.0/float(1000000))
     requires_properties_implement = ['FREQUENCY', 'POWER_DYNAMIC', 'POWER_PL', 'UTIL_FF', 'UTIL_LUT', 'UTIL_BRAM', 'UTIL_DSP']
     require_properties_faulteval = ['VerificationSuccess', 'Injections', 'EssentialBits', 'Failures', 'FailureRate', 'FailureRateMargin', 'FIT', 'FITMargin', 'Lambda', 'MTTF', 'CriticalBits']
     #require_properties_faulteval = ['VerificationSuccess', 'Injections', 'EssentialBits', 'Failures', 'FailureRate', 'FailureRateMargin', 'FIT', 'Lambda', 'MTTF']
     require_properties = requires_properties_implement + require_properties_faulteval
+
+
+def ReComputeMetrics(dut):
+    dut.Metrics['Implprop']['CriticalBits'] = int(dut.Metrics['Implprop']['EssentialBits'] * (dut.Metrics['Implprop']['FailureRate'] / 100.0))
+    dut.Metrics['Implprop']['FIT']          = EvalEngineParameters.FIT_DEVICE * dut.Metrics['Implprop']['CriticalBits']
+    dut.Metrics['Implprop']['FITMargin']    = EvalEngineParameters.FIT_DEVICE * dut.Metrics['Implprop']['EssentialBits'] * (dut.Metrics['Implprop']['FailureRateMargin'] / 100.0)
+    dut.Metrics['Implprop']['Lambda']       = dut.Metrics['Implprop']['FIT']/float(1000000000)
+    dut.Metrics['Implprop']['MTTF']         = 0.0 if dut.Metrics['Implprop']['Lambda'] == 0 else (1.0 / dut.Metrics['Implprop']['Lambda'])
+
 
 
 
@@ -207,7 +216,7 @@ def estimate_robustness(model, Device, stat, davosconf, lock):
     jdesc.FaultMultiplicity = 1
     jdesc.DetectLatentErrors = 0
     jdesc.InjectionTime = davosconf.FFIConfig.injection_time
-    jdesc.PopulationSize = float(1)*Injector.EssentialBitsPerBlockType[jdesc.Blocktype]
+    jdesc.PopulationSize = float(1)*Injector.EssentialBitsPerBlockType[jdesc.Blocktype] if len(Injector.EssentialBitsPerBlockType) > jdesc.Blocktype else 0.0
     jdesc.WorkloadDuration = int(davosconf.SBFIConfig.genconf.std_workload_time / davosconf.SBFIConfig.genconf.std_clk_period)
     jdesc.SamplingWithouRepetition = 1
     jdesc.DetailedLog = 1
@@ -234,12 +243,8 @@ def estimate_robustness(model, Device, stat, davosconf, lock):
         model.Metrics['Implprop']['Masked'] = int(res.Masked)
         model.Metrics['Implprop']['MaskedRate'] = float(res.masked_rate)
         model.Metrics['Implprop']['MaskedRateMargin'] = float(res.masked_error)
-        model.Metrics['Implprop']['EssentialBits'] = int(Injector.EssentialBitsPerBlockType[jdesc.Blocktype])
-        model.Metrics['Implprop']['CriticalBits'] = int(model.Metrics['Implprop']['EssentialBits'] * (model.Metrics['Implprop']['FailureRate'] / 100.0))
-        model.Metrics['Implprop']['FIT'] = EvalEngineParameters.FIT_DEVICE * model.Metrics['Implprop']['CriticalBits']
-        model.Metrics['Implprop']['FITMargin'] = EvalEngineParameters.FIT_DEVICE * model.Metrics['Implprop']['EssentialBits'] * (model.Metrics['Implprop']['FailureRateMargin'] / 100.0)
-        model.Metrics['Implprop']['Lambda'] = model.Metrics['Implprop']['FIT']/float(1000000000)
-        model.Metrics['Implprop']['MTTF'] = 0.0 if model.Metrics['Implprop']['Lambda'] == 0 else (1.0 / model.Metrics['Implprop']['Lambda'])
+        model.Metrics['Implprop']['EssentialBits'] = int(res.EssentialBitsCount)
+        ReComputeMetrics(model)
     #timetaken = str(datetime.datetime.now().replace(microsecond=0) - timestart)        
     for k, v in model.Metrics['Implprop'].iteritems():
         stat.update(k, str(v), 'res')
