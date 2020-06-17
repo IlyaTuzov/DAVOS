@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import os
 import xml.etree.ElementTree as ET
 import re
@@ -90,7 +90,11 @@ class RegressionModel:
                 return(t)
         return(None)
     
-
+    def get_term(self, factor, setting):
+        for t in self.terms:
+            if t.factors[0][0]==factor and t.factors[0][1]==str(setting):
+                return(t)
+        return(None)
 
 
 
@@ -159,6 +163,61 @@ class RegressionModelManager:
         with open(fname,'w') as fdesc:
             fdesc.write(T.to_csv())      
            
+
+    def export_summary(self, davosconf, fname, referenceconf=None):
+        T = Table('Summary')
+        T.add_column('Factor')
+        T.add_column('Term')
+        T.add_row()
+        T.put(0,0,'Intercept')
+        T.put(0,1,'-')
+
+        Fdict = davosconf.ExperimentalDesignConfig.factorial_config.factors
+        if referenceconf==None:
+            intercept_config = [0]*len(Fdict)
+        else:
+            intercept_config = referenceconf[:]
+        intercept_responce = self.evaluate_python(intercept_config)
+
+        for m_ind in range(len(self.models)):
+            m = self.models[m_ind]
+            T.add_column(m.variable+'.Estimate')
+            T.add_column(m.variable+'.pValue')
+            T.add_column(m.variable+'.(ReferenceResponce - percentage_change)')
+            T.put(0,m_ind*3+2+0, '{0:.8f}'.format(m.intercept))
+            T.put(0,m_ind*3+2+1, '-')
+            T.put(0,m_ind*3+2+2, '{0:.2f}'.format(intercept_responce[m.variable]))
+
+
+        row_ind = 1
+        T.add_row()        
+        for f_ind in range(len(Fdict)):
+            f = Fdict[f_ind]
+            T.put(row_ind,0,f.factor_name)
+            for l in sorted(f.setting.keys()):
+                if l > 0:
+                    T.put(row_ind,1, l)
+                    column_ind = 2
+                    for m in self.models:
+                        t = m.get_term(f.factor_name,l)
+                        if t!=None:
+                            T.put(row_ind, column_ind, '{0:.4f}'.format(t.coefficient));    column_ind+=1;
+                            T.put(row_ind, column_ind, '{0:.4f}'.format(t.pValue));           column_ind+=1;
+                            config = intercept_config[:]
+                            config[f_ind] = int(l)
+                            setting_responce = self.evaluate_python(config)
+                            pecentage_change = 100.0*(setting_responce[m.variable]-intercept_responce[m.variable])/intercept_responce[m.variable]
+                            T.put(row_ind, column_ind, '{0:.2f}'.format(pecentage_change)); column_ind+=1;
+                        else:
+                            T.put(row_ind, column_ind, '-');            column_ind+=1;
+                            T.put(row_ind, column_ind, '-');            column_ind+=1;
+                            T.put(row_ind, column_ind, '-');            column_ind+=1;
+                    row_ind+=1
+                    T.add_row()
+                                    
+        with open(fname,'w') as fdesc:
+            fdesc.write(T.to_csv())      
+
 
         
     def get_alternative_configurations(self, variable, iconfdict, goal=OptimizationGoals.min, factorial_config=None):
