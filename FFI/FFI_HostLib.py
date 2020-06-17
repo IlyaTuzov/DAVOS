@@ -21,6 +21,7 @@ import time
 from Davos_Generic import Table
 from BitstreamParser import *
 from NetlistParser import *
+from SBFI.SBFI_Profiler import *
 
 class OperatingModes:
     Exhaustive, SampleExtend, SampleUntilErrorMargin = range(3)
@@ -473,6 +474,11 @@ class InjectorHostManager:
                         BIN_FrameList[i].mask = EBC_FrameList[i].mask
 
 
+        XilinxLutBitCnt = 0
+        for frame in BIN_FrameList:
+            stat = frame.get_stat()
+            XilinxLutBitCnt+= stat['TotalBits']
+        print('Essential bits COUNT (initial): {0}'.format(XilinxLutBitCnt))
 
         if self.CustomLutMask:
             LutDescTab = Table('LutMap'); LutDescTab.build_from_csv(os.path.join(self.targetDir, 'LUTMAP.csv'))
@@ -480,6 +486,20 @@ class InjectorHostManager:
             LutMapList = MapLutToBitstream(LutDescTab, BIN_FrameList, self.DutScope)
             with open(self.LutMapFile,'w') as f:
                 f.write(LutListToTable(LutMapList).to_csv())
+            if self.target_logic in ['type0','all','lut']:
+                for i in BIN_FrameList:
+                    if i.Minor in [26,27,28,29, 32,33,34,35]:
+                        if i.custom_mask==[]: 
+                            i.mask = [0x0]*FrameSize
+                        else:
+                            for k in range(FrameSize):
+                                i.mask[k] =  i.custom_mask[k] #(i.mask[k] ^ i.custom_mask[k]) & i.mask[k]
+            XilinxLutBitCnt = 0
+            for frame in BIN_FrameList:
+                stat = frame.get_stat()
+                XilinxLutBitCnt+= stat['TotalBits']
+            print('Essential bits COUNT (after LUT mapping): {0}'.format(XilinxLutBitCnt))
+
             if self.Profiling and self.DAVOS_Config != None:
                 if not os.path.exists(self.FaultListFile):
                     print('Profiling LUTs switching activity')
@@ -492,27 +512,21 @@ class InjectorHostManager:
                 FrameDict = dict()
                 for frame in BIN_FrameList:
                     FrameDict[frame.GetFar()] = frame
+                    #frame.mask = [0x0]*FrameSize                    #REMOVE!!!!!
                 for item in self.ProfilingResult:
                     if item['Actime'] == 0:
-                        FrameDict[item['BitstreamCoordinates'][0]].custom_mask[item['BitstreamCoordinates'][1]] &= (0xFFFFFFFF^(1<<item['BitstreamCoordinates'][2]))
+                        FrameDict[item['BitstreamCoordinates'][0]].mask[item['BitstreamCoordinates'][1]] &= (0xFFFFFFFF^(1<<item['BitstreamCoordinates'][2]))
+                        #FrameDict[item['BitstreamCoordinates'][0]].mask[item['BitstreamCoordinates'][1]] |= 1<<item['BitstreamCoordinates'][2]
 
-
-        XilinxLutBitCnt, CustomLutBitCnt = 0, 0
+        XilinxLutBitCnt = 0
         for frame in BIN_FrameList:
             stat = frame.get_stat()
             XilinxLutBitCnt+= stat['TotalBits']
-            CustomLutBitCnt+= stat['CustomBits']
-        print('Essential bits COUNT (Xilinx / Custom): {0} / {1}'.format(XilinxLutBitCnt, CustomLutBitCnt))
+        print('Essential bits COUNT (after profiling): {0} '.format(XilinxLutBitCnt))
+
 
                 
-        if self.target_logic in ['type0','all','lut']:
-            for i in BIN_FrameList:
-                if i.Minor in [26,27,28,29, 32,33,34,35]:
-                    if i.custom_mask==[]: 
-                        i.mask = [0x0]*FrameSize
-                    else:
-                        for k in range(FrameSize):
-                            i.mask[k] =  i.custom_mask[k] #(i.mask[k] ^ i.custom_mask[k]) & i.mask[k]
+
 
 
         #Step 3: append targets from LL file (FF and BRAM)
@@ -555,6 +569,7 @@ class InjectorHostManager:
                     FAR = int(matchDesc.group(1), 16)
                     offset = int(matchDesc.group(2))
                     block = matchDesc.group(3)
+                    
                     if t==1:
                         nodepath = BramNodes[block]                         
                     elif t == 2:
@@ -567,30 +582,31 @@ class InjectorHostManager:
                             continue
                     if t==1 and (block in RecoveryRamLocations):
                         RecoveryFrames.add(FAR)
-                    #elif t==2 or t==3:
-                    #    CheckpointFrames.add(FAR)
 
-                    if (nodepath.startswith(self.DutScope) or self.DutScope =='') and ((t==1 and self.target_logic=='bram') or (t==2 and self.target_logic in ['ff', 'type0', 'ff+lutram']) or self.target_logic == 'all') or (t==3 and self.target_logic in ['lutram', 'ff+lutram']):
-                        word, bit =offset/32, offset%32
-                        if t==1:
-                            if matchDesc.group(4) == 'BIT':
-                                BramMap.append((nodepath, int(matchDesc.group(5)), FAR, word, bit, (BinDataDict[FAR].data[word]>>bit)&0x1))
-                        if t==2:
-                            FFMap.append((nodepath, 0, FAR, word, bit, (BinDataDict[FAR].data[word]>>bit)&0x1))
-                        if t==3:
-                            LutramMap.append((nodepath, int(matchDesc.group(5)),   FAR, word, bit, (BinDataDict[FAR].data[word]>>bit)&0x1))
-                        if FAR in FARmask:
-                            desc = FARmask[FAR]
-                        else:
-                            desc = FrameDesc(FAR)
-                            desc.mask=[0]*FrameSize
-                            FARmask[FAR] = desc
-                        desc.mask[word] |= 1<<bit
+
+                    if (nodepath.startswith(self.DutScope) or self.DutScope ==''):
+                        if t in [2,3]: CheckpointFrames.add(FAR)
+                        if (t==1 and self.target_logic=='bram') or (t==2 and self.target_logic in ['ff', 'type0', 'ff+lutram']) or self.target_logic == 'all' or (t==3 and self.target_logic in ['lutram', 'ff+lutram']):
+                            word, bit =offset/32, offset%32
+                            if t==1:
+                                if matchDesc.group(4) == 'BIT':
+                                    BramMap.append((nodepath, int(matchDesc.group(5)), FAR, word, bit, (BinDataDict[FAR].data[word]>>bit)&0x1))
+                            if t==2:
+                                FFMap.append((nodepath, 0, FAR, word, bit, (BinDataDict[FAR].data[word]>>bit)&0x1))
+                            if t==3:
+                                LutramMap.append((nodepath, int(matchDesc.group(5)),   FAR, word, bit, (BinDataDict[FAR].data[word]>>bit)&0x1))
+                            if FAR in FARmask:
+                                desc = FARmask[FAR]
+                            else:
+                                desc = FrameDesc(FAR)
+                                desc.mask=[0]*FrameSize
+                                FARmask[FAR] = desc
+                            desc.mask[word] |= 1<<bit
 
         if len(FFMap)>0:
             Tab = Table('FFMap',['Node','Case','FAR','word','bit','data'])
             for i in FFMap:
-                CheckpointFrames.add(i[2])
+                #CheckpointFrames.add(i[2])
                 Tab.add_row([str(i[0]), str(i[1]), str(i[2]), str(i[3]), str(i[4]), str(i[5])])
             with open(os.path.join(self.targetDir,'FFMapList.csv'),'w') as f:
                 f.write(Tab.to_csv())
@@ -598,7 +614,7 @@ class InjectorHostManager:
         if len(BramMap)>0:
             Tab = Table('BramMap',['Node','Case','FAR','word','bit','data'])
             for i in BramMap:
-                CheckpointFrames.add(i[2])
+                #CheckpointFrames.add(i[2])
                 Tab.add_row([str(i[0]), str(i[1]), str(i[2]), str(i[3]), str(i[4]), str(i[5])])
             with open(os.path.join(self.targetDir,'BramMapList.csv'),'w') as f:
                 f.write(Tab.to_csv())
@@ -606,7 +622,7 @@ class InjectorHostManager:
         if len(LutramMap)>0:
             Tab = Table('LutramMap',['Node','Case','FAR','word','bit','data'])
             for i in LutramMap:
-                CheckpointFrames.add(i[2])
+                #CheckpointFrames.add(i[2])
                 Tab.add_row([str(i[0]), str(i[1]), str(i[2]), str(i[3]), str(i[4]), str(i[5])])
             with open(os.path.join(self.targetDir,'LutramMapList.csv'),'w') as f:
                 f.write(Tab.to_csv())
@@ -667,7 +683,7 @@ class InjectorHostManager:
 
         self.jdesc.FaultListAdr = self.jdesc.BitmaskAddr+self.jdesc.BitmaskSize
         if os.path.exists(self.FaultListFile): 
-            self.jdesc.FaultListSize = os.stat(self.FaultListFile).st_size / (8*4)
+            self.jdesc.FaultListSize = os.stat(self.FaultListFile).st_size / (6*4)
         self.jdesc.ExportToFile(self.JobDescFile)
         if self.jdesc.UpdateBitstream > 0:
             self.logtimeout = 120   #more time for responce if bitstream is uploaded

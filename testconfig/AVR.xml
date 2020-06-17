@@ -36,7 +36,7 @@
                 log_dir = "./log"
                 netlist_dir = "./netgen"
                 constraint_file = ""    
-                uut_root   = "cpu_core_0"   
+                uut_root   = "/ZynqEnv_wrapper/"   
             />        
 
             
@@ -373,12 +373,12 @@
             reportbuilder_phase = "on" 
 
 			dut_scope 						= 'ZynqEnv_i/cpu_core_0/U0/'			
-			target_logic 					= "TYPE0"
+			target_logic 					= "LUT"
 			custom_lut_mask 				= 'on' 
-			profiling 						= 'off'
+			profiling 						= 'on'
 
 
-			mode 							= "101"
+			mode 							= "201"
 			error_margin_goal 				= "0.5"
 			fault_multiplicity				= "1"
 			injection_time 					= "1"
@@ -402,10 +402,10 @@
         -->
         <SBFI
             platform = "Multicore"
-            initializer_phase = "on"    
+            initializer_phase = "off"    
             profiler_phase = "off"
-            injector_phase = "off"
-            reportbuilder_phase = "off"    
+            injector_phase = "on"
+            reportbuilder_phase = "on"    
             >
               <!-- 
                 design_type: RTL / NETLIST
@@ -419,10 +419,10 @@
                 compile_script = "./par_compile.do"
                 run_script = "./par_run.do"	
 				trace_script = ""
-                std_clk_period = "20.0"
+                std_clk_period = "50.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
-                std_workload_time = "410000"
+                std_workload_time = "1025000"
 				std_trace_time =     "0"
                 finish_flag = "/ZynqEnv_wrapper/ZynqEnv_i/FinishFlag"
             />
@@ -460,7 +460,7 @@
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
                     checkpont_mode = "ColdRestore"
-                    maxproc = "6"
+                    maxproc = "8"
                     workload_split_factor = "10"			
                     campaign_label = "AVR"		
                     cleanup_folders="off"
@@ -505,7 +505,7 @@
                 
 
             <Analyzer
-                report_dir = "#RUNDIR/../../HTWEB/Bench/AVR/Verif"
+                report_dir = "#RUNDIR/../../HTWEB/Bench/AVR/SBFI"
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
                 error_flag_signal = ""
@@ -551,10 +551,10 @@
 	
 		<ModelConfig
 			work_dir = "../../Projects/TESIS/AVR/AVRDefault"
-			label = "AVR_Default_Func"
+			label = "AVR_Default"
 			compile_options = ""
 			run_options = ""
-			clk_period = "20.0"
+			clk_period = "50.0"
 			start_from = ""
 			stop_at = ""
 		/>

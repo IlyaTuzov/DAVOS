@@ -15,8 +15,8 @@ from BitstreamParser import *
 from Datamanager import *
 from FFI.FFI_HostLib import *
 from Reportbuilder import *
-
-injlog_item_ptn = re.compile('>>.*?([0-9]+).*?([0-9]+).*?([0-9]+).*?([0-9]+).*?([0-9\.]+).*?:([a-zA-Z]+)$')
+#                                   Exp_Index   FAR        word       bit       Inj_Time      FailureMode        ActivityTime  
+injlog_item_ptn = re.compile('>>.*?([0-9]+).*?([0-9]+).*?([0-9]+).*?([0-9]+).*?([0-9\.]+).*?:([a-zA-Z]+)([:\s]+([0-9\.]+))?')
 
 
 def build_lut_coord_dict(LutMapList, SimResFile=''):
@@ -163,6 +163,8 @@ def build_FFI_report(DavosConfig, ExportLutCsv=False):
             if DavosConfig.FFIConfig.profiling:
                 ExportProfilingStatistics(LutMapList, os.path.join(conf.work_dir,'PerFrame.csv'))
 
+        SummaryTable = Table(model.Label, ['ID', 'Target', 'FAR', 'word', 'bit', 'Actime', 'FailureMode'])
+
         lut_dict = build_lut_coord_dict(LutMapList, '')
         ff_dict = load_Map_dict(os.path.join(conf.work_dir, 'FFMapList.csv'))
         ram_dict = load_Map_dict(os.path.join(conf.work_dir, 'BramMapList.csv'))
@@ -206,7 +208,12 @@ def build_FFI_report(DavosConfig, ExportLutCsv=False):
                 InjDesc.ErrorCount = 0
                 InjDesc.Dumpfile = ''
                 datamodel.LaunchedInjExp_dict[InjDesc.ID] = InjDesc
+                actime = float(-1.0) if match.group(8)==None else float(match.group(8))
+                SummaryTable.add_row(map(str, [int(match.group(1)), target.NodeFullPath, coord[0], coord[1], coord[2], actime, InjDesc.FailureMode]))
                 ExpDescIdCnt+=1
+                if ExpDescIdCnt%100==0: sys.stdout.write('Processed lines: {0}\r'.format(str(ExpDescIdCnt)))
+        with open(os.path.join(DavosConfig.report_dir, '{0}.csv'.format(model.Label)), 'w') as f:
+            f.write(SummaryTable.to_csv())
 
     datamodel.SaveHdlModels()
     datamodel.SaveTargets()

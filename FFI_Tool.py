@@ -84,7 +84,7 @@ if __name__ == "__main__":
                 jdesc.StartIndex = 0
                 jdesc.Masked = 0
                 jdesc.Failures = 0
-                jdesc.sample_size_goal = 1000 # if not Injector.Profiling else len(Injector.ProfilingResult)
+                jdesc.sample_size_goal = 100000 # if not Injector.Profiling else len(Injector.ProfilingResult)
                 jdesc.error_margin_goal = davosconf.FFIConfig.error_margin_goal
                 jdesc.FaultMultiplicity = davosconf.FFIConfig.fault_multiplicity
                 jdesc.SamplingWithouRepetition = 0  #tracking of tested targets 

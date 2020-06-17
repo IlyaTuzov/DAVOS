@@ -20,7 +20,7 @@ from threading import Thread
 from Davos_Generic import *
 from Datamanager import *
 
-EnhancedAnalysisOfLatentErrors = True
+EnhancedAnalysisOfLatentErrors = False
 
 
 def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseindex):

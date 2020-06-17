@@ -171,7 +171,7 @@ def process_activity_dumps(procid, LutMapList, DAVOS_Config, resdict):
 
 #update LutMapList records with switching_activity [Address/ComplementaryAddress:AcTime] 
 def Estimate_LUT_switching_activity(LutMapList, DAVOS_Config):
-    raw_input('We are here')
+    #raw_input('Starting profiling')
     #InitializeHDLModels(DAVOS_Config.SBFIConfig, DAVOS_Config.toolconf)
     CellTypes = list(set([i['celltype'].lower() for i in LutMapList]))
     nodetree = ET.parse(os.path.join(DAVOS_Config.parconf[0].work_dir, DAVOS_Config.toolconf.injnode_list)).getroot()
@@ -180,7 +180,7 @@ def Estimate_LUT_switching_activity(LutMapList, DAVOS_Config):
 
     #f = open('Log.txt','w')
 
-    trace_script = "#Profiling script\ndo {}".format(DAVOS_Config.SBFIConfig.genconf.run_script)
+    
     index = 0
     stdenv = DAVOS_Config.ExperimentalDesignConfig.design_genconf.uut_root
     if not stdenv.endswith('/'): stdenv += '/'
@@ -198,7 +198,7 @@ def Estimate_LUT_switching_activity(LutMapList, DAVOS_Config):
                     break
         #f.write('{0} : {1} : {2}\n'.format(lut['name'], '' if node_main == None else node_main.name, '==' if node_compl==None else node_compl.name))  
         if lut['node_main'] != None:
-            trace_script += "\nquietly virtual signal -env {0} -install {0} {{ ((concat_range ({1:d} downto 0)) ({2}) )}} {3}".format(stdenv, 
+            lut['trace_script'] = "\nquietly virtual signal -env {0} -install {0} {{ ((concat_range ({1:d} downto 0)) ({2}) )}} {3}".format(stdenv, 
                                                                                                                                     len(lut['connections'])-1, 
                                                                                                                                     ' & '.join(['{0}/{1}'.format(lut['node_main'].name.replace(stdenv,''), port) for port in sorted(lut['connections'].keys(), reverse=True)]),
                                                                                                                                     lut['Label'])
@@ -208,36 +208,48 @@ def Estimate_LUT_switching_activity(LutMapList, DAVOS_Config):
                     for k, v in lut['combcell']['connections'].iteritems():
                         if a==v:
                              combcell_I.append(k)
-                trace_script += "\nquietly virtual signal -env {0} -install {0} {{ ((concat_range ({1:d} downto 0)) ({2}) )}} {3}_Compl".format(stdenv, 
+                lut['trace_script'] += "\nquietly virtual signal -env {0} -install {0} {{ ((concat_range ({1:d} downto 0)) ({2}) )}} {3}_Compl".format(stdenv, 
                                                                                                                                         len(combcell_I)-1, 
                                                                                                                                         ' & '.join(['{0}/{1}'.format(lut['node_compl'].name.replace(stdenv,''), port) for port in combcell_I[::-1]]),
                                                                                                                                         lut['Label'])
 
-            trace_script += "\nset {0} [view list -new -title {0}]".format(lut['Label'])
-            trace_script += "\nradix bin"
-            trace_script += "\nadd list {0}/{1} -window ${2}".format(stdenv, lut['Label'], lut['Label'])
+            lut['trace_script'] += "\nset {0} [view list -new -title {0}]".format(lut['Label'])
+            lut['trace_script'] += "\nradix bin"
+            lut['trace_script'] += "\nadd list {0}/{1} -window ${2}".format(stdenv, lut['Label'], lut['Label'])
             if lut['node_compl'] != None and len(lut['cbelinputs']) > 0:
-                trace_script += "\nadd list {0}/{1}_Compl -window ${2}".format(stdenv, lut['Label'], lut['Label'])
+                lut['trace_script'] += "\nadd list {0}/{1}_Compl -window ${2}".format(stdenv, lut['Label'], lut['Label'])
 
         else:
             print('No mathing simulation node for {0}'.format(lut['name']))
 
-    trace_script += "\n\n\nrun {0:d} ns\n".format(DAVOS_Config.SBFIConfig.genconf.std_workload_time)
-
-    for lut in LutMapList:
-        if lut['node_main'] != None:
-            trace_script += "\nview list -window ${0}".format(lut['Label'])
-            trace_script += "\nwrite list -window ${0} ./Traces/{0}.lst".format(lut['Label'])
-    trace_script += "\nquit\n"
-
     os.chdir(DAVOS_Config.parconf[0].work_dir)
-    with open('Profiling.do', 'w') as f:
-        f.write(trace_script)
+    create_restricted_file('vsim.wlf')
+    threadnum = DAVOS_Config.SBFIConfig.injector.maxproc
+    script_list = ["#Profiling script\ndo {}".format(DAVOS_Config.SBFIConfig.genconf.run_script)]*threadnum
+    chunksize = len(LutMapList)/threadnum + (1 if len(LutMapList)%threadnum > 0 else 0)
+    raw_input('chunksize: {0}, LutMapList: {1}, threadnum: {2}'.format(chunksize, len(LutMapList), threadnum))
+    for i in range(threadnum):
+        for lut in LutMapList[i*chunksize : (i+1)*chunksize]:
+            if lut['node_main'] != None:
+                script_list[i] += lut['trace_script']
+        script_list[i] += "\n\n\nrun {0:d} ns\n".format(DAVOS_Config.SBFIConfig.genconf.std_workload_time)
+        for lut in LutMapList[i*chunksize : (i+1)*chunksize]:
+            if lut['node_main'] != None:
+                script_list[i] += "\nview list -window ${0}".format(lut['Label'])
+                script_list[i] += "\nwrite list -window ${0} ./Traces/{0}.lst".format(lut['Label'])
+        script_list[i] += "\nquit\n"
+        with open('Profiling_Thread_{0:03d}.do'.format(i), 'w') as f:
+            f.write(script_list[i])
 
+    proclist = []
+    for i in range(threadnum):
+        proc = subprocess.Popen("vsim -c -do \"Profiling_Thread_{0:03d}.do\" > Profiling_Thread_{0:03d}.log".format(i, i), shell=True)
+        proclist.append(proc)
+    while get_active_proc_number(proclist) > 0:
+        tracenum = len(os.listdir(os.path.join(DAVOS_Config.parconf[0].work_dir, 'Traces')))
+        console_message("Running Processes: {0}, Traces stored: {1}\r".format(len(get_active_proc_indexes(proclist)), tracenum), ConsoleColors.Green, True)
+        time.sleep(5)   
 
-    #proc = subprocess.Popen("vsim -c -do \"Profiling.do\" > Profiling.log", shell=True)
-    #print "Profiling... "
-    #proc.wait()
     
     proclist = []
     procnum = DAVOS_Config.ExperimentalDesignConfig.max_proc

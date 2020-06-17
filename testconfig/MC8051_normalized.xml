@@ -373,12 +373,12 @@
             reportbuilder_phase = "on" 
 
 			dut_scope 						= 'design_1_i/mc8051_top_0/U0/'			
-			target_logic 					= "FF"
+			target_logic 					= "LUT"
 			custom_lut_mask 				= 'on' 
-			profiling 						= 'off'
+			profiling 						= 'on'
 
 
-			mode 							= "101"
+			mode 							= "201"
 			error_margin_goal 				= "0.2"
 			fault_multiplicity				= "1"
 			injection_time 					= "0"

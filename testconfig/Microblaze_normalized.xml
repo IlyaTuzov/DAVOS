@@ -6,7 +6,7 @@
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "on"
-        report_dir = "#RUNDIR/../../HTWEB/Bench/Microblaze/FFI_1"        
+        report_dir = "#RUNDIR/../../HTWEB/Bench/Microblaze/Test"        
         dbfile = "Microblaze.db"  >
         
 
@@ -36,7 +36,7 @@
                 log_dir = "./log"
                 netlist_dir = "./netgen"
                 constraint_file = ""    
-                uut_root   = "microblaze_0"   
+                uut_root   = "/BD_wrapper/"   
             />        
 
             
@@ -373,15 +373,15 @@
             reportbuilder_phase = "on" 
 
 			dut_scope 						= 'BD_i/microblaze_0/U0'			
-			target_logic 					= "FF+LUTRAM"
+			target_logic 					= "LUT"
 			custom_lut_mask 				= 'on' 
-			profiling 						= 'off'
+			profiling 						= 'on'
 
 
-			mode 							= "101"
-			error_margin_goal 				= "0.3"
+			mode 							= "201"
+			error_margin_goal 				= "0.1"
 			fault_multiplicity				= "1"
-			injection_time 					= "0"
+			injection_time 					= "1"
 			
 			post_injection_recovery_nodes 	= "['prog_mem_even_inst', 'prog_mem_odd_inst']"			
 			hdf_path 						= "./MicZC.sdk/BD_wrapper_hw_platform_0/system.hdf"
@@ -419,10 +419,10 @@
                 compile_script = "./par_compile.do"
                 run_script = "./par_run.do"	
 				trace_script = ""
-                std_clk_period = "10.0"
+                std_clk_period = "50.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
-                std_workload_time = "465000"
+                std_workload_time = "2325000"
 				std_trace_time =     "0"
                 finish_flag = "/BD_wrapper/BD_i/FinishFlag"
             />
@@ -461,7 +461,7 @@
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
                     checkpont_mode = "ColdRestore"
-                    maxproc = "4"
+                    maxproc = "6"
                     workload_split_factor = "10"			
                     campaign_label = "Microblaze"		
                     cleanup_folders="off"
@@ -555,7 +555,7 @@
 			label = "Microblaze_Default"
 			compile_options = ""
 			run_options = ""
-			clk_period = "10.0"
+			clk_period = "50.0"
 			start_from = ""
 			stop_at = ""
 		/>
