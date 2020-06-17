@@ -134,23 +134,23 @@ class RegressionModelManager:
             f = Fdict[f_ind]
             T.put(row_ind,0,f.factor_name)
             for l in sorted(f.setting.keys()):
-                if l > 0:
+                if l >= 0:
                     T.put(row_ind,1, l)
                     column_ind = 2
                     for m in self.models:
                         t = m.get_term(f.factor_name,l)
                         if t!=None:
-                            T.put(row_ind, column_ind, '{0:.4f}'.format(t.coefficient));    column_ind+=1;
-                            T.put(row_ind, column_ind, '{0:.4f}'.format(t.pValue));           column_ind+=1;
-                            config = intercept_config[:]
-                            config[f_ind] = int(l)
-                            setting_responce = self.evaluate_python(config)
-                            pecentage_change = 100.0*(setting_responce[m.variable]-intercept_responce[m.variable])/intercept_responce[m.variable]
-                            T.put(row_ind, column_ind, '{0:.2f}'.format(pecentage_change)); column_ind+=1;
+                            T.put(row_ind, column_ind, '{0:.8f}'.format(t.coefficient));    column_ind+=1;
+                            T.put(row_ind, column_ind, '{0:.8f}'.format(t.pValue));           column_ind+=1;
                         else:
                             T.put(row_ind, column_ind, '-');            column_ind+=1;
                             T.put(row_ind, column_ind, '-');            column_ind+=1;
-                            T.put(row_ind, column_ind, '-');            column_ind+=1;
+
+                        config = intercept_config[:]
+                        config[f_ind] = int(l)
+                        setting_responce = self.evaluate_python(config)
+                        pecentage_change = 100.0*(setting_responce[m.variable]-intercept_responce[m.variable])/intercept_responce[m.variable]
+                        T.put(row_ind, column_ind, '{0:.2f}'.format(pecentage_change)); column_ind+=1;
                     row_ind+=1
                     T.add_row()
                                     

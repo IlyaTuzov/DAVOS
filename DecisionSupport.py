@@ -131,7 +131,7 @@ if __name__ == "__main__":
     random.seed(1)   
     mcdm_vars = [c.name for c in davosconf.DecisionSupportConfig.MCDM]
     
-
+    
     
     for c in datamodel.HdlModel_lst:
         c.Metrics['Predicted'] = dict()
@@ -139,6 +139,9 @@ if __name__ == "__main__":
     for m in datamodel.HdlModel_lst:        
         if ('Error' in m.Metrics) and (not isinstance(m.Metrics['Error'], str)):
             m.Metrics['Error']  = ''
+
+    print('\n'.join(['{0} = {1}'.format(k, str(v)) for k,v in DefConf.Metrics['Implprop'].iteritems()]))
+    raw_input('...')
 
     resdir = os.path.join(davosconf.report_dir, '{}_sample_{}'.format(RmodelStdFolder, str(168)))
     FactorLabels = [f.factor_name for f in davosconf.ExperimentalDesignConfig.factorial_config.factors]
@@ -192,7 +195,6 @@ if __name__ == "__main__":
                                 c.Metrics['ErrorMarginGoal'] = float(0.10)
                             #supply configurations to the evaluation engine
                             configurations = evaluate(existing_models + new_models, davosconf, JM, datamodel, False)
-
                             #for dut in configurations:
                             #    try:
                             #        if ('Implprop' in dut.Metrics) and ('Error' in dut.Metrics) and (dut.Metrics['Error'] == '' or dut.Metrics['Error'] == 0):
