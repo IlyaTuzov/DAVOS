@@ -218,6 +218,7 @@ class SBFIConfigInitializer:
         self.build_injection_list = True if  xnode.get('build_injection_list', '') == 'on' else False
         self.build_dump_init_script = True if  xnode.get('build_dump_init_script', '') == 'on' else False
         self.match_pattern_file = xnode.get('match_pattern_file', '')
+        self.trim_path = xnode.get('trim_path', '')
         for i in xnode.findall('InjectionScope'):
             self.injection_scopes.append(InjectionScope(i))   
         for i in xnode.findall('ObservationScope'):
@@ -934,6 +935,7 @@ class DavosConfiguration:
         for c in xnode.findall('ModelConfig'):
             self.parconf.append(ParConfig(c))
         self.parconf.sort(key=lambda x: x.label, reverse = False)
+        self.SBFIConfig.platform = self.platform
 
 
     def get_DBfilepath(self, backup_path = False):

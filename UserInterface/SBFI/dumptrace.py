@@ -684,13 +684,13 @@ os.chdir(z)
 
 
 rename_list = []
-renamelistnode = tree.findall('DAVOS')[0].findall('FaultInjection')[0].findall('Analyzer')[0].findall('rename_list')[0]
+renamelistnode = tree.findall('DAVOS')[0].findall('SBFI')[0].findall('Analyzer')[0].findall('rename_list')[0]
 for c in renamelistnode.findall('item'):
     x = RenameItem(c.get('from'), c.get('to'))
     rename_list.append(x)
 
 join_group_list = JoinGroupList()
-join_group_list.init_from_tag(tree.findall('DAVOS')[0].findall('FaultInjection')[0].findall('Analyzer')[0].findall('join_groups')[0])
+join_group_list.init_from_tag(tree.findall('DAVOS')[0].findall('SBFI')[0].findall('Analyzer')[0].findall('join_groups')[0])
 
 reference_dump = simDump()
 reference_dump.build_labels_from_file(os.path.join(work_dir, toolconf.list_init_file), rename_list)

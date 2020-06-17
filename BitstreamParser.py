@@ -34,6 +34,7 @@ class FrameDesc:
         self.custom_mask = []
         self.flags = 0x00000000
         self.EssentialBitsCount = 0
+        self.type = 'Unknown'
 
     def SetFar(self, FAR):
         self.BlockType = (FAR >> 23) & 0x00000007
@@ -47,14 +48,18 @@ class FrameDesc:
 
     def UpdateFlags(self):
         #flag[0] - not_empty - when at least one word is not masked-out
-        self.EssentialBitsCount = 0
-        for i in self.mask:
-            for bit in range(32):
-                if (i >> bit) & 0x1 == 1:
-                    self.EssentialBitsCount += 1
+        self.EssentialBitsCount = sum([bin(i).count("1") for i in self.mask])
         if self.EssentialBitsCount > 0:
             self.flags = self.flags | 0x1        
 
+    def get_stat(self):        
+        stat={'TotalBits': sum([bin(i).count("1") for i in self.mask]),
+              'CustomBits': sum([bin(i).count("1") for i in self.custom_mask])}
+        return(stat)
+        
+        
+
+        
 
     def MatchedWords(self, Pattern):
         res = 0

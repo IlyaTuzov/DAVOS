@@ -6,7 +6,11 @@
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "on"
+<<<<<<< HEAD
+        report_dir = "#RUNDIR/../../HTWEB/Bench/MC8051/Test"        
+=======
         report_dir = "#RUNDIR/../../HTWEB/Doptimal/MC8051/"        
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
         dbfile = "MC8051.db"  >
         
 
@@ -36,7 +40,11 @@
                 log_dir = "./log"
                 netlist_dir = "./netgen"
                 constraint_file = ""    
+<<<<<<< HEAD
+                uut_root   = "/design_1_wrapper/"   
+=======
                 uut_root   = "mc8051_top_0"   
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
             />        
 
             
@@ -373,6 +381,17 @@
             reportbuilder_phase = "on" 
 
 			dut_scope 						= 'design_1_i/mc8051_top_0/U0/'			
+<<<<<<< HEAD
+			target_logic 					= "LUT"
+			custom_lut_mask 				= 'on' 
+			profiling 						= 'on'
+
+
+			mode 							= "201"
+			error_margin_goal 				= "0.2"
+			fault_multiplicity				= "1"
+			injection_time 					= "0"
+=======
 			target_logic 					= "TYPE0"
 			custom_lut_mask 				= 'on' 
 			profiling 						= 'off'
@@ -382,13 +401,18 @@
 			error_margin_goal 				= "2.0"
 			fault_multiplicity				= "1"
 			injection_time 					= "1"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
 			
 			post_injection_recovery_nodes 	= "['i_mc8051_rom']"			
 			hdf_path 						= "./MC8051.sdk/design_1_wrapper_hw_platform_0/system.hdf"
 			init_tcl_path 					= "./MC8051.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"
 			injectorapp_path 				= "./MC8051.sdk/InjectorApp/Debug/InjectorApp.elf"
 			memory_buffer_address 			= "0x3E000000"
+<<<<<<< HEAD
+			platformconf 					= "[{&apos;TargetId&apos;:&apos;2&apos;, &apos;PortID&apos;:&apos;COM13&apos;}, {&apos;TargetId&apos;:&apos;6&apos;, &apos;PortID&apos;:&apos;COM3&apos;}]"
+=======
 			platformconf 					= "[{&apos;TargetId&apos;:&apos;6&apos;, &apos;PortID&apos;:&apos;COM3&apos;}, {&apos;TargetId&apos;:&apos;2&apos;, &apos;PortID&apos;:&apos;COM13&apos;}]"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
 		>
 		
 		
@@ -414,17 +438,28 @@
                 library_specification: leave it blank if design_type = RTL
             -->
             <Generic
+<<<<<<< HEAD
+                design_type = "RTL"
+                library_specification = "./FaultDictionaries/Xilinx_Unisim_VHDL.xml"
+=======
                 design_type = "NETLIST"
                 library_specification = "./FaultDictionaries/Xilinx_Simprim_Ver.xml"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
                 compile_script = "./par_compile.do"
                 run_script = "./par_run.do"	
 				trace_script = ""
                 std_clk_period = "50.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
+<<<<<<< HEAD
+                std_workload_time = "2000000"
+				std_trace_time =     "0"
+                finish_flag = "/TbTop/FinishFlag"
+=======
                 std_workload_time = "1950000"
 				std_trace_time =     "0"
                 finish_flag = "/design_1_wrapper/design_1_i/FinishFlag"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
             />
             
 
@@ -440,19 +475,34 @@
                     observe_outputs = "notrigger"                
                     build_injection_list   = "on"
                     build_dump_init_script = "on"		
+<<<<<<< HEAD
+                    match_pattern_file = "C:/Projects/TESIS/MC8051/MC8051_LimFanout/code/SimNodes.xml"			
+                    trim_path = "/TbTop/mc8051_top_0/U0/i_mc8051_core"
+=======
                     match_pattern_file = ""			
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
                 >
                 
                     
             <!-- unit path: withing the design scope-->            
+<<<<<<< HEAD
+                <InjectionScope node_prefix = ""   unit_path = "/TbTop/mc8051_top_0/i_mc8051_core" />
+
+                <ObservationScope node_prefix = "" unit_path = "/TbTop/mc8051_top_0/i_mc8051_core" label_prefix = "" sampling_options = "-notrigger"/>
+=======
                 <InjectionScope node_prefix = ""   unit_path = "/design_1_wrapper/design_1_i/mc8051_top_0/U0" />
 
                 <ObservationScope node_prefix = "" unit_path = "/design_1_wrapper/design_1_i/mc8051_top_0/U0" label_prefix = "" sampling_options = "-notrigger"/>
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
 
                     
                     <!-- location: INTERNALS / OUTPUTS -->            
                 <GenericObservationNodes>
+<<<<<<< HEAD
+                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "/TbTop/RES" low_address = "0" high_address = "19" comment="Data Memory Fragment" />		
+=======
                    <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "sim:/design_1_wrapper/design_1_i/ResultArray" low_address = "0" high_address = "19" comment="External Memory" />		
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
                 </GenericObservationNodes>
             </Initializer>
 
@@ -461,8 +511,13 @@
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
                     checkpont_mode = "ColdRestore"
+<<<<<<< HEAD
+                    maxproc = "6"
+                    workload_split_factor = "20"			
+=======
                     maxproc = "4"
                     workload_split_factor = "10"			
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
                     campaign_label = "MC8051"		
                     cleanup_folders="off"
                     compile_project = "off"
@@ -490,6 +545,17 @@
 
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
                 <fault_model
+<<<<<<< HEAD
+                    model = "BitFlip"
+                    target_logic = "SIGNAL"
+                    faults_per_target = "1"
+                    time_mode = "ClockCycle"
+                    injection_time_start = "0.0"            
+                    injection_time_end = "35000.0"
+                    increment_time_step = "0.0" 
+                    experiments_per_target = "1"
+                    sample_size = "500"
+=======
                     model = "upset_cmem"
                     target_logic = "lut1, lut2, lut3, lut4, lut5, lut6"
                     faults_per_target = "1"
@@ -499,6 +565,7 @@
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
                     sample_size = "0"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
                     rand_seed	= "2"					
                 />	
         
@@ -506,7 +573,11 @@
                 
 
             <Analyzer
+<<<<<<< HEAD
+                report_dir = "#RUNDIR/../../HTWEB/Bench/MC8051_SBFI"
+=======
                 report_dir = "#RUNDIR/../../HTWEB/Profiling"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
                 error_flag_signal = ""
@@ -551,8 +622,13 @@
 	
 	
 		<ModelConfig
+<<<<<<< HEAD
+			work_dir = "../../Projects/TESIS/MC8051/MC8051_Default"
+			label = "MC8051_LimFanout_Multilevel"
+=======
 			work_dir = "../../Projects/TESIS/MC8051/MC8051_Template"
 			label = "MC8051"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
 			compile_options = ""
 			run_options = ""
 			clk_period = "50.0"

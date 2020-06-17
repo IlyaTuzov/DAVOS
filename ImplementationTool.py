@@ -221,7 +221,7 @@ def power_simulation(dut, davosconf):
     if not os.path.exists(dut.ModelPath):
         print('power_simulation: path {0} not found, skipping {1}'.format(dut.ModelPath, dut.Label))
         return()
-    if os.path.exists( os.path.join(dut.ModelPath,'pwrsim.saif') ):
+    if os.path.exists( os.path.join(dut.ModelPath,'pwr.log') ):
         print('Activity file exists for config {0}, skipping simulation step'.format(dut.Label))
     else:
         print('Simulating switching activity for config {0}'.format(dut.Label))
@@ -254,13 +254,13 @@ def power_simulation(dut, davosconf):
         #check and fix swithing activity file
         with open(os.path.join(dut.ModelPath,'pwrsim.saif'),'r') as f:
             content = f.read()
-        content = content.replace('(INSTANCE  TbTop', '   (INSTANCE  design_1_wrapper\n\t\t(INSTANCE design_1_i') + ')'
-        #content = content.replace('(INSTANCE  TbTop', '      (INSTANCE  ZynqEnv_wrapper\n\t\t(INSTANCE  ZynqEnv_i') + ')'
+        #content = content.replace('(INSTANCE  TbTop', '   (INSTANCE  design_1_wrapper\n\t\t(INSTANCE design_1_i') + ')'
+        content = content.replace('(INSTANCE  TbTop', '      (INSTANCE  ZynqEnv_wrapper\n\t\t(INSTANCE  ZynqEnv_i') + ')'
         with open(os.path.join(dut.ModelPath,'pwrsim.saif'),'w') as f:
             f.write(content)
-        script = """open_project MC8051.xpr 
+        script = """open_project AVR_ZC.xpr 
                     open_run [get_runs {1}]
-                    read_saif {{{0}/pwrsim.saif}} -strip_path design_1_wrapper -out_file rds.log
+                    read_saif {{{0}/pwrsim.saif}} -strip_path ZynqEnv_wrapper -out_file rds.log
                     report_power -file {0}/pwr.log
                  """.format(dut.ModelPath, 'ImplementationPhase')
         proc = subprocess.Popen('vivado -mode tcl'.format(), stdin=subprocess.PIPE, stdout=subprocess.PIPE , shell=True)

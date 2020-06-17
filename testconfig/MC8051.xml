@@ -6,7 +6,7 @@
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "on"
-        report_dir = "#RUNDIR/../../HTWEB/Doptimal/MC8051/"        
+        report_dir = "#RUNDIR/../../HTWEB/Bench/MC8051/Test"        
         dbfile = "MC8051.db"  >
         
 
@@ -36,7 +36,7 @@
                 log_dir = "./log"
                 netlist_dir = "./netgen"
                 constraint_file = ""    
-                uut_root   = "mc8051_top_0"   
+                uut_root   = "/design_1_wrapper/"   
             />        
 
             
@@ -373,22 +373,22 @@
             reportbuilder_phase = "on" 
 
 			dut_scope 						= 'design_1_i/mc8051_top_0/U0/'			
-			target_logic 					= "TYPE0"
+			target_logic 					= "LUT"
 			custom_lut_mask 				= 'on' 
-			profiling 						= 'off'
+			profiling 						= 'on'
 
 
-			mode 							= "101"
-			error_margin_goal 				= "2.0"
+			mode 							= "201"
+			error_margin_goal 				= "0.2"
 			fault_multiplicity				= "1"
-			injection_time 					= "1"
+			injection_time 					= "0"
 			
 			post_injection_recovery_nodes 	= "['i_mc8051_rom']"			
 			hdf_path 						= "./MC8051.sdk/design_1_wrapper_hw_platform_0/system.hdf"
 			init_tcl_path 					= "./MC8051.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"
 			injectorapp_path 				= "./MC8051.sdk/InjectorApp/Debug/InjectorApp.elf"
 			memory_buffer_address 			= "0x3E000000"
-			platformconf 					= "[{'TargetId':'6', 'PortID':'COM3'}, {'TargetId':'2', 'PortID':'COM13'}]"
+			platformconf 					= "[{'TargetId':'2', 'PortID':'COM13'}, {'TargetId':'6', 'PortID':'COM3'}]"
 		>
 		
 		
@@ -414,17 +414,17 @@
                 library_specification: leave it blank if design_type = RTL
             -->
             <Generic
-                design_type = "NETLIST"
-                library_specification = "./FaultDictionaries/Xilinx_Simprim_Ver.xml"
+                design_type = "RTL"
+                library_specification = "./FaultDictionaries/Xilinx_Unisim_VHDL.xml"
                 compile_script = "./par_compile.do"
                 run_script = "./par_run.do"	
 				trace_script = ""
                 std_clk_period = "50.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
-                std_workload_time = "1950000"
+                std_workload_time = "2000000"
 				std_trace_time =     "0"
-                finish_flag = "/design_1_wrapper/design_1_i/FinishFlag"
+                finish_flag = "/TbTop/FinishFlag"
             />
             
 
@@ -440,19 +440,20 @@
                     observe_outputs = "notrigger"                
                     build_injection_list   = "on"
                     build_dump_init_script = "on"		
-                    match_pattern_file = ""			
+                    match_pattern_file = "C:/Projects/TESIS/MC8051/MC8051_LimFanout/code/SimNodes.xml"			
+                    trim_path = "/TbTop/mc8051_top_0/U0/i_mc8051_core"
                 >
                 
                     
             <!-- unit path: withing the design scope-->            
-                <InjectionScope node_prefix = ""   unit_path = "/design_1_wrapper/design_1_i/mc8051_top_0/U0" />
+                <InjectionScope node_prefix = ""   unit_path = "/TbTop/mc8051_top_0/i_mc8051_core" />
 
-                <ObservationScope node_prefix = "" unit_path = "/design_1_wrapper/design_1_i/mc8051_top_0/U0" label_prefix = "" sampling_options = "-notrigger"/>
+                <ObservationScope node_prefix = "" unit_path = "/TbTop/mc8051_top_0/i_mc8051_core" label_prefix = "" sampling_options = "-notrigger"/>
 
                     
                     <!-- location: INTERNALS / OUTPUTS -->            
                 <GenericObservationNodes>
-                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "sim:/design_1_wrapper/design_1_i/ResultArray" low_address = "0" high_address = "19" comment="External Memory" />		
+                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "/TbTop/RES" low_address = "0" high_address = "19" comment="Data Memory Fragment" />		
                 </GenericObservationNodes>
             </Initializer>
 
@@ -461,8 +462,8 @@
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
                     checkpont_mode = "ColdRestore"
-                    maxproc = "4"
-                    workload_split_factor = "10"			
+                    maxproc = "6"
+                    workload_split_factor = "20"			
                     campaign_label = "MC8051"		
                     cleanup_folders="off"
                     compile_project = "off"
@@ -490,15 +491,15 @@
 
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
                 <fault_model
-                    model = "upset_cmem"
-                    target_logic = "lut1, lut2, lut3, lut4, lut5, lut6"
+                    model = "BitFlip"
+                    target_logic = "SIGNAL"
                     faults_per_target = "1"
-                    time_mode = "Relative"
+                    time_mode = "ClockCycle"
                     injection_time_start = "0.0"            
-                    injection_time_end = "0.0"
+                    injection_time_end = "35000.0"
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
-                    sample_size = "0"
+                    sample_size = "500"
                     rand_seed	= "2"					
                 />	
         
@@ -506,7 +507,7 @@
                 
 
             <Analyzer
-                report_dir = "#RUNDIR/../../HTWEB/Profiling"
+                report_dir = "#RUNDIR/../../HTWEB/Bench/MC8051_SBFI"
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
                 error_flag_signal = ""
@@ -551,8 +552,8 @@
 	
 	
 		<ModelConfig
-			work_dir = "../../Projects/TESIS/MC8051/MC8051_Template"
-			label = "MC8051"
+			work_dir = "../../Projects/TESIS/MC8051/MC8051_Default"
+			label = "MC8051_LimFanout_Multilevel"
 			compile_options = ""
 			run_options = ""
 			clk_period = "50.0"

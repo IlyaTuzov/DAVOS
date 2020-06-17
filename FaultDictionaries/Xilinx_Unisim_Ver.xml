@@ -16,6 +16,26 @@
 		<macrocell name = "FDCE"  >
 			<port name = "Q" />
 		</macrocell>
+        
+        
+		<macrocell name = "FDPE"  >
+			<port name = "Q" />
+		</macrocell>
+
+
+		<macrocell name = "FDSE"  >
+			<port name = "Q" />
+		</macrocell>
+
+        
+		<macrocell name = "RAMD32"  >
+			<port name = "mem" />
+		</macrocell>
+        
+		<macrocell name = "RAMS32"  >
+			<port name = "mem" />
+		</macrocell>
+        
 		
 		<macrocell name = "SIGNAL"  >
 			
@@ -29,6 +49,9 @@
 
         <macrocell name = "FDRE" outport = "Q"/>	
         <macrocell name = "FDCE" outport = "Q"/>	
+        <macrocell name = "FDPE" outport = "Q"/>	
+        <macrocell name = "FDSE" outport = "Q"/>	
+
 		
 		<macrocell name = "SIGNAL" outport = ""/>	
         
@@ -36,27 +59,78 @@
 
 	
 	
+<fdesc 	model = "BitFlip" 
+		macrocells = "RAMD32, RAMS32" >
+		
+	<injection_rule
+		code_pattern = "
+			set cv [examine {#PATH/#NODE_1}]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -deposit {#PATH/#NODE_1} $nv 0#;">
+			
+		<injectioncase 
+			label = "mem" 
+			dimensions = "0-32" 
+			nodes = "#NODE_1=mem#DIM">			
+		</injectioncase>	  
+	</injection_rule>
+</fdesc>
+
+
 
 	
-	
+<fdesc 	model = "stuck_at" 
+		macrocells = "SIGNAL" >
+	<injection_rule
+		code_pattern = "force -freeze #PATH #FORCEDVALUE 0" >
+
+        <injectioncase label = "" nodes = "" />        
+	</injection_rule>
+</fdesc>	
+
+
+<fdesc 	model = "BitFlip" 
+		macrocells = "SIGNAL" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH]#;
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -deposit #PATH $nv 0#;" >
+        
+        <injectioncase label = "" nodes = "" />
+	</injection_rule>
+</fdesc>	   
+	   
+
+<fdesc 	model = "pulse" 
+		macrocells = "SIGNAL" >
+	<injection_rule
+		code_pattern = "
+			set cv [examine #PATH]#; 
+			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
+			force -freeze #PATH $nv 0 -cancel #DURATION#;" >
+
+            <injectioncase label = "" nodes = "" />            
+	</injection_rule>
+</fdesc>		
 
 
 	
-<fdesc 	model = "bit_flip" 
-		macrocells = "FDRE, FDCE" >
+<fdesc 	model = "BitFlip" 
+		macrocells = "FDRE, FDCE, FDPE, FDSE" >
 	<injection_rule
 		code_pattern = "
 			set cv [examine {#PATH/#NODE_1}]#; 
 			if {$cv == 1} { set nv 0 } else { set nv 1 }#;
             force -deposit {#PATH/#NODE_1} $nv 0#;" >
 			
-		<injectioncase label = "Q" nodes = "#NODE_1=q_out"/>
+		<injectioncase label = "Q" nodes = "#NODE_1=Q_out"/>
 	</injection_rule>
 </fdesc>
 
 
 
-<fdesc 	model = "bit_flip" 
+<fdesc 	model = "BitFlip" 
 		macrocells = "ramb18e1" 
 		configuration = "RAM_MODE:TDP" >
 	<injection_rule
@@ -75,7 +149,8 @@
 
 
 
-<fdesc 	model = "upset_cmem" 
+
+<fdesc 	model = "BitFlipCMEM" 
 		macrocells = "LUT6" >
 
 	<instrumentation_rule>
@@ -102,7 +177,7 @@
 
 
 
-<fdesc 	model = "upset_cmem" 
+<fdesc 	model = "BitFlipCMEM" 
 		macrocells = "LUT5" >
 
 	<instrumentation_rule>
@@ -128,7 +203,7 @@
 
 
 
-<fdesc 	model = "upset_cmem" 
+<fdesc 	model = "BitFlipCMEM" 
 		macrocells = "LUT4" >
 
 	<instrumentation_rule>
@@ -156,7 +231,7 @@
 
 
 
-<fdesc 	model = "upset_cmem" 
+<fdesc 	model = "BitFlipCMEM" 
 		macrocells = "LUT3" >
 
 	<instrumentation_rule>
@@ -181,7 +256,7 @@
 
 
 
-<fdesc 	model = "upset_cmem" 
+<fdesc 	model = "BitFlipCMEM" 
 		macrocells = "LUT2" >
 
 	<instrumentation_rule>

@@ -72,8 +72,8 @@ def ParseVivadoNetlist(VivadoProjectFile, ImplementationRun, targetDir):
 
         # Bels.csv: Design Description File - Table containing location of each instantiated cell and it's source design node
         set fout [open $exportdir/Bels.csv w]
-        puts $fout \"sep=;\nCellType;CellLocation;BellType;ClockRegion;Tile;Node\"
-        foreach cell [get_cells -hier] {{foreach bel [get_bels -of_objects $cell] {{foreach tile [get_tiles -of_objects $bel] {{foreach cr [get_clock_regions -of_objects $tile] {{puts $fout [format "%s;%s;%s;%s;%s;%s" [get_property PRIMITIVE_TYPE $cell] [get_property LOC $cell] [get_property TYPE $bel]  [get_property NAME $cr] [get_property NAME $tile] [get_property NAME $cell] ]}} }} }} }}
+        puts $fout \"sep=;\nCellType;CellLocation;BellType;ClockRegion;Tile;Node;BEL\"
+        foreach cell [get_cells -hier] {{foreach bel [get_bels -of_objects $cell] {{foreach tile [get_tiles -of_objects $bel] {{foreach cr [get_clock_regions -of_objects $tile] {{puts $fout [format "%s;%s;%s;%s;%s;%s;%s" [get_property PRIMITIVE_TYPE $cell] [get_property LOC $cell] [get_property TYPE $bel]  [get_property NAME $cr] [get_property NAME $tile] [get_property NAME $cell] [get_property BEL $cell] ]}} }} }} }}
         close $fout
         # bit/bin/edc/ebd/ll: Write bitstream files
         set_property BITSTREAM.SEU.ESSENTIALBITS YES [current_design]

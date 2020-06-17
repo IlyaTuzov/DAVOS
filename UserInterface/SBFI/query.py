@@ -179,29 +179,27 @@ try:
         os.mkdir(os.path.join(os.getcwd(), 'cache'))    
     log.write(signature)
     
-    
+    populationsize = None
+    samplesize_max = None
+    if os.path.exists('Summary.xml'):
+        tree = ET.parse('Summary.xml').getroot()
+        for i in tree.findall('Experiment'):
+            if i.get('HDLModel','')==form.getvalue('model') and i.get('FaultModel','')==form.getvalue('faultmodel') and i.get('macrocell','')==form.getvalue('instancetype'):
+                populationsize = float(i.get('population','0'))
+                samplesize_max = int(i.get('samplesize','0'))
+                log.write('\n\nPopulation size: {0}, \nSamplesize={1}'.format(str(populationsize), str(samplesize_max)))  
     
     if not os.path.exists(os.path.join(os.getcwd(), 'cache', signature)):
         os.mkdir(os.path.join(os.getcwd(), 'cache', signature))
         connection = sqlite3.connect(glob.glob('*.db')[0])
         cursor = connection.cursor()
-        cursor.execute('SELECT COUNT(*) FROM Injections')
-        c = cursor.fetchone()
-        population_size = int(c[0])
-        sampling_mode = (form.getvalue('samplesize','').replace(' ', '') != '')
-        if sampling_mode:
-            if 'randseed' in form.keys():
-                if form.getvalue('randseed').isdigit():
-                    random.seed(int(form.getvalue('randseed')))
-            sample_indicies = random.sample(range(0,population_size), int(form.getvalue('samplesize')) )
-            sample_indicies.sort(reverse=True)
-            log.write('\nPopulation size: {0}\nSamples [{1}] = {2}'.format(population_size, len(sample_indicies), '\n'.join([str(i) for i in sample_indicies])))
+
         
-        query = """ SELECT {0}
+        query = """ SELECT @FIELDS
                     FROM Injections I
                     JOIN Models M ON I.ModelID = M.ID
                     JOIN Targets T ON I.TargetID = T.ID 
-        """.format(', '.join(sql_fields))
+        """ 
         selector = ['I.Status != \"E\"']
         for i in fields:
             if form.has_key(i[1]):
@@ -215,9 +213,27 @@ try:
                     query += ' AND '
                 query += c
                 valid_sel_appended += 1
+
+        if samplesize_max!=None and samplesize_max>0:
+            query+="\nLIMIT {0}".format(str(samplesize_max))                     
+        
+        sampling_mode = (form.getvalue('samplesize','').replace(' ', '') != '')
+        if sampling_mode:
+            cursor.execute(query.replace('@FIELDS','COUNT(*)'))
+            c = cursor.fetchone()
+            population_size = int(c[0])        
+            if 'randseed' in form.keys():
+                if form.getvalue('randseed').isdigit():
+                    random.seed(int(form.getvalue('randseed')))
+            sample_indicies = random.sample(range(0,population_size), int(form.getvalue('samplesize')) )
+            sample_indicies.sort(reverse=True)
+            log.write('\nPopulation size: {0}\nSamples [{1}] = {2}'.format(population_size, len(sample_indicies), '\n'.join([str(i) for i in sample_indicies])))
+        
+
+           
         log.write('\n\n'+query)
         log.flush()
-        cursor.execute(query)
+        cursor.execute(query.replace('@FIELDS', ', '.join(sql_fields)))
 
         #build list of first N rows to show and statistics
         i=0
@@ -282,7 +298,7 @@ try:
         for k, v  in fmodes.items():
             if k in failuremodes_alias:
                 statistic_content += '\n\t' + failuremodes_alias[k] + '_abs=\"' + str(v) + '\"'                
-                statistic_content += '\n\t' + failuremodes_alias[k] + '_err=\"' + str( '%.2f' % (100*get_error_margin(total, 0.99, v*1.0/total)) ) + '\"'
+                statistic_content += '\n\t' + failuremodes_alias[k] + '_err=\"' + str( '%.2f' % (100*get_error_margin(total, 0.95, v*1.0/total, populationsize)) ) + '\"'
                 statistic_content += '\n\t' + failuremodes_alias[k] + '=\"' + str('%.2f' % (v*100.0/total)) + '\"'
         statistic_content += ' />'
         

@@ -203,7 +203,11 @@ class simDump:
         self.caption = fname
         with open(fname, 'r') as dumpfile:
             lines = dumpfile.readlines()
-        timeunit = re.findall('\s*(.*?)\s+',lines[0])[0]
+        try:
+            timeunit = re.findall('\s*(.*?)\s+',lines[0])[0]
+        except:
+            print('Skipping corrupted sim dump')
+            return(None)
         for l in lines:
             if re.match(vect_start_ptn, l.replace('{','').replace('}','')):
                 v = SimVector()
@@ -478,23 +482,23 @@ class simDump:
             try:
                 for i in range(0, len(self.vectors), 1):
                     if(self.vectors[i].internals[c_index] == val):
-                        return(self.vectors[i])
+                        return(self.vectors[i], i)
             except IndexError:
                 print str(IndexError)
-                return(None)
+                return(None, None)
         if(vname == 'outputs'):
             try:
                 for i in range(0, len(self.vectors), 1):
                     if(self.vectors[i].outputs[c_index] == val):
-                        return(self.vectors[i])     
+                        return(self.vectors[i], i)     
             except IndexError:
                 print str(IndexError)
-                return(None)                       
-        return(None)
+                return(None, None)                       
+        return(None, None)
         
     def get_value_where(self, column_label = "", where_key = "", where_value = ""):
         vname, c_index = self.get_index_by_label(column_label)
-        vect = self.get_first_vector_by_key(where_key, where_value)
+        vect, indx = self.get_first_vector_by_key(where_key, where_value)
         if(vname == 'internals'):
             return(vect.internals[c_index])
         elif(vname == 'outputs'):

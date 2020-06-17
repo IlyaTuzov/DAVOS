@@ -40,7 +40,8 @@ if __name__ == "__main__":
                                        os.path.join(modelconf.work_dir, davosconf.FFIConfig.hdf_path),
                                        os.path.join(modelconf.work_dir, davosconf.FFIConfig.init_tcl_path),
                                        os.path.join(modelconf.work_dir, davosconf.FFIConfig.injectorapp_path),
-                                       davosconf.FFIConfig.memory_buffer_address)
+                                       davosconf.FFIConfig.memory_buffer_address,
+                                       False)
         Injector.RecoveryNodeNames = davosconf.FFIConfig.post_injection_recovery_nodes
         Injector.CustomLutMask = davosconf.FFIConfig.custom_lut_mask
         Injector.Profiling = davosconf.FFIConfig.profiling
@@ -49,6 +50,8 @@ if __name__ == "__main__":
         Injector.DutScope = davosconf.FFIConfig.dut_scope
 
 
+        #build_FFI_report(davosconf)
+        #raw_input('Ready...')
 
         if davosconf.FFIConfig.injector_phase:
             #Select Zynq device
@@ -73,18 +76,18 @@ if __name__ == "__main__":
                 #raw_input("Preconditions fixed, press any key to run the injector >")
                 jdesc = JobDescriptor(1)
                 jdesc.UpdateBitstream = 1
-                jdesc.Celltype = 1 if davosconf.FFIConfig.target_logic.lower()=='ff' else 2 if davosconf.FFIConfig.target_logic.lower()=='lut' else 3 if davosconf.FFIConfig.target_logic.lower()=='bram' else 2 if davosconf.FFIConfig.target_logic.lower()=='type0' else 0
-                jdesc.Blocktype = 0 if davosconf.FFIConfig.target_logic.lower() in ['lut', 'ff', 'type0'] else 1 if davosconf.FFIConfig.target_logic.lower() in ['bram'] else 2
+                jdesc.Celltype = 1 if davosconf.FFIConfig.target_logic.lower() in ['ff', 'ff+lutram'] else 2 if davosconf.FFIConfig.target_logic.lower() in ['lut', 'lutram'] else 3 if davosconf.FFIConfig.target_logic.lower()=='bram' else 2 if davosconf.FFIConfig.target_logic.lower()=='type0' else 0
+                jdesc.Blocktype = 0 if davosconf.FFIConfig.target_logic.lower() in ['lut', 'ff', 'type0', 'ff+lutram', 'lutram'] else 1 if davosconf.FFIConfig.target_logic.lower() in ['bram'] else 2
                 jdesc.Essential_bits = 1
                 jdesc.CheckRecovery = 1
                 jdesc.LogTimeout = 100
                 jdesc.StartIndex = 0
                 jdesc.Masked = 0
                 jdesc.Failures = 0
-                jdesc.sample_size_goal = 0 if not Injector.Profiling else len(Injector.ProfilingResult)
+                jdesc.sample_size_goal = 100000 # if not Injector.Profiling else len(Injector.ProfilingResult)
                 jdesc.error_margin_goal = davosconf.FFIConfig.error_margin_goal
                 jdesc.FaultMultiplicity = davosconf.FFIConfig.fault_multiplicity
-                jdesc.SamplingWithouRepetition = 0  #disable tracking of tested targets
+                jdesc.SamplingWithouRepetition = 0  #tracking of tested targets 
                 jdesc.Mode = davosconf.FFIConfig.mode            #101 - Sampling, 102 - Exhaustive, 201 - Fault List
                 jdesc.DetailedLog = 1
                 jdesc.PopulationSize = Injector.EssentialBitsPerBlockType[jdesc.Blocktype]

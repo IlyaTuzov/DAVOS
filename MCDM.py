@@ -21,7 +21,7 @@ from RegressionModel_Manager import *
 def filter_population(population):
     valid, excluded = [], []
     for i in population:
-        if ('Error' in i.Metrics) and ('Implprop' in i.Metrics) and isinstance(i.Metrics['Implprop'], dict) and ('VerificationSuccess' in i.Metrics['Implprop']) and ('FIT' in i.Metrics['Implprop']) and (i.Metrics['Error'] == '') and (i.Metrics['Implprop']['VerificationSuccess'] > 0) and (i.Metrics['Implprop']['FIT'] > 0):
+        if ('Error' in i.Metrics) and ('Implprop' in i.Metrics) and isinstance(i.Metrics['Implprop'], dict) and ('VerificationSuccess' in i.Metrics['Implprop']) and ('FIT' in i.Metrics['Implprop']) and (i.Metrics['Error'] in ['', 0]) and (i.Metrics['Implprop']['VerificationSuccess'] > 0) and (i.Metrics['Implprop']['FIT'] > 0):
             valid.append(i)
         else:
             excluded.append(i)

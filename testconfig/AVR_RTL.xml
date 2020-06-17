@@ -6,8 +6,8 @@
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "on"
-        report_dir = "#RUNDIR/../../HTWEB/Bench/Microblaze/Test"        
-        dbfile = "Microblaze.db"  >
+        report_dir = "#RUNDIR/../../HTWEB/Bench/AVR/SBFI/"        
+        dbfile = "AVR.db"  >
         
 
         <ExperimentalDesign
@@ -30,13 +30,13 @@
                 'ImplementationScriptTemplate' : 'ImplementationPhase.tcl',
                 'GenBitstreamScriptTemplate' : 'GenBitstreamPhase.tcl'
                 }"                      
-                design_label = "Microblaze_"
-                design_dir = "../../Projects/TESIS/Microblaze"
-                template_dir = "Microblaze_Template"
+                design_label = "AVR"
+                design_dir = "../../Projects/TESIS/AVR"
+                template_dir = "AVR_Template"
                 log_dir = "./log"
                 netlist_dir = "./netgen"
                 constraint_file = ""    
-                uut_root   = "/BD_wrapper/"   
+                uut_root   = "cpu_core_0"   
             />        
 
             
@@ -95,8 +95,8 @@
                     <Constraint
                         placeholder = "#CONSTRAINT"
                         goal = "max"
-                        start_value = "120"
-                        adjust_step = "10"
+                        start_value = "45"
+                        adjust_step = "5"
                         return_to_phase = "Synthesis"
                         check_handler = "VivadoCheckTimingSatisfied" />
                 </phase>
@@ -372,21 +372,21 @@
             injector_phase 		= "on"
             reportbuilder_phase = "on" 
 
-			dut_scope 						= 'BD_i/microblaze_0/U0'			
-			target_logic 					= "LUT"
+			dut_scope 						= 'ZynqEnv_i/cpu_core_0/U0/'			
+			target_logic 					= "FF"
 			custom_lut_mask 				= 'on' 
-			profiling 						= 'on'
+			profiling 						= 'off'
 
 
-			mode 							= "201"
-			error_margin_goal 				= "0.1"
+			mode 							= "101"
+			error_margin_goal 				= "1.0"
 			fault_multiplicity				= "1"
-			injection_time 					= "1"
+			injection_time 					= "0"
 			
 			post_injection_recovery_nodes 	= "['prog_mem_even_inst', 'prog_mem_odd_inst']"			
-			hdf_path 						= "./MicZC.sdk/BD_wrapper_hw_platform_0/system.hdf"
-			init_tcl_path 					= "./MicZC.sdk/BD_wrapper_hw_platform_0/ps7_init.tcl"
-			injectorapp_path 				= "./MicZC.sdk/InjectorApp/Debug/InjectorApp.elf"
+			hdf_path 						= "./AVR_ZC.sdk/ZynqEnv_wrapper_hw_platform_0/system.hdf"
+			init_tcl_path 					= "./AVR_ZC.sdk/ZynqEnv_wrapper_hw_platform_0/ps7_init.tcl"
+			injectorapp_path 				= "./AVR_ZC.sdk/InjectorApp/Debug/InjectorApp.elf"
 			memory_buffer_address 			= "0x3E000000"
 			platformconf 					= "[{'TargetId':'2', 'PortID':'COM13'}, {'TargetId':'6', 'PortID':'COM3'}]"
 		>
@@ -414,17 +414,17 @@
                 library_specification: leave it blank if design_type = RTL
             -->
             <Generic
-                design_type = "NETLIST"
+                design_type = "RTL"
                 library_specification = "./FaultDictionaries/Xilinx_Unisim_Ver.xml"
                 compile_script = "./par_compile.do"
-                run_script = "./par_run.do"	
+                run_script = "./rtl_run.do"	
 				trace_script = ""
-                std_clk_period = "50.0"
+                std_clk_period = "20.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
-                std_workload_time = "2325000"
+                std_workload_time = "410000"
 				std_trace_time =     "0"
-                finish_flag = "/BD_wrapper/BD_i/FinishFlag"
+                finish_flag = "/TbTop/FinishFlag"
             />
             
 
@@ -440,37 +440,37 @@
                     observe_outputs = "notrigger"                
                     build_injection_list   = "on"
                     build_dump_init_script = "on"		
-                    match_pattern_file = ""			
+                    match_pattern_file = "../../Projects/TESIS/AVR/AVRDefault/code/IMPL_SimNodes.xml"	
+                    trim_path = "/ZynqEnv_wrapper/ZynqEnv_i/cpu_core_0/U0/"                    
                 >
                 
                     
             <!-- unit path: withing the design scope-->            
-                <InjectionScope node_prefix = ""   unit_path = "/BD_wrapper/BD_i/microblaze_0/U0" />
+                <InjectionScope node_prefix = ""   unit_path = "/TbTop/cpu_core_0" />
 
-                <ObservationScope node_prefix = "" unit_path = "/BD_wrapper/BD_i/microblaze_0/U0" label_prefix = "" sampling_options = "-notrigger"/>
+                <ObservationScope node_prefix = "" unit_path = "/TbTop/cpu_core_0" label_prefix = "" sampling_options = "-notrigger"/>
 
                     
                     <!-- location: INTERNALS / OUTPUTS -->            
                 <GenericObservationNodes>
-                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "/BD_wrapper/BD_i/ResultArray" low_address = "0" high_address = "19" comment="External Memory" />		
+                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "sim:/TbTop/RES" low_address = "0" high_address = "19" comment="Results readouts" />		
                 </GenericObservationNodes>
             </Initializer>
-
 
 
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
                     checkpont_mode = "ColdRestore"
                     maxproc = "6"
-                    workload_split_factor = "10"			
-                    campaign_label = "Microblaze"		
-                    cleanup_folders="off"
+                    workload_split_factor = "20"			
+                    campaign_label = "AVR"		
+                    cleanup_folders="on"
                     compile_project = "off"
-                    create_scripts="off"
+                    create_scripts="on"
                     create_checkpoints="off"
-                    create_precise_checkpoints = "off"
-                    create_injection_scripts = "off"
-                    run_faultinjection="off"
+                    create_precise_checkpoints = "on"
+                    create_injection_scripts = "on"
+                    run_faultinjection="on"
                     remove_par_lib_after_checkpoint_stored = "off"
                     cancel_pending_tasks = "off"
                     
@@ -491,14 +491,14 @@
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
                 <fault_model
                     model = "BitFlip"
-                    target_logic = "RAMD32, RAMS32, FDRE, FDCE, FDPE, FDSE"
+                    target_logic = "SIGNAL"
                     faults_per_target = "1"
                     time_mode = "ClockCycle"
-                    injection_time_start = "100.0"            
-                    injection_time_end = "25000.0"
+                    injection_time_start = "0.0"            
+                    injection_time_end = "14000.0"
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
-                    sample_size = "1000"
+                    sample_size = "38500"
                     rand_seed	= "2"					
                 />	
         
@@ -506,7 +506,7 @@
                 
 
             <Analyzer
-                report_dir = "#RUNDIR/../../HTWEB/Profiling"
+                report_dir = "#RUNDIR/../../HTWEB/Bench/AVR/SBFI"
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
                 error_flag_signal = ""
@@ -551,11 +551,11 @@
 	
 	
 		<ModelConfig
-			work_dir = "../../Projects/TESIS/Microblaze/Microblaze_Default"
-			label = "Microblaze_Default"
+			work_dir = "../../Projects/TESIS/AVR/AVRDefault"
+			label = "AVR_RTL_1"
 			compile_options = ""
 			run_options = ""
-			clk_period = "50.0"
+			clk_period = "20.0"
 			start_from = ""
 			stop_at = ""
 		/>
@@ -565,12 +565,11 @@
 			
 			
 			
-			
     
-    <DecisionSupport
+		<DecisionSupport
 			task = "DSE"
 			method = "Statistical"
-    >
+		>
     
     
         <DerivedMetrics>
@@ -580,6 +579,7 @@
                 custom_arg = "{'k': 21, 'fit.x_lut': 107E-15, 'fit.x_ff': 2E-15}"
             />
         </DerivedMetrics>
+        
         
         <MCDM>
             <Scenario name = "Score_MissionCritical" scoremodel = "WSM">
@@ -601,11 +601,10 @@
                 <variable goal = "min" name = "POWER_PL" 	weight = "0.10"/>                                              
                 <variable goal = "min" name = "FIT" 	    weight = "0.10"/>        
             </Scenario>        
-        </MCDM>        
-        
-        
+        </MCDM>
         
     </DecisionSupport>
+
     
     </DAVOS>
     

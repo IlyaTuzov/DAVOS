@@ -10,7 +10,7 @@
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "off"
-        report_dir = "#RUNDIR/../../HTWEB/LEON3_IMPL"        
+        report_dir = "#RUNDIR/../../HTWEB/Bench/LEON3_Test"        
         dbfile = "LEON3.db"  >
         
 
@@ -410,10 +410,10 @@
                 compile_script = "./par_compile.do"
                 run_script = "./par_run.do"	
 				trace_script = ""
-                std_clk_period = "8.5"
+                std_clk_period = "8.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
-                std_workload_time = "35000"
+                std_workload_time = "33000"
 				std_trace_time =     "0"
                 finish_flag = ""
             />
@@ -436,14 +436,26 @@
                 
                     
             <!-- unit path: withing the design scope-->            
-                <InjectionScope node_prefix = ""   unit_path = "" />
+            <InjectionScope node_prefix = "l3_cpu_0_u0_leon3x0_vhdl_p0_iu_" unit_path = "/testbench/d3/" />
+            <InjectionScope node_prefix = "l3_cpu_0_u0_leon3x0_vhdl_p0_mgen_" unit_path = "/testbench/d3/" />
 
-                <ObservationScope node_prefix = "" unit_path = "" label_prefix = "" sampling_options = "-notrigger"/>
+
+            <ObservationScope node_prefix = "l3_cpu_0_u0_leon3x0_vhdl_p0_iu_" unit_path = "/testbench/d3/" label_prefix = "p0_iu_" sampling_options = "-notrigger"/>
+            <ObservationScope node_prefix = "l3_cpu_0_u0_leon3x0_vhdl_p0_mgen_" unit_path = "/testbench/d3/" label_prefix = "p0_mgen_" sampling_options = "-notrigger"/>
 
                     
                     <!-- location: INTERNALS / OUTPUTS -->            
                 <GenericObservationNodes>
-                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "sim:/design_1_wrapper/design_1_i/ResultArray" low_address = "0" high_address = "19" comment="External Memory" />		
+                <signal   		location = "INTERNALS" 	options = "" 			label = "proc_error"  		path= "/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_p0_iu_dbgo_error1_INV_0/O" comment="Error signalling flag" />	
+                <signal   		location = "INTERNALS" 	options = "" 			label = "enable_trap" 		path= "/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_et/O"  comment="Enable trap code" />				
+                <virtual_signal 	location = "INTERNALS" 	options = "" 			label = "trap_type" 		env = "/testbench/d3/" 			expression = "{ ((concat_range (7 downto 0))(l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_7/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_6/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_5/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_4/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_3/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_2/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_1/O & l3_cpu_0_u0_leon3x0_vhdl_p0_iu_r_w_s_tt_0/O ))}" comment="Concatenated trap type signal" />
+                <memarray 		location = "INTERNALS" 	options = "-notrigger" 		label = "regfile" 		path= "sim:/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_rf0_s1_rhu_s1_dp_x0_xc2v_x0_a6_x0_a9_x_0_r0_RAMB16/SDP/WWB36/X_RAMB18E1_SDP_inst/prcs_clk/mem" low_address = "0" high_address = "135" comment="Register File"/>
+                <memarray 		location = "INTERNALS" 	options = "-notrigger" 		label = "regfile_d" 		path= "sim:/testbench/d3/l3_cpu_0_u0_leon3x0_vhdl_rf0_s1_rhu_s1_dp_x1_xc2v_x0_a6_x0_a9_x_0_r0_RAMB16/SDP/WWB36/X_RAMB18E1_SDP_inst/prcs_clk/mem" low_address = "0" high_address = "135" comment="Register File"/>
+                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_0" 		path= "sim:/testbench/sbanks(0)/sram0(0)/sr0/MEM_TST" low_address = "0" high_address = "11" comment="RAM_0" />		
+                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_1" 		path= "sim:/testbench/sbanks(0)/sram0(1)/sr0/MEM_TST" low_address = "0" high_address = "11" comment="RAM_1" />		
+                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_2" 		path= "sim:/testbench/sbanks(0)/sram0(2)/sr0/MEM_TST" low_address = "0" high_address = "11" comment="RAM_2" />		
+                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_3" 		path= "sim:/testbench/sbanks(0)/sram0(3)/sr0/MEM_TST" low_address = "0" high_address = "11" comment="RAM_3" />				
+	
                 </GenericObservationNodes>
             </Initializer>
 
@@ -452,8 +464,8 @@
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
                     checkpont_mode = "ColdRestore"
-                    maxproc = "130"
-                    workload_split_factor = "10"			
+                    maxproc = "4"
+                    workload_split_factor = "20"			
                     campaign_label = "LEON3"		
                     cleanup_folders="off"
                     compile_project = "off"
@@ -481,7 +493,7 @@
 
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
                 <fault_model
-                    model = "bit_flip"
+                    model = "BitFlip"
                     target_logic = "X_FF, X_SFF"
                     faults_per_target = "1"
                     time_mode = "Relative"
@@ -497,7 +509,7 @@
                 
 
             <Analyzer
-                report_dir = "#RUNDIR/../Projects/LEON3/RES"
+                report_dir = "#RUNDIR/../../HTWEB/Bench/LEON3/RES"
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
                 error_flag_signal = "proc_error"
@@ -541,11 +553,11 @@
 	
 	
 		<ModelConfig
-			work_dir = "../../Projects/Processors/grlib-gpl-1.4.1-b4156/designs/LEON3_ISE_Default/"
+			work_dir = "../../Projects/TESIS/LEON3_MAIN/"
 			label = "LEON3_IMPL"
 			compile_options = ""
-			run_options = ""
-			clk_period = "8.5"
+			run_options = "kh_off"
+			clk_period = "8.0"
 			start_from = ""
 			stop_at = ""
 		/>
@@ -557,10 +569,10 @@
 			
 			
     
-		<DecisionSupport
-			task = "DSE"
-			method = "Statistical"
-		>
+	<DecisionSupport
+		task = "DSE"
+		method = "Statistical"
+	>
     
     
         <DerivedMetrics>
@@ -570,6 +582,32 @@
                 custom_arg = "{'k': 21, 'fit.x_lut': 107E-15, 'fit.x_ff': 2E-15}"
             />
         </DerivedMetrics>
+        
+        
+        <MCDM>
+            <Scenario name = "Score_MissionCritical" scoremodel = "WSM">
+                <variable goal = "min" name = "FIT" 	    weight = "0.60"/>
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.20"/>
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.20"/>                              
+            </Scenario>
+            
+            <Scenario name = "Score_Mobile" scoremodel = "WSM">
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.60"/>
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.30"/>
+                <variable goal = "min" name = "FIT" 	    weight = "0.10"/>        
+            </Scenario>
+
+            <Scenario name = "Score_CostCritical" scoremodel = "WSM">
+                <variable goal = "min" name = "UTIL_FF" 	weight = "0.30"/>
+                <variable goal = "min" name = "UTIL_LUT" 	weight = "0.30"/>                               
+                <variable goal = "max" name = "FREQUENCY" 	weight = "0.20"/>
+                <variable goal = "min" name = "POWER_PL" 	weight = "0.10"/>                                              
+                <variable goal = "min" name = "FIT" 	    weight = "0.10"/>        
+            </Scenario>        
+        </MCDM>        
+        
+        
+        
         
     </DecisionSupport>
     

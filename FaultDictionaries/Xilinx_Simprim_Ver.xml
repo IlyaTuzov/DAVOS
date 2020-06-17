@@ -27,6 +27,9 @@
 	<register_reconstruction>
 		<macrocell name = "FDCE"  outport = "O"/>
 		<macrocell name = "FDPE" outport = "O"/>
+		<macrocell name = "FDRE" outport = "O"/>
+		<macrocell name = "FDSE" outport = "O"/>
+        
 
         
 	</register_reconstruction>

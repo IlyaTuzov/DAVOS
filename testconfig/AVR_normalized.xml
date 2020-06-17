@@ -6,7 +6,11 @@
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "on"
+<<<<<<< HEAD
+        report_dir = "#RUNDIR/../../HTWEB/Bench/AVR/Test/"        
+=======
         report_dir = "#RUNDIR/../../HTWEB/Doptimal/AVR/"        
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
         dbfile = "AVR.db"  >
         
 
@@ -36,7 +40,11 @@
                 log_dir = "./log"
                 netlist_dir = "./netgen"
                 constraint_file = ""    
+<<<<<<< HEAD
+                uut_root   = "/ZynqEnv_wrapper/"   
+=======
                 uut_root   = "cpu_core_0"   
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
             />        
 
             
@@ -373,6 +381,15 @@
             reportbuilder_phase = "on" 
 
 			dut_scope 						= 'ZynqEnv_i/cpu_core_0/U0/'			
+<<<<<<< HEAD
+			target_logic 					= "LUT"
+			custom_lut_mask 				= 'on' 
+			profiling 						= 'on'
+
+
+			mode 							= "201"
+			error_margin_goal 				= "0.5"
+=======
 			target_logic 					= "TYPE0"
 			custom_lut_mask 				= 'on' 
 			profiling 						= 'off'
@@ -380,6 +397,7 @@
 
 			mode 							= "101"
 			error_margin_goal 				= "1.0"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
 			fault_multiplicity				= "1"
 			injection_time 					= "1"
 			
@@ -415,16 +433,26 @@
             -->
             <Generic
                 design_type = "NETLIST"
+<<<<<<< HEAD
+                library_specification = "./FaultDictionaries/Xilinx_Unisim_Ver.xml"
+=======
                 library_specification = "./FaultDictionaries/Xilinx_Simprim_Ver.xml"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
                 compile_script = "./par_compile.do"
                 run_script = "./par_run.do"	
 				trace_script = ""
                 std_clk_period = "50.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
+<<<<<<< HEAD
+                std_workload_time = "1025000"
+				std_trace_time =     "0"
+                finish_flag = "/ZynqEnv_wrapper/ZynqEnv_i/FinishFlag"
+=======
                 std_workload_time = "700000"
 				std_trace_time =     "0"
                 finish_flag = "/design_1_wrapper/design_1_i/FinishFlag"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
             />
             
 
@@ -445,23 +473,40 @@
                 
                     
             <!-- unit path: withing the design scope-->            
+<<<<<<< HEAD
+                <InjectionScope node_prefix = ""   unit_path = "/ZynqEnv_wrapper/ZynqEnv_i/cpu_core_0/U0" />
+
+                <ObservationScope node_prefix = "" unit_path = "/ZynqEnv_wrapper/ZynqEnv_i/cpu_core_0/U0" label_prefix = "" sampling_options = "-notrigger"/>
+=======
                 <InjectionScope node_prefix = ""   unit_path = "/design_1_wrapper/design_1_i/mc8051_top_0/U0" />
 
                 <ObservationScope node_prefix = "" unit_path = "/design_1_wrapper/design_1_i/mc8051_top_0/U0" label_prefix = "" sampling_options = "-notrigger"/>
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
 
                     
                     <!-- location: INTERNALS / OUTPUTS -->            
                 <GenericObservationNodes>
+<<<<<<< HEAD
+                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "sim:/ZynqEnv_wrapper/ZynqEnv_i/RES" low_address = "0" high_address = "19" comment="Results readouts" />		
+=======
                    <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "sim:/design_1_wrapper/design_1_i/ResultArray" low_address = "0" high_address = "19" comment="External Memory" />		
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
                 </GenericObservationNodes>
             </Initializer>
 
 
+<<<<<<< HEAD
+            <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
+            <Injector
+                    checkpont_mode = "ColdRestore"
+                    maxproc = "8"
+=======
 
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
                     checkpont_mode = "ColdRestore"
                     maxproc = "4"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
                     workload_split_factor = "10"			
                     campaign_label = "AVR"		
                     cleanup_folders="off"
@@ -490,6 +535,17 @@
 
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
                 <fault_model
+<<<<<<< HEAD
+                    model = "BitFlip"
+                    target_logic = "FDRE, FDCE, FDPE, FDSE"
+                    faults_per_target = "1"
+                    time_mode = "ClockCycle"
+                    injection_time_start = "0.0"            
+                    injection_time_end = "14000.0"
+                    increment_time_step = "0.0" 
+                    experiments_per_target = "1"
+                    sample_size = "100"
+=======
                     model = "upset_cmem"
                     target_logic = "lut1, lut2, lut3, lut4, lut5, lut6"
                     faults_per_target = "1"
@@ -499,6 +555,7 @@
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
                     sample_size = "0"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
                     rand_seed	= "2"					
                 />	
         
@@ -506,7 +563,11 @@
                 
 
             <Analyzer
+<<<<<<< HEAD
+                report_dir = "#RUNDIR/../../HTWEB/Bench/AVR/SBFI"
+=======
                 report_dir = "#RUNDIR/../../HTWEB/Profiling"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
                 error_flag_signal = ""
@@ -552,7 +613,11 @@
 	
 		<ModelConfig
 			work_dir = "../../Projects/TESIS/AVR/AVRDefault"
+<<<<<<< HEAD
+			label = "AVR_Default"
+=======
 			label = "AVR"
+>>>>>>> 007f5344c33c8c44003f2452c0f9a5df3b3d048c
 			compile_options = ""
 			run_options = ""
 			clk_period = "50.0"
