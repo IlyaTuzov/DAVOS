@@ -6,7 +6,7 @@
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "on"
-        report_dir = "#RUNDIR/../../HTWEB/Bench/AVR/Test/"        
+        report_dir = "#RUNDIR/../../HTWEB/Bench/AVR/FFI_CRAM/"        
         dbfile = "AVR.db"  >
         
 
@@ -373,13 +373,13 @@
             reportbuilder_phase = "on" 
 
 			dut_scope 						= 'ZynqEnv_i/cpu_core_0/U0/'			
-			target_logic 					= "LUT"
+			target_logic 					= "TYPE0"
 			custom_lut_mask 				= 'on' 
-			profiling 						= 'on'
+			profiling 						= 'off'
 
 
-			mode 							= "201"
-			error_margin_goal 				= "0.5"
+			mode 							= "101"
+			error_margin_goal 				= "0.1"
 			fault_multiplicity				= "1"
 			injection_time 					= "1"
 			

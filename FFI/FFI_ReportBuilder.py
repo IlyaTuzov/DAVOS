@@ -188,7 +188,7 @@ def build_FFI_report(DavosConfig, ExportLutCsv=False):
                 elif coord in lutram_dict:
                     target = datamodel.GetOrAppendTarget(lutram_dict[coord]['node'], 'LUTRAM', lutram_dict[coord]['case'])
                 else:
-                    target = datamodel.GetOrAppendTarget('root/unknown', 'ANY', '')
+                    target = datamodel.GetOrAppendTarget('U:{0:08x}:{1:03d}:{2:02d}'.format(int(match.group(2)), int(match.group(3)), int(match.group(4))), 'TYPE0', '')
 
                 InjDesc = InjectionDescriptor()
                 InjDesc.InjectionTime = float(match.group(5))

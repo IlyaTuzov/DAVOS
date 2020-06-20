@@ -589,7 +589,7 @@ class InjectorHostManager:
                         if (t==1 and self.target_logic=='bram') or (t==2 and self.target_logic in ['ff', 'type0', 'ff+lutram']) or self.target_logic == 'all' or (t==3 and self.target_logic in ['lutram', 'ff+lutram']):
                             word, bit =offset/32, offset%32
                             if t==1:
-                                if matchDesc.group(4) == 'BIT':
+                                if matchDesc.group(4) in ['BIT', 'PARBIT']:
                                     BramMap.append((nodepath, int(matchDesc.group(5)), FAR, word, bit, (BinDataDict[FAR].data[word]>>bit)&0x1))
                             if t==2:
                                 FFMap.append((nodepath, 0, FAR, word, bit, (BinDataDict[FAR].data[word]>>bit)&0x1))
@@ -608,16 +608,15 @@ class InjectorHostManager:
             for i in FFMap:
                 #CheckpointFrames.add(i[2])
                 Tab.add_row([str(i[0]), str(i[1]), str(i[2]), str(i[3]), str(i[4]), str(i[5])])
-            with open(os.path.join(self.targetDir,'FFMapList.csv'),'w') as f:
-                f.write(Tab.to_csv())
+            Tab.to_csv(';', True, os.path.join(self.targetDir,'FFMapList.csv'))
 
         if len(BramMap)>0:
             Tab = Table('BramMap',['Node','Case','FAR','word','bit','data'])
             for i in BramMap:
                 #CheckpointFrames.add(i[2])
                 Tab.add_row([str(i[0]), str(i[1]), str(i[2]), str(i[3]), str(i[4]), str(i[5])])
-            with open(os.path.join(self.targetDir,'BramMapList.csv'),'w') as f:
-                f.write(Tab.to_csv())
+            Tab.to_csv(';', True, os.path.join(self.targetDir,'BramMapList.csv'))
+
 
         if len(LutramMap)>0:
             Tab = Table('LutramMap',['Node','Case','FAR','word','bit','data'])

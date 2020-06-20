@@ -104,6 +104,27 @@ def get_bitindex(num, val):
             return(i)
 
 
+
+def getFarListForTile(TileName):
+    match = re.search('(BRAM|CLB).*?X([0-9]+)Y([0-9]+)', TileName)
+    res = []
+    T_rows, B_rows = 1, 2
+    if match:
+        X = int(match.group(2))
+        Y = int(match.group(3))
+        if Y/50 > B_rows-1:
+            top, row = 0, Y/50 - B_rows
+        else:
+            top, row = 1, B_rows - Y/50 - 1
+        major = X
+        if match.group(1) == 'BRAM':
+            for minor in range(28):
+                res.append((0x0 << 23) |(top << 22) | (row << 17) | (major << 7) | minor)
+    return(res)
+
+
+
+
 def LoadFarList(far_file):
     FarSet = set()
     with open(far_file, 'r') as f:

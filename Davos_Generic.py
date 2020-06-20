@@ -433,15 +433,22 @@ class Table:
                 return(self.get(row, l_i))
         return(None)
     
-    def to_csv(self, sep=';', exportheader=True):
+    def to_csv(self, sep=';', exportheader=True, fname=None):
         res = ''
         if exportheader: res += "sep={0}\n".format(sep)
         res += sep.join([l for l in self.labels])
         nc = len(self.columns)
         nr = len(self.columns[0])
-        for r in range(0, nr, 1):
-            #res+="\n{0}".format(sep.join([str(self.get(r,c)) for c in range(0, nc, 1)]))
-            res+="\n{0}".format(sep.join([str(self.columns[c][r]) for c in range(0, nc, 1)]))
+        if fname==None:
+            for r in range(0, nr, 1):
+                res+="\n{0}".format(sep.join([str(self.columns[c][r]) for c in range(0, nc, 1)]))
+                if r%1000 == 0: sys.stdout.write('Processed rows: {0:08d}\r'.format(r))
+        else:
+            with open(fname, 'w') as f:
+                f.write(res)
+                for r in range(0, nr, 1):
+                    f.write("\n{0}".format(sep.join([str(self.columns[c][r]) for c in range(0, nc, 1)])))
+                    if r%1000 == 0: sys.stdout.write('Exported rows: {0:08d}\r'.format(r))
         return(res)
     
     def snormalize(self, ist):
