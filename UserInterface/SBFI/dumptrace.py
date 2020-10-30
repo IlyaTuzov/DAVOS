@@ -213,7 +213,6 @@ class SimVector:
         clm = re.findall(val_pattern, str_data)
         if(len(clm) < intern_num + output_num + 2):
             print "build_from_string err: line is not complete"
-            key = input("Press any key to continue: ")
             return(None)
         self.time = float(clm[0])
         self.delta = int(clm[1])

@@ -108,9 +108,9 @@ def InitializeHDLModels(config, toolconf):
             if config.injector.compile_project:
                 print('\n\tCOMPILING: ' + c.label)
                 compile_script = "vsim -c -do \"do " + config.genconf.compile_script + " " + c.compile_options + " ;quit\" > compile_log.txt"
-                proc = subprocess.Popen(compile_script, shell=True)
-                print "RUN: " + compile_script
-                proc.wait()
+                #proc = subprocess.Popen(compile_script, shell=True)
+                #print "RUN: " + compile_script
+                #proc.wait()
             #2.1. extract all entities from the design tree for each injection scope
             for i in injection_unit_paths:
                 print('\n\t'+c.label+': Parsing Injection Scope: ' + i)
@@ -119,8 +119,8 @@ def InitializeHDLModels(config, toolconf):
                         parse_script_file.write("do " + config.genconf.run_script + " " + c.run_options + "\nfind instances -file " + f_inj_instances + " -recursive " + i + "/* \nquit\n")
                     elif config.genconf.design_type == 'rtl':
                         shutil.copyfile(os.path.join(config.call_dir, toolconf.support_script_dir, toolconf.rtl_parse_script), os.path.join(c.work_dir, toolconf.rtl_parse_script))
-                        parse_script_file.write("do " + config.genconf.run_script + " " + c.run_options + "\ndo " + toolconf.rtl_parse_script + " " + i + "/* " + f_inj_instances + " on -internal" + "\nquit\n")
-                runscript = "vsim -c -do \"do parsescript.do\" > parse_log.txt"
+                        parse_script_file.write("\ndo " + toolconf.rtl_parse_script + " " + i + "/* " + f_inj_instances + " on -internal" + "\nquit\n")
+                runscript = "vsim -c -restore icheckpoints/startpoint.sim -do  \"do parsescript.do\" > parse_log.txt"
                 print "RUN: " + runscript
                 proc = subprocess.Popen(runscript, shell=True)
                 proc.wait()
@@ -302,9 +302,9 @@ def InitializeHDLModels(config, toolconf):
                         parse_script_file.write("do " + config.genconf.run_script + " " + c.run_options + "\nfind instances -file " + f_observ_instances + " -recursive " + i + "/*" + "\nfind signals -out -inout -file " + f_observ_outputs + " " + i + "/*" + " \nquit\n")
                     elif config.genconf.design_type == 'rtl':
                         shutil.copyfile(os.path.join(config.call_dir, toolconf.support_script_dir, toolconf.rtl_parse_script), os.path.join(c.work_dir, toolconf.rtl_parse_script))
-                        parse_script_file.write("do " + config.genconf.run_script + " " + c.run_options + "\ndo " + toolconf.rtl_parse_script + " " + i + "/* " + f_observ_instances + " on -internal" + "\nquit\n")
+                        parse_script_file.write("\ndo " + toolconf.rtl_parse_script + " " + i + "/* " + f_observ_instances + " on -internal" + "\nquit\n")
                     parse_script_file.close()
-                    runscript = "vsim -c -do \"do parsescript.do\" > parse_log.txt"
+                    runscript = "vsim -c -restore icheckpoints/startpoint.sim -do \"do parsescript.do\" > parse_log.txt"
                     print "RUN: " + runscript
                     proc = subprocess.Popen(runscript, shell=True)
                     proc.wait()

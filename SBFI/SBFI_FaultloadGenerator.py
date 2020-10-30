@@ -64,6 +64,7 @@ def GenerateInjectionScripts_SamplingMode(config, modelconf, toolconf, faultdict
     os.chdir(os.path.join(modelconf.work_dir, toolconf.script_dir))
     fdesclog_content = "sep=;\nINDEX;DUMPFILE;TARGET;INSTANCE_TYPE;INJECTION_CASE;FAULT_MODEL;FORCED_VALUE;DURATION;TIME_INSTANCE;OBSERVATION_TIME;MAX_ACTIVITY_DURATION;EFFECTIVE_SWITHES;PROFILED_VALUE;ON_TRIGGER;"
 
+    dT = []
     script_index = 0
     for fconfig in config.injector.fault_model:
         #Select macrocells(targets) of the types specified in the faultload configuration
@@ -79,6 +80,8 @@ def GenerateInjectionScripts_SamplingMode(config, modelconf, toolconf, faultdict
 
 
             inj_time = get_random_injection_time(fconfig.time_start, fconfig.time_end, fconfig.time_mode, fconfig.multiplicity, scale_factor, modelconf.clk_period, config.genconf.std_workload_time)
+            duration = random.uniform(fconfig.duration_min, fconfig.duration_max)
+            
             if fconfig.simulataneous_faults: inj_time=[inj_time[0]]*fconfig.multiplicity
             str_index = str("%06d" % (script_index))
             inj_script = ""
@@ -94,14 +97,16 @@ def GenerateInjectionScripts_SamplingMode(config, modelconf, toolconf, faultdict
                 for ct in checkpointlist:
                     if(ct < inj_time[0]):
                         checkpoint_linked = ct
-
+                
+                dT.append(float(config.genconf.std_workload_time)*scale_factor - checkpoint_linked)
                 inj_script += "\nset ExecTime {0}ns".format( str(int(config.genconf.std_workload_time*scale_factor)-int(checkpoint_linked)) if fconfig.trigger_expression == '' else str(int(config.genconf.std_workload_time*scale_factor)))
                 for i in range(fconfig.multiplicity):
+                    injcode = c[i][2].replace('#DURATION', '{0:0.5f}ns'.format(duration))
                     if fconfig.trigger_expression == '':    #time-driven injection                        
-                        inj_script += "\n\twhen \"\\$now >= {0}ns\" {{\n\t\tputs \"Time: $::now: Injection of {1}\"\n\t{2}\n\t}}\n".format(str(int(inj_time[i])-int(checkpoint_linked)), fconfig.model, c[i][2])
+                        inj_script += "\n\twhen \"\\$now >= {0}ns\" {{\n\t\tputs \"Time: $::now: Injection of {1}\"\n\t{2}\n\t}}\n".format(str(int(inj_time[i])-int(checkpoint_linked)), fconfig.model, injcode)
                         fname = "fault_" + str_index + "__checkpoint_" + str(checkpoint_linked) + ".do"                                             
                     else:       #event-driven injection (on trigger expression)
-                        inj_script += "" +  + "\n\nwhen {0} {{\n\twhen \"\\$now >= {1}ns\" {{\n\t\tputs \"Time: $::now: Injection of {2}\"\n\t{3}\n\t}}\n}}".format(fconfig.trigger_expression, str(int(inj_time[i])), fconfig.model, c[2])
+                        inj_script += "" +  + "\n\nwhen {0} {{\n\twhen \"\\$now >= {1}ns\" {{\n\t\tputs \"Time: $::now: Injection of {2}\"\n\t{3}\n\t}}\n}}".format(fconfig.trigger_expression, str(int(inj_time[i])), fconfig.model, injcode)
                         fname = "fault_" + str_index + "__checkpoint_0" + ".do"
                 inj_script += ("\nwhen \"\$now >= $ExecTime && {0}'event && {1} == 1\"".format(config.genconf.clk_signal, config.genconf.clk_signal)  if config.genconf.clk_signal != '' else "\nwhen \"\$now >= $ExecTime\"") + " { force -freeze "+ (toolconf.finish_flag if config.genconf.finish_flag == '' else config.genconf.finish_flag) + " 1 }"
                 if config.injector.checkpont_mode == CheckpointModes.ColdRestore:
@@ -115,14 +120,19 @@ def GenerateInjectionScripts_SamplingMode(config, modelconf, toolconf, faultdict
                 robust_file_write(fname, inj_script)
                 sys.stdout.write('Stored script: %6d\r' % (script_index))
                 sys.stdout.flush() 
-                fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0][0] + ";" + instance.type + ";" + c[0][1] + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(fconfig.duration) + ";" + str(inj_time[0]) + ";" + str(int(config.genconf.std_workload_time*scale_factor)-int(inj_time[0])) 
+                fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0][0] + ";" + instance.type + ";" + c[0][1] + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(duration) + ";" + str(inj_time[0]) + ";" + str(int(config.genconf.std_workload_time*scale_factor)-int(inj_time[0])) 
                 if c[0][3] != None:
                     fdesclog_content += ';{0:.2f};{1:d};{2:s};'.format(c[0][3].total_time, c[0][3].effective_switches, c[0][3].profiled_value)
                 else:
                     fdesclog_content += ';None;None;None;'
                 script_index += 1
                 fdesclog_content += fconfig.trigger_expression.replace(';',' ').replace('&apos','')+';'
-    robust_file_write(os.path.join(modelconf.work_dir, toolconf.result_dir, toolconf.exp_desc_file), fdesclog_content)    
+    robust_file_write(os.path.join(modelconf.work_dir, toolconf.result_dir, toolconf.exp_desc_file), fdesclog_content)  
+    
+    print('DT: '+str(dT))
+    checkpoint_speedup = len(dT)*float(config.genconf.std_workload_time)*scale_factor/(sum(dT))
+    print('CHECKPOINT SPEED-UP: {0:0.3f}'.format(checkpoint_speedup))    
+    raw_input('Faultload generated...')
     return(script_index)
 
 
@@ -166,8 +176,10 @@ def generate_injection_scripts(config, modelconf, toolconf, faultdict):
                     continue
                 #build the list of tuples (inj_case, inj_code, profiling_descriptor)
                 inj_code_items = get_injection_code_all(instance, faultdict, fconfig, scale_factor, None)
+                
                 if fconfig.sample_size > 0:
                     inj_code_items = random.sample(inj_code_items, 1)
+                #for i in inj_code_items: raw_input(str(i))
                 #for the instance from the same group as previous one: restore rand state to obtain the same random sequence 
                 if(instance.group != '' and instance.group == prev_desc[0]):
                     random.setstate(prev_desc[1])
@@ -217,9 +229,9 @@ def generate_injection_scripts(config, modelconf, toolconf, faultdict):
                         inj_script += "\nquit\n"                    
 
                     robust_file_write(fname, inj_script)
-                    sys.stdout.write('Stored script: %6d\r' % (script_index))
+                    sys.stdout.write('Stored script {0}: {1:6d}\r'.format(c[1], script_index))
                     sys.stdout.flush() 
-                    fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0] + ";" + instance.type + ";" + c[0][1] + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(fconfig.duration) + ";" + str(inj_time[0]) + ";" + str(int(config.genconf.std_workload_time*scale_factor)-int(inj_time[0])) 
+                    fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0] + ";" + instance.type + ";" + c[1] + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(fconfig.duration_max) + ";" + str(inj_time[0]) + ";" + str(int(config.genconf.std_workload_time*scale_factor)-int(inj_time[0])) 
                     if c[3] != None:
                         fdesclog_content += ';{0:.2f};{1:d};{2:s};'.format(c[3].total_time, c[3].effective_switches, c[3].profiled_value)
                     else:
@@ -240,7 +252,6 @@ def generate_injection_scripts(config, modelconf, toolconf, faultdict):
 #tuple [target, injection_case, injection_code, switching_activity]
 def get_injection_code_all(instance, faultdict, fconfig, scale_factor, PresimRes = None):
     res = []
-    duration = fconfig.duration * scale_factor
     faultdescriptor = faultdict.get_descriptor(fconfig.model, instance.type)
     if(faultdescriptor == None):
         raw_input('Error: no descriptor found in dictionary for fault model: ' + str(fconfig.model) + '::' + instance.type)

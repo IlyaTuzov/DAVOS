@@ -6,7 +6,7 @@
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "on"
-        report_dir = "#RUNDIR/../../HTWEB/Bench/MC8051/FFI_CRAM"        
+        report_dir = "#RUNDIR/../../HTWEB/Bench/MC8051/FFI_LUT"        
         dbfile = "MC8051.db"  >
         
 
@@ -373,12 +373,12 @@
             reportbuilder_phase = "on" 
 
 			dut_scope 						= 'design_1_i/mc8051_top_0/U0/'			
-			target_logic 					= "TYPE0"
+			target_logic 					= "LUT"
 			custom_lut_mask 				= 'on' 
 			profiling 						= 'off'
 
 
-			mode 							= "101"
+			mode 							= "102"
 			error_margin_goal 				= "0.1"
 			fault_multiplicity				= "1"
 			injection_time 					= "1"
@@ -388,7 +388,7 @@
 			init_tcl_path 					= "./MC8051.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"
 			injectorapp_path 				= "./MC8051.sdk/InjectorApp/Debug/InjectorApp.elf"
 			memory_buffer_address 			= "0x3E000000"
-			platformconf 					= "[{'TargetId':'2', 'PortID':'COM13'}, {'TargetId':'6', 'PortID':'COM3'}]"
+			platformconf 					= "[{'TargetId':'2', 'PortID':'COM3'}, {'TargetId':'6', 'PortID':'COM14'}]"
 		>
 		
 		
@@ -415,9 +415,9 @@
             -->
             <Generic
                 design_type = "RTL"
-                library_specification = "./FaultDictionaries/Xilinx_Unisim_VHDL.xml"
-                compile_script = "./par_compile.do"
-                run_script = "./par_run.do"	
+                library_specification = "./FaultDictionaries/Xilinx_Unisim_Ver.xml"
+                compile_script = "./sim_compile.do"
+                run_script = "./sim_run.do"	
 				trace_script = ""
                 std_clk_period = "50.0"
                 std_rst_delay = "0"
@@ -440,8 +440,6 @@
                     observe_outputs = "notrigger"                
                     build_injection_list   = "on"
                     build_dump_init_script = "on"		
-                    match_pattern_file = "C:/Projects/TESIS/MC8051/MC8051_LimFanout/code/SimNodes.xml"			
-                    trim_path = "/TbTop/mc8051_top_0/U0/i_mc8051_core"
                 >
                 
                     
@@ -462,23 +460,23 @@
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
                     checkpont_mode = "ColdRestore"
-                    maxproc = "6"
+                    maxproc = "4"
                     workload_split_factor = "20"			
                     campaign_label = "MC8051"		
-                    cleanup_folders="off"
+                    cleanup_folders="on"
                     compile_project = "off"
-                    create_scripts="off"
+                    create_scripts="on"
                     create_checkpoints="off"
                     create_precise_checkpoints = "off"
-                    create_injection_scripts = "off"
-                    run_faultinjection="off"
+                    create_injection_scripts = "on"
+                    run_faultinjection="on"
                     remove_par_lib_after_checkpoint_stored = "off"
                     cancel_pending_tasks = "off"
                     
                     sim_time_checkpoints = "16:00:00"
                     sim_time_injections =  "20:00:00"
                     work_label = "simpy_"
-                    wlf_remove_time = "500"	
+                    wlf_remove_time = "100"	
                     runtime_terminate = "off"
                     run_cleanup = "on"
                     monitoring_mode = "on"
@@ -491,23 +489,38 @@
 
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
                 <fault_model
-                    model = "BitFlip"
+                    model = "stuck_at"
                     target_logic = "SIGNAL"
                     faults_per_target = "1"
                     time_mode = "ClockCycle"
                     injection_time_start = "0.0"            
-                    injection_time_end = "35000.0"
+                    injection_time_end = "0.0"
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
-                    sample_size = "500"
+                    forced_value = "1"
+                    sample_size = "0"
                     rand_seed	= "2"					
                 />	
-        
+
+                <fault_model
+                    model = "stuck_at"
+                    target_logic = "SIGNAL"
+                    faults_per_target = "1"
+                    time_mode = "ClockCycle"
+                    injection_time_start = "0.0"            
+                    injection_time_end = "0.0"
+                    increment_time_step = "0.0" 
+                    experiments_per_target = "1"
+                    forced_value = "0"
+                    sample_size = "0"
+                    rand_seed	= "2"					
+                />	
+                
             </Injector>
                 
 
             <Analyzer
-                report_dir = "#RUNDIR/../../HTWEB/Bench/MC8051_SBFI"
+                report_dir = "#RUNDIR/../../HTWEB/Bench/MC8051/SBFI_stuck_open"
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
                 error_flag_signal = ""
@@ -553,7 +566,7 @@
 	
 		<ModelConfig
 			work_dir = "../../Projects/TESIS/MC8051/MC8051_Default"
-			label = "MC8051_Default_FFI"
+			label = "MC8051_RTL"
 			compile_options = ""
 			run_options = ""
 			clk_period = "50.0"

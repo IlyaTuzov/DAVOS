@@ -211,7 +211,8 @@ class simDump:
         for l in lines:
             if re.match(vect_start_ptn, l.replace('{','').replace('}','')):
                 v = SimVector()
-                v.build_from_string(len(self.internal_labels), len(self.output_labels), l)
+                if v.build_from_string(len(self.internal_labels), len(self.output_labels), l) == None:
+                    return(None)
                 if   timeunit=='ps': v.time = v.time/1000.0
                 elif timeunit=='fs': v.time = v.time/1000000.0
                 self.vectors.append(v)

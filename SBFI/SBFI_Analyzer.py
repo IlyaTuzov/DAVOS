@@ -20,7 +20,7 @@ from threading import Thread
 from Davos_Generic import *
 from Datamanager import *
 
-EnhancedAnalysisOfLatentErrors = False
+EnhancedAnalysisOfLatentErrors = True
 
 
 def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseindex):
@@ -197,13 +197,16 @@ def process_dumps(config, toolconf, conf, datamodel):
     if os.path.exists(os.path.join(conf.work_dir, dumppack)):
         shutil.move(os.path.join(conf.work_dir, dumppack), os.path.join(config.report_dir, dumppack))
     
-    T = Table('SummaryFaultSim', ['Node', 'InjCase','FailureMode'])
+    T = Table('SummaryFaultSim', ['Node', 'InjCase', 'InjTime','Duration', 'FailureMode'])
     injsummary = datamodel.LaunchedInjExp_dict.values()
     for i in range(len(injsummary)):
         T.add_row()
         T.put(i,T.labels.index('Node'),injsummary[i].Node)
         T.put(i,T.labels.index('InjCase'),injsummary[i].InjCase)
+        T.put(i,T.labels.index('InjTime'),injsummary[i].InjectionTime)
+        T.put(i,T.labels.index('Duration'),injsummary[i].InjectionDuration)
         T.put(i,T.labels.index('FailureMode'),injsummary[i].FailureMode)
+
     with open(os.path.join(conf.work_dir, 'SummaryFaultSim.csv'), 'w') as f:
         f.write(T.to_csv())
     datamodel.LaunchedInjExp_dict.clear()    

@@ -28,7 +28,7 @@ class OperatingModes:
 
 
 res_ptn  = re.compile(r'Tag.*?([0-9]+).*?Injection Result.*?Injections.*?([0-9]+).*?([0-9]+).*?Masked.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+).*?Failures.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+)', re.M)
-stat_ptn = re.compile(r'Tag.*?([0-9]+).*?Injection.*?([0-9]+).*?([0-9]+).*?Masked.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+).*?Failures.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+).*?Latent.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+)', re.M)
+stat_ptn = re.compile(r'Tag.*?([0-9]+).*?Injection.*?([0-9]+).*?([0-9]+).*?Masked.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+).*?Failures.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+).*?Latent.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+)(.*?Signaled.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+))?', re.M)
 recovery_ptn = re.compile(r'([0-9]+).*?seconds.*?Experiments.*?([0-9]+).*?([0-9]+).*?Masked.*?([0-9]+).*?([0-9\.]+).*?([0-9\.]+).*?Failures.*?([0-9]+).*?([0-9\.]+).*?([0-9\.]+)')
 
 ram_search_ptn = re.compile(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-Z_]+)\s+Ram=B:(BIT|PARBIT)([0-9]+)', re.M)
@@ -58,6 +58,7 @@ class JobDescriptor:
         self.StartIndex = 0
         self.ExperimentsCompleted = 0
         self.Failures = 0
+        self.Signaled = 0
         self.Masked = 0
         self.Latent = 0
         self.SDC = 0
@@ -105,6 +106,7 @@ class JobDescriptor:
             f.write(struct.pack(specificator, self.StartIndex))
             f.write(struct.pack(specificator, self.ExperimentsCompleted))
             f.write(struct.pack(specificator, self.Failures))
+            f.write(struct.pack(specificator, self.Signaled))
             f.write(struct.pack(specificator, self.Masked))
             f.write(struct.pack(specificator, self.Latent))
             f.write(struct.pack(specificator, self.SDC))
@@ -452,7 +454,7 @@ class InjectorHostManager:
                 i+=1
 
 
-
+        LOC = {'top':1, 'row':1, 'major_left':21, 'major_right':29}
         if self.target_logic=='type0' or self.target_logic=='all' or (self.target_logic=='lut'): # and not self.CustomLutMask):
             #Step 4: Build the list of frame descriptors from EBC+EBD (essential bits)
             EBC_FrameList = EBC_to_FrameList(self.Input_EBCFile, self.Input_EBDFile, FarList)
@@ -471,6 +473,7 @@ class InjectorHostManager:
                 for i in range(len(EBC_FrameList)):
                     #if (self.target_logic in ['type0', 'all']) or (self.target_logic=='lut' and BIN_FrameList[i].Minor in [26,27,28,29, 32,33,34,35]):
                     if (self.target_logic in ['type0', 'all']) or (self.target_logic=='lut' and BIN_FrameList[i].type=="CLB" and BIN_FrameList[i].Minor in [26,27,28,29, 32,33,34,35]):
+                        #if BIN_FrameList[i].Top == LOC['top'] and  BIN_FrameList[i].Row == LOC['row'] and  BIN_FrameList[i].Major >= LOC['major_left'] and  BIN_FrameList[i].Major <= LOC['major_right']:
                         BIN_FrameList[i].mask = EBC_FrameList[i].mask
 
 
@@ -583,9 +586,9 @@ class InjectorHostManager:
                     if t==1 and (block in RecoveryRamLocations):
                         RecoveryFrames.add(FAR)
 
-
+                    observation_scope = 'BD_i/microblaze_0/U0'
                     if (nodepath.startswith(self.DutScope) or self.DutScope ==''):
-                        if t in [2,3]: CheckpointFrames.add(FAR)
+                        if t in [2] and nodepath.startswith(observation_scope): CheckpointFrames.add(FAR)
                         if (t==1 and self.target_logic=='bram') or (t==2 and self.target_logic in ['ff', 'type0', 'ff+lutram']) or self.target_logic == 'all' or (t==3 and self.target_logic in ['lutram', 'ff+lutram']):
                             word, bit =offset/32, offset%32
                             if t==1:
@@ -687,7 +690,7 @@ class InjectorHostManager:
         if self.jdesc.UpdateBitstream > 0:
             self.logtimeout = 120   #more time for responce if bitstream is uploaded
         else:
-            self.logtimeout = 60
+            self.logtimeout = 20
 
     def export_devrun_script(self):
         script = """
@@ -700,7 +703,7 @@ class InjectorHostManager:
         ps7_init
         ps7_post_config
         dow {3}
-        dow -data {4}           0x{5:08x}
+        dow -data {4}           0x{5:08x}        
         """.format(str(self.targetid), self.HwDescFile_path, self.InitTcl_path, self.InjectorApp_path, self.JobDescFile, self.MemoryBufferAddress)
         if self.jdesc.UpdateBitstream == 1:
             script += """\ndow -data {0}  0x{1:08x}\n""".format(self.Input_BinstreamFile, self.jdesc.BitstreamAddr)
@@ -708,6 +711,12 @@ class InjectorHostManager:
                  script += """dow -data {0}  0x{1:08x}\n""".format(self.Output_FrameDescFile, self.jdesc.BitmaskAddr)
             if os.path.exists(self.FaultListFile): 
                     script += """dow -data {0}  0x{1:08x}\n""".format(self.FaultListFile, self.jdesc.FaultListAdr)
+
+        #script += """
+        #        dow -data C:/Projects/TESIS/AVR/AVR_TMR_TES/Bitstream_pblock_cpu_core_1_partial.bin 0x3EBC0000
+        #        dow -data C:/Projects/TESIS/AVR/AVR_TMR_TES/Bitstream_pblock_cpu_core_2_partial.bin 0x3EC20000
+        #        dow -data C:/Projects/TESIS/AVR/AVR_TMR_TES/Bitstream_pblock_cpu_core_3_partial.bin 0x3EC80000
+        #"""
 
         script += "con \n exit \n"
         script = script.replace('\\','/')
@@ -784,10 +793,10 @@ class InjectorHostManager:
                     #self.logfile.write('\n'+line)
                     if int( time.time() - last_msg_time ) > self.logtimeout:
                         self.logfile.write('Valid Message Timeout\n\tRestaring from next intjection point')
-                        hang_move_delta = 10
+                        hang_move_delta = 100
                         self.jdesc.StartIndex += hang_move_delta
                         self.jdesc.ExperimentsCompleted = self.jdesc.StartIndex
-                        self.jdesc.Failures += hang_move_delta
+                        #self.jdesc.Failures += hang_move_delta
                         if self.jdesc.sample_size_goal > 0: self.jdesc.sample_size_goal += hang_move_delta
                         self.export_JobDescriptor()
                         self.launch_injector_app()  
@@ -841,17 +850,20 @@ class InjectorHostManager:
                                 self.jdesc.Latent = int(matchDesc.group(10))
                                 self.jdesc.latent_rate = float(matchDesc.group(11))
                                 self.jdesc.latent_error = float(matchDesc.group(12))
+                                self.jdesc.Signaled = 0 if matchDesc.group(14)==None else int(matchDesc.group(14))
+                                self.jdesc.signaled_rate = 0 if matchDesc.group(15)==None else float(matchDesc.group(15))
+                                self.jdesc.signaled_error = 0 if matchDesc.group(16)==None else float(matchDesc.group(16))
 
-                                stat = '[{0:5d}] seconds | Experiments: {1:9d} / {2:9d}, Masked: {3:9d}, masked_rate: {4:3.4f} +/- {5:3.4f}, Failures: {6:9d},  failure_rate: {7:3.4f} +/- {8:3.4f}, Latent: {9:9d}, latent_rate: {10:3.4f} +/- {11:3.4f}'.format(int(time.time() - start_time), self.jdesc.ExperimentsCompleted,self.jdesc.EssentialBitsCount, self.jdesc.Masked, self.jdesc.masked_rate, self.jdesc.masked_error, self.jdesc.Failures, self.jdesc.failure_rate, self.jdesc.failure_error, self.jdesc.Latent, self.jdesc.latent_rate, self.jdesc.latent_error)
+                                stat = '[{0:5d}] seconds | Experiments: {1:9d} / {2:9d}, Masked: {3:9d}, masked_rate: {4:3.4f} +/- {5:3.4f}, Failures: {6:9d},  failure_rate: {7:3.4f} +/- {8:3.4f}, Latent: {9:9d}, latent_rate: {10:3.4f} +/- {11:3.4f}, Signaled: {12:9d}, signaled_rate: {13:3.4f} +/- {14:3.4f}'.format(int(time.time() - start_time), self.jdesc.ExperimentsCompleted,self.jdesc.EssentialBitsCount, self.jdesc.Masked, self.jdesc.masked_rate, self.jdesc.masked_error, self.jdesc.Failures, self.jdesc.failure_rate, self.jdesc.failure_error, self.jdesc.Latent, self.jdesc.latent_rate, self.jdesc.latent_error, self.jdesc.Signaled, self.jdesc.signaled_rate, self.jdesc.signaled_error)
                                 self.logfile.write(stat+'\n')
                                 if self.verbosity > 0: sys.stdout.write(stat+'\n'); sys.stdout.flush()
 
                 else:
                     self.logfile.write('Timeout - hang\n\tRestaring from next intjection point')
-                    hang_move_delta = 10
+                    hang_move_delta = 100
                     self.jdesc.StartIndex += hang_move_delta
                     self.jdesc.ExperimentsCompleted = self.jdesc.StartIndex
-                    self.jdesc.Failures += hang_move_delta
+                    #self.jdesc.Failures += hang_move_delta
                     if self.jdesc.sample_size_goal > 0: self.jdesc.sample_size_goal += hang_move_delta
                     self.export_JobDescriptor()
                     self.launch_injector_app()                           

@@ -32,6 +32,9 @@ if __name__ == "__main__":
     davosconf.toolconf = toolconf
     davosconf.file = normconfig
 
+
+
+
     #build_FFI_report(davosconf)
     #raw_input('Ready...')
 
@@ -62,7 +65,7 @@ if __name__ == "__main__":
             print "Available Devices:{}".format("".join(["\n\t"+str(x) for x in devconfig])) 
             devId = int(raw_input("Select Device {}:".format(str(range(len(devconfig))))))
             #Configure the injector
-            Injector.configure(devconfig[devId]['TargetId'], devconfig[devId]['PortID'], "", "ImplementationPhase")
+            Injector.configure(devconfig[devId]['TargetId'], devconfig[devId]['PortID'], "", "impl_1")
             #Clean the cache
             if raw_input('Clean the cache before running: Y/N: ').lower().startswith('y'):                                   
                 Injector.cleanup_platform()
@@ -84,6 +87,8 @@ if __name__ == "__main__":
                 jdesc.LogTimeout = 100
                 jdesc.StartIndex = 0
                 jdesc.Masked = 0
+                jdesc.Signaled = 0
+                jdesc.Latent = 0
                 jdesc.Failures = 0
                 jdesc.sample_size_goal = 10000 # if not Injector.Profiling else len(Injector.ProfilingResult)
                 jdesc.error_margin_goal = davosconf.FFIConfig.error_margin_goal
@@ -93,7 +98,7 @@ if __name__ == "__main__":
                 jdesc.DetailedLog = 1
                 jdesc.PopulationSize = Injector.EssentialBitsPerBlockType[jdesc.Blocktype]
                 jdesc.WorkloadDuration = int(davosconf.SBFIConfig.genconf.std_workload_time / davosconf.SBFIConfig.genconf.std_clk_period)
-                jdesc.DetectLatentErrors = 0
+                jdesc.DetectLatentErrors = 1
                 jdesc.InjectionTime = davosconf.FFIConfig.injection_time
                 res = Injector.run(OperatingModes.SampleUntilErrorMargin, jdesc, False)
                 print("Result: SampleSize: {0:9d}, Failures: {1:9d}, FailureRate: {2:3.5f} +/- {3:3.5f} ".format(res.ExperimentsCompleted, res.Failures, res.failure_rate, res.failure_error))    

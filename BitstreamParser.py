@@ -437,7 +437,7 @@ def MapLutToBitstream(LutDescTab, BIN_FrameList, DutScope=''):
         node['bitsequence'] = ','.join(map(str, res))
 
         #2. GET LUT BEL content from bitstream
-        skip_mask = False if DutScope=='' else (not node['name'].startswith(DutScope))
+        skip_mask = False if DutScope in ['', '/'] else (not node['name'].startswith(DutScope))
         #if not skip_mask: print('Selected LUT cell: scope {} : {}'.format(DutScope, node['name'].replace(DutScope, '')))
         BITSTREAM, node['globalmap'] = SetCustomLutMask(node['top'], node['row'], node['major'], node['minor'], node['lutindex'], BIN_FrameList, res, skip_mask)
         BIT_INIT = 0x0000000000000000

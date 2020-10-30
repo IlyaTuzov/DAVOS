@@ -643,6 +643,19 @@ class HtmlTable:
             res += "\n" + c.to_string()
         res += "</tbody>\n</table>"
         return(res)
+
+    def to_file(self, fname):
+        f = open(fname, 'w')
+        f.write("<table border =\"1\">\n<caption>" + self.caption + "</caption><thead>\n<tr>")
+        for c in self.labels:
+            f.write("\n<th><div class = \"title\">" + c + "</div></th>")
+        f.write("</tr></thead>\n<tbody>")
+        for c in self.rows:
+            f.write("\n" + c.to_string())
+        f.write("</tbody>\n</table>")
+        f.close()
+
+
     
     def to_string_no_header(self):
         res = "<table border =\"1\">\n<caption>" + self.caption + "</caption>\n<tbody>"
@@ -859,7 +872,7 @@ class ConfigInitNodes:
         for impl in matchlist:
             matchflag = False
             for rtl in self.all_nodes:
-                if impl.ptn == rtl.unit_path.replace(rtl.group+'/','') + rtl.name:
+                if impl.ptn.replace('/','_') ==  ('{0}'.format(rtl.unit_path + rtl.name)).replace('/','_').replace('(','_').replace(')','').replace('.','_'): #rtl.unit_path.replace(rtl.group+'/','') + rtl.name:
                     if rtl not in matching_groups:
                         matching_groups[rtl] = []
                     matching_groups[rtl].append(impl)

@@ -151,6 +151,7 @@ def build_FFI_report(DavosConfig, ExportLutCsv=False):
 
     for conf in DavosConfig.parconf:
         model = datamodel.GetHdlModel(conf.label)
+
         Tab = Table('LutMapList')
         Tab.build_from_csv(os.path.join(conf.work_dir, 'LutMapList.csv'))
         LutMapList = TableToLutList(Tab)  
@@ -211,9 +212,11 @@ def build_FFI_report(DavosConfig, ExportLutCsv=False):
                 actime = float(-1.0) if match.group(8)==None else float(match.group(8))
                 SummaryTable.add_row(map(str, [int(match.group(1)), target.NodeFullPath, coord[0], coord[1], coord[2], actime, InjDesc.FailureMode]))
                 ExpDescIdCnt+=1
-                if ExpDescIdCnt%100==0: sys.stdout.write('Processed lines: {0}\r'.format(str(ExpDescIdCnt)))
-        with open(os.path.join(DavosConfig.report_dir, '{0}.csv'.format(model.Label)), 'w') as f:
-            f.write(SummaryTable.to_csv())
+                if ExpDescIdCnt%100==0: sys.stdout.write('Processed report lines: {0}\r'.format(str(ExpDescIdCnt)))
+        SummaryTable.to_csv(';',True,os.path.join(DavosConfig.report_dir, '{0}.csv'.format(model.Label)))
+        T = SummaryTable.to_html_table('SEU_LUT_Details')
+        T.to_file(os.path.join(DavosConfig.report_dir, '{0}.html'.format(model.Label)))
+
 
     datamodel.SaveHdlModels()
     datamodel.SaveTargets()

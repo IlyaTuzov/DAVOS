@@ -333,7 +333,10 @@ def execute_injection_scripts_Multicore(config, toolconf, conf):
             print 'Runned: ' + script_file                                     
     while get_active_proc_number(proclist) > 0:
         tracenum = len(os.listdir(os.path.join(conf.work_dir, toolconf.result_dir)))-2
-        console_message("Running Processes: {0}, Traces stored: {1}/{2}, Remaining time: {3:.2f} minutes\r".format(len(get_active_proc_indexes(proclist)), tracenum, tasksize, (float(time.time()) - float(TME_Start))*(float(tasksize-tracenum)/float(tracenum+1))/float(60)), ConsoleColors.Green, True)
+        try:
+            console_message("Running Processes: {0}, Traces stored: {1}/{2}, Remaining time: {3:.2f} minutes\r".format(len(get_active_proc_indexes(proclist)), tracenum, tasksize, (float(time.time()) - float(TME_Start))*(float(tasksize-tracenum)/float(tracenum+1))/float(60)), ConsoleColors.Green, True)
+        except:
+            pass
         time.sleep(5)   
     time_stop = datetime.datetime.now().replace(microsecond=0)
     time_taken = time_stop - time_start

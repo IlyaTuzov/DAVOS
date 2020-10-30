@@ -31,6 +31,7 @@ import FFI.FFI_HostLib
 import EvalEngine
 import ImplementationTool
 import MCDM
+import statistics
 
 RmodelStdFolder = 'RegressionModels'
 ModelSummary = 'Summary.xml'
@@ -131,28 +132,43 @@ if __name__ == "__main__":
     random.seed(1)   
     mcdm_vars = [c.name for c in davosconf.DecisionSupportConfig.MCDM]
     
-    
-    
+    eval_time_impl, eval_time_ffi = [], []
     for c in datamodel.HdlModel_lst:
         c.Metrics['Predicted'] = dict()
+        if not 'EvalTime' in c.Metrics:
+            continue
+        if isinstance(c.Metrics['EvalTime'], dict):
+            if 'Implementation' in c.Metrics['EvalTime'] and 'Synthesis' in c.Metrics['EvalTime']  and 'RobustnessAssessment' in c.Metrics['EvalTime']:
+                eval_time_impl.append( (float(c.Metrics['EvalTime']['Synthesis']) + float(c.Metrics['EvalTime']['Implementation']))/3600.0 )
+                eval_time_ffi.append( float(c.Metrics['EvalTime']['RobustnessAssessment']) / 3600.0)
     DefConf = CreateDefaultConfig(datamodel, config)
     for m in datamodel.HdlModel_lst:        
         if ('Error' in m.Metrics) and (not isinstance(m.Metrics['Error'], str)):
             m.Metrics['Error']  = ''
 
-    print('\n'.join(['{0} = {1}'.format(k, str(v)) for k,v in DefConf.Metrics['Implprop'].iteritems()]))
-    raw_input('...')
 
-    resdir = os.path.join(davosconf.report_dir, '{}_sample_{}'.format(RmodelStdFolder, str(168)))
-    FactorLabels = [f.factor_name for f in davosconf.ExperimentalDesignConfig.factorial_config.factors]
-    RM = RegressionModelManager(FactorLabels)
-    RM.load_significant(os.path.join(davosconf.report_dir, resdir), 1.0)
-    RM.compile_estimator_script_multilevel(resdir)
-    stat = RM.get_min_max_terms()
-    DefSettingDict = DefConf.get_setting_dict()
+    print('Mean Impl Time: {0:.2f} ({1:.2f}) \nMean FFI time: {2:.2f} ({3:.2f})\nTotal Conf: {4:d}'.format(statistics.mean(eval_time_impl), statistics.stdev(eval_time_impl), statistics.mean(eval_time_ffi),statistics.stdev(eval_time_ffi), len(eval_time_ffi)))
+    print('Total Impl time: {0:.1f}\nTotal FFI time: {1:.1f}'.format(sum(eval_time_impl)/6, sum(eval_time_ffi)/2))
+    raw_input('any key to continue...')
+
+
+    MCDM.compute_score(datamodel.HdlModel_lst, davosconf) 
+     
+
+
+    #print('\n'.join(['{0} = {1}'.format(k, str(v)) for k,v in DefConf.Metrics['Implprop'].iteritems()]))
+    #raw_input('...')
+
+    #resdir = os.path.join(davosconf.report_dir, '{}_sample_{}'.format(RmodelStdFolder, str(168)))
+    #FactorLabels = [f.factor_name for f in davosconf.ExperimentalDesignConfig.factorial_config.factors]
+    #RM = RegressionModelManager(FactorLabels)
+    #RM.load_significant(os.path.join(davosconf.report_dir, resdir), 1.0)
+    #RM.compile_estimator_script_multilevel(resdir)
+    #stat = RM.get_min_max_terms()
+    #DefSettingDict = DefConf.get_setting_dict()
     
-    RM.export_summary(davosconf, os.path.join(resdir,'summary_models.csv'), [DefSettingDict[key] for key in sorted(DefSettingDict.keys())])
-    raw_input('Custom script success')
+    #RM.export_summary(davosconf, os.path.join(resdir,'summary_models.csv'), [DefSettingDict[key] for key in sorted(DefSettingDict.keys())])
+    #raw_input('Custom script success')
 
     
     #FactorLabels = ['X01', 'X02', 'X03', 'X04', 'X05', 'X06', 'X07', 'X08', 'X09', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17', 'X18', 'X19', 'X20', 'X21', 'X22', 'X23', 'X24', 'X25', 'X26', 'X27', 'X28', 'X29', 'X30']
@@ -168,6 +184,13 @@ if __name__ == "__main__":
     #        file.write('\n\nModel: {}'.format(str(k)))
     #        for term in v:
     #            file.write('\n{0}\t\t{1:.3f} : {2:.3f}'.format(str(term[0]), term[1], term[2]))
+
+    existing_models=[]
+    for c in datamodel.HdlModel_lst:
+        if c.ID == 344:
+            existing_models.append(c)
+            c.Metrics['Implprop']=dict()
+            break
 
 
 

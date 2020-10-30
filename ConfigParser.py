@@ -253,7 +253,7 @@ class FaultModelConfig:
             self.forced_value = ""
             self.rand_seed = int(0)
             self.sample_size = int(0)
-            self.duration = float(0)
+            self.duration_min, self.duration_max = float(0), float(0)
             self.modifier = ''
             self.trigger_expression = ''
             self.multiplicity = int(0)
@@ -273,7 +273,7 @@ class FaultModelConfig:
         self.rand_seed = int(xnode.get('rand_seed', '1'))
         self.sample_size = int(xnode.get('sample_size', '0'))        
         self.forced_value = xnode.get('forced_value', '')
-        self.duration = float(xnode.get('duration', '0'))
+        self.duration_min, self.duration_max = float(xnode.get('duration_min', '0')), float(xnode.get('duration_max', '0'))
         self.modifier = xnode.get('modifier', '')
         self.trigger_expression = xnode.get('trigger_expression', '')
         self.time_start = float(xnode.get('injection_time_start', '0'))

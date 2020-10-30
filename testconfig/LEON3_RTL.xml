@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <data>
 
+        <!-- platform: Multicore / Grid / GridLight 
+            #RUNDIR - path from where SBFI tool is launched
+        -->
     <DAVOS
+        platform = "Multicore"    
         DesignBuilder = "off"
         SBFI = "off"
 		FFI  = "on"
-        DecisionSupport = "on"
-        report_dir = "#RUNDIR/../../HTWEB/Bench/MC8051/FFI_CRAM"        
-        dbfile = "MC8051.db"  >
+        DecisionSupport = "off"
+        report_dir = "#RUNDIR/../../HTWEB/Bench/LEON3/Stuck"        
+        dbfile = "LEON3.db"  >
         
 
         <ExperimentalDesign
@@ -26,17 +30,17 @@
             
             <generic            
                 custom_parameters = "{ 
-                &apos;SynthesisScriptTemplate&apos;:&apos;SynthesisPhase.tcl&apos;, 
-                &apos;ImplementationScriptTemplate&apos;:&apos;ImplementationPhase.tcl&apos;,
-                &apos;GenBitstreamScriptTemplate&apos;:&apos;GenBitstreamPhase.tcl&apos;
+                'SynthesisScriptTemplate' : 'SynthesisPhase.tcl', 
+                'ImplementationScriptTemplate' : 'ImplementationPhase.tcl',
+                'GenBitstreamScriptTemplate' : 'GenBitstreamPhase.tcl'
                 }"                      
-                design_label = "MC8051_"
-                design_dir = "../../Projects/TESIS/MC8051"
-                template_dir = "MC8051_Template"
+                design_label = "LEON3"
+                design_dir = "../../Projects/Checkpointing/MC8051"
+                template_dir = "Zync_Template"
                 log_dir = "./log"
                 netlist_dir = "./netgen"
                 constraint_file = ""    
-                uut_root   = "/design_1_wrapper/"   
+                uut_root   = "/design_1_wrapper/design_1_i/mc8051_top_0/U0"   
             />        
 
             
@@ -95,7 +99,7 @@
                     <Constraint
                         placeholder = "#CONSTRAINT"
                         goal = "max"
-                        start_value = "24"
+                        start_value = "28"
                         adjust_step = "2"
                         return_to_phase = "Synthesis"
                         check_handler = "VivadoCheckTimingSatisfied" />
@@ -364,31 +368,21 @@
     
 	<!--
 		target_logic = FF/LUT/BRAM/TYPE0/ALL	
-		mode = 1XX: using essential bits: 101 - sampling, 102 - exhaustive 
-			   2XX: using external fault list
-		injection_time = 0-random, > 0 - inject after that number of clock cycles, e.g. ==1 - inject at the workload start, ==10 - inject after 9 clock cycles	   
 	-->
 		<FFI
-            injector_phase 		= "on"
-            reportbuilder_phase = "on" 
-
-			dut_scope 						= 'design_1_i/mc8051_top_0/U0/'			
-			target_logic 					= "TYPE0"
-			custom_lut_mask 				= 'on' 
-			profiling 						= 'off'
-
-
-			mode 							= "101"
-			error_margin_goal 				= "0.1"
-			fault_multiplicity				= "1"
-			injection_time 					= "1"
+            injector_phase = "on"
+            reportbuilder_phase = "off" 
 			
-			post_injection_recovery_nodes 	= "['i_mc8051_rom']"			
-			hdf_path 						= "./MC8051.sdk/design_1_wrapper_hw_platform_0/system.hdf"
-			init_tcl_path 					= "./MC8051.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"
-			injectorapp_path 				= "./MC8051.sdk/InjectorApp/Debug/InjectorApp.elf"
-			memory_buffer_address 			= "0x3E000000"
-			platformconf 					= "[{&apos;TargetId&apos;:&apos;2&apos;, &apos;PortID&apos;:&apos;COM13&apos;}, {&apos;TargetId&apos;:&apos;6&apos;, &apos;PortID&apos;:&apos;COM3&apos;}]"
+			target_logic = "FF"
+			post_injection_recovery_nodes = "['i_mc8051_rom']"			
+			hdf_path = "./MC8051.sdk/design_1_wrapper_hw_platform_0/system.hdf"
+			init_tcl_path = "./MC8051.sdk/design_1_wrapper_hw_platform_0/ps7_init.tcl"
+			injectorapp_path = "./MC8051.sdk/InjectorApp/Debug/InjectorApp.elf"
+			memory_buffer_address = "0x3E000000"
+			custom_lut_mask = 'off' 
+			profiling = 'off'
+			platformconf = "[{'TargetId':'2', 'PortID':'COM3'}]"
+			dut_scope = 'design_1_i/'
 		>
 		
 		
@@ -397,11 +391,8 @@
 	
 	
     
-        <!-- platform: Multicore / Grid / GridLight 
-            #RUNDIR - path from where SBFI tool is launched
-        -->
+
         <SBFI
-            platform = "Multicore"
             initializer_phase = "off"    
             profiler_phase = "off"
             injector_phase = "on"
@@ -415,16 +406,16 @@
             -->
             <Generic
                 design_type = "RTL"
-                library_specification = "./FaultDictionaries/Xilinx_Unisim_VHDL.xml"
-                compile_script = "./par_compile.do"
-                run_script = "./par_run.do"	
+                library_specification = "./FaultDictionaries/Xilinx_Simprim_VHDL.xml"
+                compile_script = "./rtl_compile.do"
+                run_script = "./rtl_run.do"	
 				trace_script = ""
-                std_clk_period = "50.0"
+                std_clk_period = "8.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
-                std_workload_time = "2000000"
+                std_workload_time = "33000"
 				std_trace_time =     "0"
-                finish_flag = "/TbTop/FinishFlag"
+                finish_flag = ""
             />
             
 
@@ -440,21 +431,29 @@
                     observe_outputs = "notrigger"                
                     build_injection_list   = "on"
                     build_dump_init_script = "on"		
-                    match_pattern_file = "C:/Projects/TESIS/MC8051/MC8051_LimFanout/code/SimNodes.xml"			
-                    trim_path = "/TbTop/mc8051_top_0/U0/i_mc8051_core"
+                    match_pattern_file = ""			
                 >
                 
                     
             <!-- unit path: withing the design scope-->            
-                <InjectionScope node_prefix = ""   unit_path = "/TbTop/mc8051_top_0/i_mc8051_core" />
+            <InjectionScope node_prefix = "" unit_path = "/testbench/d3/l3/cpu(0)/u0/leon3x0/vhdl/p0/iu" />
+            <InjectionScope node_prefix = "" unit_path = "/testbench/d3/l3/cpu(0)/u0/leon3x0/vhdl/p0/mgen" />
 
-                <ObservationScope node_prefix = "" unit_path = "/TbTop/mc8051_top_0/i_mc8051_core" label_prefix = "" sampling_options = "-notrigger"/>
 
+            <ObservationScope node_prefix = "" unit_path = "/testbench/d3/l3/cpu(0)/u0/leon3x0/vhdl/p0/iu" label_prefix = "p0_iu_" sampling_options = "-notrigger"/>
+            <ObservationScope node_prefix = "" unit_path = "/testbench/d3/l3/cpu(0)/u0/leon3x0/vhdl/p0/mgen" label_prefix = "p0_mgen_" sampling_options = "-notrigger"/>
                     
                     <!-- location: INTERNALS / OUTPUTS -->            
-                <GenericObservationNodes>
-                   <memarray 	location = "OUTPUTS" 	options = "" 		label = "RESULT" 		path= "/TbTop/RES" low_address = "0" high_address = "19" comment="Data Memory Fragment" />		
-                </GenericObservationNodes>
+            <GenericObservationNodes>
+                <signal   		location = "INTERNALS" 	options = "" 			label = "proc_error"  	path= "/testbench/d3/l3/cpu(0)/u0/dbgo.error" comment="IU error flag" />	
+                <signal   		location = "INTERNALS" 	options = "" 			label = "enable_trap" 	path= "/testbench/d3/l3/cpu(0)/u0/leon3x0/vhdl/p0/iu/r.w.s.et"  comment="Enable trap code" />				
+                <signal 		location = "INTERNALS" 	options = "" 			label = "trap_type" 	path= "/testbench/d3/l3/cpu(0)/u0/leon3x0/vhdl/p0/iu/r.w.s.tt" comment="TT code" />
+                <memarray 		location = "INTERNALS" 	options = "-notrigger" 	label = "regfile" 		path= "/testbench/d3/l3/cpu(0)/u0/leon3x0/vhdl/rf0/s0/inf/s0/rhu/memarr" low_address = "0" high_address = "135" comment="Register File"/>
+                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_0" 		path= "sim:/testbench/sbanks(0)/sram0(0)/sr0/MEM_TST" low_address = "0" high_address = "19" comment="RAM_0" />		
+                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_1" 		path= "sim:/testbench/sbanks(0)/sram0(1)/sr0/MEM_TST" low_address = "0" high_address = "19" comment="RAM_1" />		
+                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_2" 		path= "sim:/testbench/sbanks(0)/sram0(2)/sr0/MEM_TST" low_address = "0" high_address = "19" comment="RAM_2" />		
+                <memarray 		location = "OUTPUTS" 	options = "" 			label = "SRAM_3" 		path= "sim:/testbench/sbanks(0)/sram0(3)/sr0/MEM_TST" low_address = "0" high_address = "19" comment="RAM_3" />				
+            </GenericObservationNodes>
             </Initializer>
 
 
@@ -462,9 +461,9 @@
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
                     checkpont_mode = "ColdRestore"
-                    maxproc = "6"
+                    maxproc = "4"
                     workload_split_factor = "20"			
-                    campaign_label = "MC8051"		
+                    campaign_label = "LEON3"		
                     cleanup_folders="off"
                     compile_project = "off"
                     create_scripts="off"
@@ -492,14 +491,14 @@
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
                 <fault_model
                     model = "BitFlip"
-                    target_logic = "SIGNAL"
+                    target_logic = "X_FF, X_SFF"
                     faults_per_target = "1"
-                    time_mode = "ClockCycle"
+                    time_mode = "Relative"
                     injection_time_start = "0.0"            
-                    injection_time_end = "35000.0"
+                    injection_time_end = "1.0"
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
-                    sample_size = "500"
+                    sample_size = "38500"
                     rand_seed	= "2"					
                 />	
         
@@ -507,12 +506,12 @@
                 
 
             <Analyzer
-                report_dir = "#RUNDIR/../../HTWEB/Bench/MC8051_SBFI"
+                report_dir = "#RUNDIR/../../HTWEB/Bench/LEON3/Pulses"
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
-                error_flag_signal = ""
-                error_flag_active_value = ""
-                trap_type_signal = ""                         
+                error_flag_signal = "proc_error"
+                error_flag_active_value = "0"
+                trap_type_signal = "trap_type"                         
                 neg_timegap = "0"
                 pos_timegap = "1000"
                 check_duration_factor = "0"           
@@ -550,13 +549,12 @@
 	
 	
 	
-	
 		<ModelConfig
-			work_dir = "../../Projects/TESIS/MC8051/MC8051_Default"
-			label = "MC8051_Default_FFI"
+			work_dir = "../../Projects/TESIS/LEON3_Main"
+			label = "LEON3_RTL_Matched"
 			compile_options = ""
-			run_options = ""
-			clk_period = "50.0"
+			run_options = "kh_off"
+			clk_period = "8.0"
 			start_from = ""
 			stop_at = ""
 		/>
@@ -568,10 +566,10 @@
 			
 			
     
-		<DecisionSupport
-			task = "DSE"
-			method = "Statistical"
-		>
+	<DecisionSupport
+		task = "DSE"
+		method = "Statistical"
+	>
     
     
         <DerivedMetrics>

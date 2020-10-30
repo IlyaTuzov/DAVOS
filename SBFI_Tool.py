@@ -284,7 +284,8 @@ def RunSBFI(datamodel, config, toolconf):
         
                 #3.7. Faultload generator: Instantiate, Connect and Run in a new thread
                 if config.injector.create_injection_scripts:
-                    GenerateInjectionScripts_SamplingMode(config, conf, toolconf, fault_dict)
+                    #GenerateInjectionScripts_SamplingMode(config, conf, toolconf, fault_dict)
+                    generate_injection_scripts(config, conf, toolconf, fault_dict)
 
                 #3.8. Execute scripts (simulate - on Selected platform)
                 if config.injector.run_faultinjection:
