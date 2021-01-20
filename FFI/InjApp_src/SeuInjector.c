@@ -123,12 +123,13 @@ InjectionStatistics InjectorRun(InjectorDescriptor* InjDesc, JobDescriptor* JobD
 	//Program FPGA (Initial) with Complete Bitstream
 	ClockThrottle(0x1);
 	Status = ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
-
 	//ResetPL(1000);
 
 
 	//Check the golden run trace (fault-free run)
-	int failure_mode = RunDutTest(0);
+	int failure_mode;
+	//for(int i=0;i<200;i++)
+	failure_mode = RunDutTest(0);
 	SaveCheckpoint(InjDesc);
 
 
@@ -192,9 +193,12 @@ void RunInjectionFlow(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int W
 		if(JobDesc->mode==101){
 			InjPoint = NextRandomInjectionTarget(InjDesc, JobDesc);
 		}
-		else{
+		else if(JobDesc->mode==102){
 			InjPoint = NextConsecutiveInjectionTarget(InjDesc, JobDesc, InjDesc->LastInjectionCoordinates);
 			InjDesc->LastInjectionCoordinates = InjPoint;
+		}
+		else if(JobDesc->mode==201){
+			InjPoint = NextFromFaultList(InjDesc, JobDesc);
 		}
 		InjPoint.InjTime = InjTime;
 		int err = FlipBits(InjDesc, InjPoint, 0, 1);
@@ -211,12 +215,13 @@ InjectionStatistics RunSampling(InjectorDescriptor* InjDesc, JobDescriptor* JobD
 	int errframecnt=0;
 	float N = (JobDesc->InjectionTime==0) ? JobDesc->PopulationSize * JobDesc->WorkloadDuration : JobDesc->PopulationSize;
 
-	InjectionStatistics res = {.complete_reconfigurations=0, .failure_error_margin=50.0, .failure_rate=0.0, .failures=0, .injections=0, .masked=0, .masked_error_margin=50.0, .masked_rate=0.0, .latent=0, .latent_rate=0.0, .latent_error_margin=50.0, .population =  N };
+	InjectionStatistics res = {.complete_reconfigurations=0, .failure_error_margin=50.0, .failure_rate=0.0, .failures=0, .injections=0, .masked=0, .masked_error_margin=50.0, .masked_rate=0.0, .latent=0, .latent_rate=0.0, .latent_error_margin=50.0, .signaled=0, .signaled_rate=0.0, .signaled_error_margin=0.0, .population =  N };
 	printf("Injector RunInSamplingMode: %s, BlockType = %d (%s), PopulationSize = %.0f, min_sample_size=%d, max_error_margin = %0.5f\n", JobDesc->Essential_bits>0?"Essential bits":"Blind", JobDesc->BlockType,   JobDesc->BlockType==0?"CLB":"BRAM", N, JobDesc->SampleSizeGoal, JobDesc->ErrorMarginGoal);
 
 	if(JobDesc->StartIndex > 0){
 		res.injections = (int) JobDesc->StartIndex;
 		res.failures = (int) JobDesc->CurrentFailureCount;
+		res.signaled = (int) JobDesc->CurrentSignaledCount;
 		res.masked   = (int) JobDesc->CurrentMaskedCount;
         //skip all previosly tested targets (recover the state of random target generator)
         for(int i=0;i<JobDesc->StartIndex;i++) NextRandomInjectionTarget(InjDesc, JobDesc);
@@ -233,49 +238,65 @@ InjectionStatistics RunSampling(InjectorDescriptor* InjDesc, JobDescriptor* JobD
 			|| 	(JobDesc->SampleSizeGoal==0 && JobDesc->ErrorMarginGoal==0 && res.injections < N) )														/* until sampling complete population */
 	{
 
-
-		int	failure   = InjectionFlowDutEnvelope();
+		u32 alarm;
+		int	failure   = InjectionFlowDutEnvelope(&alarm);
 		int cp_mismatches = 0;
 		if(JobDesc->DetectLatentErrors){
 			cp_mismatches = CountCheckpointMismatches(InjDesc);
 		}
 
 		res.injections++;
-	    if(failure > 0) res.failures++;
+	    if(failure > 0 && alarm==0) res.failures++;
+	    else if(failure >0 && alarm>0) res.signaled++;
 	    else if(cp_mismatches > 0 && failure==0) res.latent++;
 	    else res.masked++;
+
+
 	    if(res.injections % JobDesc->LogTimeout == 0 || res.injections >= N){
 	    	res.failure_rate = 1.0*res.failures/res.injections;
+	    	res.signaled_rate = 1.0*res.signaled/res.injections;
 	    	res.masked_rate = 1.0*res.masked/res.injections;
 	    	res.latent_rate = 1.0*res.latent/res.injections;
+
 	    	if((N-res.injections) > 0){
-		    	res.failure_error_margin = 2.576*sqrt( res.failure_rate*(1-res.failure_rate)*(N-res.injections)/(res.injections*(N-1)) );
-		    	res.masked_error_margin =  2.576*sqrt( res.masked_rate*(1-res.masked_rate)*(N-res.injections)/(res.injections*(N-1)) );
-		    	res.latent_error_margin =  2.576*sqrt( res.latent_rate*(1-res.latent_rate)*(N-res.injections)/(res.injections*(N-1)) );
+		    	res.failure_error_margin = 1.96*sqrt( res.failure_rate*(1-res.failure_rate)*(N-res.injections)/(res.injections*(N-1)) );
+		    	res.signaled_error_margin = 1.96*sqrt( res.signaled_rate*(1-res.signaled_rate)*(N-res.injections)/(res.injections*(N-1)) );
+		    	res.masked_error_margin =  1.96*sqrt( res.masked_rate*(1-res.masked_rate)*(N-res.injections)/(res.injections*(N-1)) );
+		    	res.latent_error_margin =  1.96*sqrt( res.latent_rate*(1-res.latent_rate)*(N-res.injections)/(res.injections*(N-1)) );
 	    	}
 	    	else{
 	    		res.failure_error_margin = 0.0;
+	    		res.signaled_error_margin = 0.0;
 	    		res.masked_error_margin = 0.0;
 	    		res.latent_error_margin = 0.0;
+
 	    	}
-	    	res.failure_rate *= 100.0; res.masked_rate  *= 100.0; res.failure_error_margin *= 100.0; res.masked_error_margin *= 100.0; res.latent_rate *= 100.0; res.latent_error_margin *= 100.0;
-	    	printf("Tag_%9d | Injection[%9d] / [%.0f]  complete_reconfigurations= %5d | locked_targets= %5d | Masked: %6d, Rate= %.3f +/- %.3f | Failures: %6d, Rate = %.3f +/- %.3f | Latent: %6d, Rate = %.3f +/- %.3f\n", JobDesc->SyncTag,  res.injections,  N,  res.complete_reconfigurations, errframecnt, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin, res.latent, res.latent_rate, res.latent_error_margin);
+	    	res.failure_rate *= 100.0; res.signaled_rate *= 100.0; res.masked_rate  *= 100.0; res.failure_error_margin *= 100.0; res.masked_error_margin *= 100.0; res.latent_rate *= 100.0; res.latent_error_margin *= 100.0; res.signaled_error_margin *= 100.0;
+	    	printf("Tag_%9d | Injection[%9d] / [%.0f]  complete_reconfigurations= %5d | locked_targets= %5d | Masked: %6d, Rate= %.3f +/- %.3f | Failures: %6d, Rate = %.3f +/- %.3f | Latent: %6d, Rate = %.3f +/- %.3f | Signaled: %6d, Rate = %.3f +/- %.3f |\n", JobDesc->SyncTag,  res.injections,  N,  res.complete_reconfigurations, errframecnt, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin, res.latent, res.latent_rate, res.latent_error_margin, res.signaled, res.signaled_rate, res.signaled_error_margin);
 	    }
 
 	    if(JobDesc->DetailedLog){
 	    	InjectionCoorditates InjPoint = InjDesc->LastTargets[InjDesc->LastTargetsCount-1];
-	    	printf(">> Run[%5d]: %8d:%8d:%8d:%8d:%s\n", res.injections, InjPoint.FAR, InjPoint.word, InjPoint.bit, InjPoint.InjTime, failure==1?"SDC":(cp_mismatches>0?"LATENT":"MASKED"));
+	    	printf(">> Run[%5d]: %8d:%8d:%8d:%8d:%s\n", res.injections, InjPoint.FAR, InjPoint.word, InjPoint.bit, InjPoint.InjTime, (failure==1)&&(alarm==0)?"SDC": ((failure==1)&&(alarm==1)?"SignaledFailure": ((cp_mismatches>0?"LATENT": "MASKED"))));
 	    }
 
 	    //Recover to fault-free state
-	    recover_bitstream(InjDesc, JobDesc, failure, 0);
+
+//	    	if(failure>0){
+//	    		recover_bitstream(InjDesc, JobDesc, failure, 0);
+//	    	}
+
+
+
 
 		//check that system has been recovered (slows down the experimentation when Tworkload ~ Trecovery)
 		if(JobDesc->CheckRecovery > 0){
 			if(res.injections % JobDesc->CheckRecovery == 0){
 				//Execute Workload and check failure mode
-			    failure = RunDutTest(1);
-			    if(failure){
+			    failure = RunDutTest(0);
+				cp_mismatches = JobDesc->DetectLatentErrors > 0 ? CountCheckpointMismatches(InjDesc) : 0;
+
+			    if(failure > 0 || cp_mismatches > 0){
 					//printf("Complete reconfiguration required after Injection[%5d] FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %2d\n", res.injections, Frame.BLOCK, Frame.TOP, Frame.HCLKROW, Frame.MAJOR, Frame.MINOR, InjPoint.word, InjPoint.bit);
 			    	recover_bitstream(InjDesc, JobDesc, failure, 1);
 					res.complete_reconfigurations++;
@@ -320,8 +341,8 @@ InjectionStatistics RunExhaustive(InjectorDescriptor* InjDesc, JobDescriptor* Jo
 	int Status = ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
 
 	for(int run_id=JobDesc->StartIndex;run_id<N;run_id++){
-
-		int	failure   = InjectionFlowDutEnvelope();
+		u32 alarm;
+		int	failure   = InjectionFlowDutEnvelope(&alarm);
 		int cp_mismatches = 0;
 		if(JobDesc->DetectLatentErrors){
 			cp_mismatches = CountCheckpointMismatches(InjDesc);
@@ -346,7 +367,8 @@ InjectionStatistics RunExhaustive(InjectorDescriptor* InjDesc, JobDescriptor* Jo
 	    //Recover to fault-free state
 	    recover_bitstream(InjDesc, JobDesc, failure, 0);
 
-		//check that system has been recovered (slows down the experimentation when Tworkload ~ Trecovery)
+		//check that system has been recovered
+	    /*
 		if(JobDesc->CheckRecovery > 0){
 			if(res.injections % JobDesc->CheckRecovery == 0){
 				//Execute Workload and check failure mode
@@ -359,6 +381,7 @@ InjectionStatistics RunExhaustive(InjectorDescriptor* InjDesc, JobDescriptor* Jo
 			    }
 			}
 		}
+		*/
 
 	}
 
@@ -375,29 +398,58 @@ InjectionStatistics RunFaultList(InjectorDescriptor* InjDesc, JobDescriptor* Job
 	int Status = ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
 	InjectionCoorditates InjPoint;
 	int errframecnt=0;
+	float N = JobDesc->FaultListItems;
+	InjDesc->faultlist_index = JobDesc->StartIndex;
 
 
-	for(int i=0;i<JobDesc->FaultListItems;i++){
-		InjPoint = GetTargetFromInjectionList(InjDesc, JobDesc, i, &item);
-		int locked = FlipBits(InjDesc, InjPoint, 0, 1); if(locked>0) errframecnt++;
 
 
-		RunClockCount(100); ResetPL(0);
 
-		int failure = RunDutTest(1);
-		item.injres = failure;
-		if(failure > 0) res.failures++;
-		else res.masked++;
+	for(int i=JobDesc->StartIndex;i<JobDesc->FaultListItems;i++){
+		u32 alarm;
+		int	failure   = InjectionFlowDutEnvelope(&alarm);
+		int cp_mismatches = 0;
+		if(JobDesc->DetectLatentErrors){
+			cp_mismatches = CountCheckpointMismatches(InjDesc);
+		}
+
 
 		res.injections++;
-		printf(">> Injecting: %8d at %08x || %8d;%8d;%8d;%8d;%14.10f;%8d\n", i, InjPoint.FrameIndex, item.ID,item.FAR,item.word,item.bit,item.actime, failure);
+		//printf(">> Injecting: %8d || %8d;%8d;%8d;%8d;%14.10f;%8d\n", i, InjDesc->FarListPtr->ID, InjDesc->FarListPtr->FAR, InjDesc->FarListPtr->word, InjDesc->FarListPtr->bit, InjDesc->FarListPtr->actime, failure);
+		printf(">> Run[%5d]: %8d:%8d:%8d:%8d:%s:%14.10f\n", InjDesc->FarListPtr->ID, InjDesc->FarListPtr->FAR, InjDesc->FarListPtr->word, InjDesc->FarListPtr->bit, 0, failure==1?"SDC":(cp_mismatches>0?"LATENT":"MASKED"), InjDesc->FarListPtr->actime);
 
-		if(res.injections % JobDesc->LogTimeout == 0){
+	    if(failure > 0) res.failures++;
+	    else if(cp_mismatches > 0 && failure==0) res.latent++;
+	    else res.masked++;
+	    if(res.injections % JobDesc->LogTimeout == 0 || res.injections >= N){
 	    	res.failure_rate = 100.0*res.failures/res.injections;
 	    	res.masked_rate = 100.0*res.masked/res.injections;
-	    	printf("Tag_%9d | Injection[%9d] / [%.0f]  complete_reconfigurations= %5d | locked_targets= %5d | Masked: %6d, Rate= %.3f +/- %.3f | Failures: %6d, Rate = %.3f +/- %.3f\n", JobDesc->SyncTag,  res.injections,  0.0,  res.complete_reconfigurations, errframecnt, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin);
+	    	res.latent_rate = 100.0*res.latent/res.injections;
+	    	printf("Tag_%9d | Injection[%9d] / [%.0f]  complete_reconfigurations= %5d | locked_targets= %5d | Masked: %6d, Rate= %.3f +/- %.3f | Failures: %6d, Rate = %.3f +/- %.3f | Latent: %6d, Rate = %.3f +/- %.3f\n", JobDesc->SyncTag,  res.injections,  N,  res.complete_reconfigurations, errframecnt, res.masked, res.masked_rate, res.masked_error_margin, res.failures, res.failure_rate, res.failure_error_margin, res.latent, res.latent_rate, res.latent_error_margin);
+	    }
+
+
+	    //Recover to fault-free state
+	    recover_bitstream(InjDesc, JobDesc, failure, 0);
+
+
+		//check that system has been recovered (slows down the experimentation when Tworkload ~ Trecovery)
+		if(JobDesc->CheckRecovery > 0){
+			if(res.injections % JobDesc->CheckRecovery == 0){
+				//Execute Workload and check failure mode
+			    failure = RunDutTest(0);
+				cp_mismatches = JobDesc->DetectLatentErrors > 0 ? CountCheckpointMismatches(InjDesc) : 0;
+
+			    if(failure > 0 || cp_mismatches > 0){
+					//printf("Complete reconfiguration required after Injection[%5d] FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %2d\n", res.injections, Frame.BLOCK, Frame.TOP, Frame.HCLKROW, Frame.MAJOR, Frame.MINOR, InjPoint.word, InjPoint.bit);
+			    	recover_bitstream(InjDesc, JobDesc, failure, 1);
+					res.complete_reconfigurations++;
+					if (Status != XST_SUCCESS) { xil_printf("ReloadCompleteBitstream ERROR \n\r");}
+			    }
+			}
 		}
-		ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
+
+		//ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
 
 	}
 
@@ -443,6 +495,24 @@ InjectionCoorditates NextRandomInjectionTarget(InjectorDescriptor* InjDesc, JobD
 
 
 
+InjectionCoorditates NextFromFaultList(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc){
+		InjDesc->FarListPtr = JobDesc->FaultListAdr + InjDesc->faultlist_index*sizeof(FaultListItem);
+		InjectionCoorditates res = {.FrameIndex=0, .FAR=0, .word=0, .bit=0, .CellType=JobDesc->CellType, .InjTime=0};
+		res.FAR  = InjDesc->FarListPtr->FAR;
+		res.word = InjDesc->FarListPtr->word;
+		res.bit  = InjDesc->FarListPtr->bit;
+		for(int i=0;i<InjDesc->FrameDescriptorsCount;i++){
+			if(InjDesc->ReferenceFrames[i].FAR == res.FAR){
+				res.FrameIndex = i;
+				break;
+			}
+		}
+		if(InjDesc->faultlist_index < JobDesc->FaultListItems) InjDesc->faultlist_index++;
+		return(res);
+}
+
+
+
 InjectionCoorditates NextConsecutiveInjectionTarget(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, InjectionCoorditates prev){
 	InjectionCoorditates res = {.FrameIndex=prev.FrameIndex, .FAR=prev.FAR, .word=prev.word, .bit=prev.bit, .CellType=JobDesc->CellType, .InjTime=0};
 	FarFields Frame;
@@ -482,9 +552,6 @@ InjectionCoorditates NextConsecutiveInjectionTarget(InjectorDescriptor* InjDesc,
 
 		return(res);
 
-
-
-
 }
 	printf("Reached Last Target\n");
 	return(prev);
@@ -493,23 +560,6 @@ InjectionCoorditates NextConsecutiveInjectionTarget(InjectorDescriptor* InjDesc,
 
 
 
-InjectionCoorditates GetTargetFromInjectionList(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int index, FaultListItem * item){
-	InjectionCoorditates res;
-	FaultListItem *adr = JobDesc->FaultListAdr + index*sizeof(FaultListItem);
-
-	*(item)  = *(adr);
-	res.FAR  = item->FAR;
-	res.word = item->word;
-	res.bit  = item->bit;
-
-	for(int i=0;i<InjDesc->FrameDescriptorsCount;i++){
-		if(InjDesc->ReferenceFrames[i].FAR == res.FAR){
-			res.FrameIndex = i;
-			break;
-		}
-	}
-	return(res);
-}
 
 
 
@@ -840,6 +890,7 @@ int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask,
 	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]), capture_restore);
 	memcpy(&(InjDesc->WriteFrameData[0]), &(InjDesc->ReadFrameData[0]), FRAME_SIZE*sizeof(u32));
 	//Flip the masked bit(s)
+
 	if(mask != 0){
 		InjDesc->WriteFrameData[target.word] = (InjDesc->WriteFrameData[target.word]) ^ mask;
 	}
@@ -856,6 +907,7 @@ int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask,
 
 
 	//read again to check that faulty value has been written
+	/*
 	Status = readFrame(InjDesc, FC.TOP, FC.BLOCK, FC.HCLKROW, FC.MAJOR, FC.MINOR, (u32 *) &(InjDesc->ReadFrameData[0]), 0);
 	int match = 1;
 	for(u32 k=0;k<FRAME_SIZE;k++){
@@ -868,7 +920,7 @@ int FlipBits(InjectorDescriptor* InjDesc, InjectionCoorditates target, u32 mask,
 		if(verbose>0) printf("BitFlip Error: Locked target at FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %2d\n", FC.BLOCK, FC.TOP, FC.HCLKROW, FC.MAJOR, FC.MINOR, target.word, target.bit);
 		return(1);
 	}
-
+	*/
 	return(0);
 }
 
@@ -887,7 +939,6 @@ void saveInjectionTarget(InjectorDescriptor* InjDesc, InjectionCoorditates targe
 
 int recover_bitstream(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int RecoverFrameList, int CompleteReconfig){
     int stuck;
-	ClockThrottle(0x1);
     if(CompleteReconfig==0){
 		for(int i=0;i<InjDesc->LastTargetsCount;i++){
 			int FrameIndex = InjDesc->LastTargets[i].FrameIndex;
@@ -898,10 +949,12 @@ int recover_bitstream(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int R
 			}
 			FarFields FC = parseFAR(desc->FAR);
 			//recover ALL CLB minor frames in this Major Frame: 30 to 35
+
 			if(FC.BLOCK==0 && FC.MINOR >= 30 ){
 				int startIndex = FrameIndex - (FC.MINOR - 30);
 				writeFrames(InjDesc, startIndex, 6, &(InjDesc->ReferenceFrames[0]));
 			}
+
 		};
 		InjDesc->LastTargetsCount=0;
 		if(RecoverFrameList) writeFrames(InjDesc, 0, InjDesc->RecoveryFarCount, &(InjDesc->RecoveryDescriptorList[0]));
@@ -932,6 +985,9 @@ int ReloadCompleteBitstream(XDcfg *Instance, u32 StartAddress, u32 WordLength)
 	while ((IntrStsReg & XDCFG_IXR_DMA_DONE_MASK) != XDCFG_IXR_DMA_DONE_MASK) IntrStsReg = XDcfg_IntrGetStatus(Instance);
 	// Poll PCAP Done Interrupt
 	while ((IntrStsReg & XDCFG_IXR_D_P_DONE_MASK) != XDCFG_IXR_D_P_DONE_MASK) IntrStsReg = XDcfg_IntrGetStatus(Instance);
+
+	TriggerGSR();
+
 	return XST_SUCCESS;
 }
 
@@ -1621,10 +1677,26 @@ void ResetPL(u32 duration_us){
     //Xil_DCacheFlush();
     Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0xf);	//rstN = 0 - default
     Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 0);
+    Xil_Out32(SLCR_CLK1_THROTTLE_CTRL_ADR, 0);
+    Xil_Out32(SLCR_CLK2_THROTTLE_CTRL_ADR, 0);
+    Xil_Out32(SLCR_CLK3_THROTTLE_CTRL_ADR, 0);
+
     Xil_Out32(SLCR_CLK0_THROTTLE_CNT_ADR, duration_us);
+    Xil_Out32(SLCR_CLK1_THROTTLE_CNT_ADR, duration_us);
+    Xil_Out32(SLCR_CLK2_THROTTLE_CNT_ADR, duration_us);
+    Xil_Out32(SLCR_CLK3_THROTTLE_CNT_ADR, duration_us);
+
     Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 1);
+    Xil_Out32(SLCR_CLK1_THROTTLE_CTRL_ADR, 1);
+    Xil_Out32(SLCR_CLK2_THROTTLE_CTRL_ADR, 1);
+    Xil_Out32(SLCR_CLK3_THROTTLE_CTRL_ADR, 1);
+
     //Xil_DCacheFlush();
     while((Xil_In32(SLCR_CLK0_THROTTLE_STA_ADR) & 0xFFFF));
+    while((Xil_In32(SLCR_CLK1_THROTTLE_STA_ADR) & 0xFFFF));
+    while((Xil_In32(SLCR_CLK2_THROTTLE_STA_ADR) & 0xFFFF));
+    while((Xil_In32(SLCR_CLK3_THROTTLE_STA_ADR) & 0xFFFF));
+
     Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0x0);
     //Xil_DCacheFlush();
     Xil_Out32(SLCR_LOCK_ADDR, SLCR_LOCK_KEY_VALUE);
@@ -1639,7 +1711,15 @@ void ClockThrottle(u32 mask){
     Xil_Out32(SLCR_LVL_SHFTR_EN_ADDR, SLCR_LVL_SHFTR_EN_VALUE);
     //Enable clock throttling
     Xil_Out32(SLCR_CLK0_THROTTLE_CNT_ADR, mask);
+    Xil_Out32(SLCR_CLK1_THROTTLE_CNT_ADR, mask);
+    Xil_Out32(SLCR_CLK2_THROTTLE_CNT_ADR, mask);
+    Xil_Out32(SLCR_CLK3_THROTTLE_CNT_ADR, mask);
+
     Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, mask);
+    Xil_Out32(SLCR_CLK1_THROTTLE_CTRL_ADR, mask);
+    Xil_Out32(SLCR_CLK2_THROTTLE_CTRL_ADR, mask);
+    Xil_Out32(SLCR_CLK3_THROTTLE_CTRL_ADR, mask);
+
     /* SLCR lock */
     Xil_Out32(SLCR_LOCK_ADDR, SLCR_LOCK_KEY_VALUE);
 }
@@ -1650,8 +1730,20 @@ void RunClockCount(u16 clknum){
     /* SLCR Enabling Level shifting */
     Xil_Out32(SLCR_LVL_SHFTR_EN_ADDR, SLCR_LVL_SHFTR_EN_VALUE);
     Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 0);
+    Xil_Out32(SLCR_CLK1_THROTTLE_CTRL_ADR, 0);
+    Xil_Out32(SLCR_CLK2_THROTTLE_CTRL_ADR, 0);
+    Xil_Out32(SLCR_CLK3_THROTTLE_CTRL_ADR, 0);
+
     Xil_Out32(SLCR_CLK0_THROTTLE_CNT_ADR, clknum);
+    Xil_Out32(SLCR_CLK1_THROTTLE_CNT_ADR, clknum);
+    Xil_Out32(SLCR_CLK2_THROTTLE_CNT_ADR, clknum);
+    Xil_Out32(SLCR_CLK3_THROTTLE_CNT_ADR, clknum);
+
     Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 1);
+    Xil_Out32(SLCR_CLK1_THROTTLE_CTRL_ADR, 1);
+    Xil_Out32(SLCR_CLK2_THROTTLE_CTRL_ADR, 1);
+    Xil_Out32(SLCR_CLK3_THROTTLE_CTRL_ADR, 1);
+
     //Xil_DCacheFlush();
     Xil_Out32(SLCR_LOCK_ADDR, SLCR_LOCK_KEY_VALUE);
 }
@@ -1660,6 +1752,9 @@ void RunClockCount(u16 clknum){
 void WaitClockStops(){
 	//when clock stops SLCR_CLK0_THROTTLE_STA_ADR equals 0
 	while(Xil_In32(SLCR_CLK0_THROTTLE_STA_ADR) & 0xFFFF);
+	while(Xil_In32(SLCR_CLK1_THROTTLE_STA_ADR) & 0xFFFF);
+	while(Xil_In32(SLCR_CLK2_THROTTLE_STA_ADR) & 0xFFFF);
+	while(Xil_In32(SLCR_CLK3_THROTTLE_STA_ADR) & 0xFFFF);
 }
 
 
@@ -1852,10 +1947,12 @@ int CountCheckpointMismatches(InjectorDescriptor* InjDesc){
 		FarFields x = parseFAR(InjDesc->RegisterFramesCaptured[i].FAR);
 		readFrame(InjDesc, x.TOP, x.BLOCK, x.HCLKROW, x.MAJOR, x.MINOR, &(trace[0]), 1);
 		for(int word=0;word<FRAME_SIZE;word++){
-			if(InjDesc->RegisterFramesCaptured[i].Data[word] != trace[word]) res++;
+			if(InjDesc->RegisterFramesCaptured[i].Data[word] != trace[word]){
+				res++;
+				return(res);
+			}
 		}
 	}
 	return(res);
 }
-
 

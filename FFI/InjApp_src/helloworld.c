@@ -54,6 +54,9 @@ int main()
 	if(XST_SUCCESS != Status) print(" PS GPIO INIT FAILED \n\r");
 	printf("EMIO-GPIO banks: %d, pins: %d\n", PsGpioPort.MaxBanks, PsGpioPort.MaxPinNum);
 
+
+	//RunDutTest(1);
+
 	//input_int();
 
 	//Mount SD card to use file caching
@@ -68,7 +71,7 @@ int main()
 
 	ReadJobDesc(&JobDesc, BUFFER_ADDR, 1);	//Parse Job Data, uploaded from host
 	JobDesc.FilterFrames = 0;				//ENABLE FRAME FILTERING ONLY IF EXTERNAL BITMASK IS NOT USED
-
+	//JobDesc.UpdateBitstream=0;
 	PrintInjectorInfo(&InjDesc);
 	print_job_desc(&JobDesc);
 
@@ -92,103 +95,82 @@ int main()
  * Adapt the functions below according to the DUT
  * ------------------------------------------------ */
 
-#define WorkloadClocks 					35000		//Workload duration in clock cycyles
-#define ROW 4
-#define COL 5
-#define TraceVectorItems ROW*COL
-#define NSIZE 4
-
-
-
-u32 TraceVectorInj[TraceVectorItems];
-u32 TraceVectorRef[TraceVectorItems] = {
-		0x0000f9b9,
-		0x0000fa8d,
-		0x0000fc5f,
-		0x00000a7b,
-		0x0000f35b,
-		0x000045f6,
-		0x0000dc2a,
-		0x0000bd44,
-		0x0000e539,
-		0x00006066,
-		0x0000397f,
-		0x0000af84,
-		0x00008a57,
-		0x00008a15,
-		0x00009cd1,
-		0x0000a813,
-		0x000057d7,
-		0x00003cd3,
-		0x0000ac7d,
-		0x0000d475};
-
+u32 test_vector_size = 10;
 
 void TriggerGSR(){
-	XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK3, 0x00);
-	XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK3, 0x20);
-	CustomSleep(1);
-	XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK3, 0x00);
-	CustomSleep(1);
+	//XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00000);
+	//XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x20000);
+	//CustomSleep(1);
+	//XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00000);
+	//CustomSleep(1);
 	//printf("GSR triggered\n");
 }
 
 
 
 int RunDutTest(int StopAtFirstMismatch){
-	XGpioPs_SetDirection(&PsGpioPort,    XGPIOPS_BANK2, 0xFF0000FF);
-	XGpioPs_SetOutputEnable(&PsGpioPort, XGPIOPS_BANK2, 0xFF0000FF);
-	XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00000009);
-	XGpioPs_SetDirection(&PsGpioPort,    XGPIOPS_BANK3, 0x3F);
-	XGpioPs_SetOutputEnable(&PsGpioPort, XGPIOPS_BANK3, 0x3F);
-	XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK3, 0x00000000);
+	u32 mismatches = 0;
 
-	ResetPL(1000);
 
-	RunClockCount(WorkloadClocks);
-	WaitClockStops();
-	int mismatches=0;
-	for(u32 i=0;i<TraceVectorItems;i++){
-		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, i<<24);
-		RunClockCount(200);
-		WaitClockStops();
-		TraceVectorInj[i] = (XGpioPs_Read(&PsGpioPort, XGPIOPS_BANK2) >> 8) & 0x0000FFFF;
-		if(TraceVectorInj[i] != TraceVectorRef[i]){
-			mismatches++;
-			if(StopAtFirstMismatch)break;
-		}
+	ResetPL(100);			//reset the DUT
+	XGpioPs_SetDirection(&PsGpioPort,    XGPIOPS_BANK2, 0xFFFFFFFF);
+	XGpioPs_SetOutputEnable(&PsGpioPort, XGPIOPS_BANK2, 0xFFFFFFFF);
+	XGpioPs_SetDirection(&PsGpioPort,    XGPIOPS_BANK3, 0x00000000);
+	XGpioPs_SetOutputEnable(&PsGpioPort, XGPIOPS_BANK3, 0x00000000);
+
+	for(int i=0;i<test_vector_size;i++){
+		u32 a = (i+1)*4+1;
+		u32 b = (i+5)*11;
+		u32 res_ref = a+b;
+
+
+		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00010000  | (a & 0xFFFF)  ); 		RunClockCount(100); WaitClockStops();
+		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00020000  | ((a>>16) & 0xFFFF) ); 	RunClockCount(100); WaitClockStops();
+		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00030000  | (b & 0xFFFF) ); 		RunClockCount(100); WaitClockStops();
+		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00040000  | ((b>>16) & 0xFFFF)); 	RunClockCount(100); WaitClockStops();
+		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00000001); 							RunClockCount(100); WaitClockStops();
+		u32 res_uut = XGpioPs_Read(&PsGpioPort, XGPIOPS_BANK3);  						RunClockCount(100); WaitClockStops();
+
+		if(res_ref != res_uut) mismatches++;
+		//printf("res_ref = %10d, res_uut = %10d, mismatches=%2d\n", res_ref, res_uut, mismatches);
 	}
-	//printf("Mismatches: %d \n", mismatches);
+
+
 	return(mismatches > 0);
 }
 
 
 
-int InjectionFlowDutEnvelope(){
-	//1. Set the DUT input data
-	XGpioPs_SetDirection(&PsGpioPort,    XGPIOPS_BANK2, 0xFF0000FF);
-	XGpioPs_SetOutputEnable(&PsGpioPort, XGPIOPS_BANK2, 0xFF0000FF);
-	XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00000009);
-	XGpioPs_SetDirection(&PsGpioPort,    XGPIOPS_BANK3, 0x3F);
-	XGpioPs_SetOutputEnable(&PsGpioPort, XGPIOPS_BANK3, 0x3F);
-	XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK3, 0x00000000);
-	ResetPL(100);
+int InjectionFlowDutEnvelope(u32* alarm){
+	u32 mismatches = 0;
+	*alarm=0;
 
-	//2. Run WorkloadClocks, and inject faults within this time interval
-	RunInjectionFlow(&InjDesc, &JobDesc, WorkloadClocks);
+	ResetPL(100);			//reset the DUT
+	XGpioPs_SetDirection(&PsGpioPort,    XGPIOPS_BANK2, 0xFFFFFFFF);
+	XGpioPs_SetOutputEnable(&PsGpioPort, XGPIOPS_BANK2, 0xFFFFFFFF);
+	XGpioPs_SetDirection(&PsGpioPort,    XGPIOPS_BANK3, 0x00000000);
+	XGpioPs_SetOutputEnable(&PsGpioPort, XGPIOPS_BANK3, 0x00000000);
 
-	//3. Read-out and verify the outputs (failures)
-	int mismatches=0;
-	for(u32 i=0;i<TraceVectorItems;i++){
-		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, i<<24);
-		RunClockCount(200);
-		WaitClockStops();
-		TraceVectorInj[i] = TraceVectorInj[i] = (XGpioPs_Read(&PsGpioPort, XGPIOPS_BANK2) >> 8) & 0x0000FFFF;
-		if(TraceVectorInj[i] != TraceVectorRef[i]){
-			mismatches++;
-			break;
-		}
+	RunInjectionFlow(&InjDesc, &JobDesc, 1);
+
+
+	for(int i=0;i<test_vector_size;i++){
+		u32 a = (i+1)*4+1;
+		u32 b = (i+5)*11;
+		u32 res_ref = a+b;
+
+		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00010000  | (a & 0xFFFF)  ); 		RunClockCount(100); WaitClockStops();
+		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00020000  | ((a>>16) & 0xFFFF) ); 	RunClockCount(100); WaitClockStops();
+		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00030000  | (b & 0xFFFF) ); 		RunClockCount(100); WaitClockStops();
+		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00040000  | ((b>>16) & 0xFFFF)); 	RunClockCount(100); WaitClockStops();
+		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x00000001); 							RunClockCount(100); WaitClockStops();
+		u32 res_uut = XGpioPs_Read(&PsGpioPort, XGPIOPS_BANK3);  						RunClockCount(100); WaitClockStops();
+
+		if(res_ref != res_uut) mismatches++;
+		//printf("res_ref = %10d, res_uut = %10d, mismatches=%2d\n", res_ref, res_uut, mismatches);
 	}
+
+
 	return(mismatches > 0);
 }
 

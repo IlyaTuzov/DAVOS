@@ -84,7 +84,7 @@ if __name__ == "__main__":
                 jdesc.Blocktype = 0 if davosconf.FFIConfig.target_logic.lower() in ['lut', 'ff', 'type0', 'ff+lutram', 'lutram'] else 1 if davosconf.FFIConfig.target_logic.lower() in ['bram'] else 2
                 jdesc.Essential_bits = 1
                 jdesc.CheckRecovery = 1
-                jdesc.LogTimeout = 100
+                jdesc.LogTimeout = 10
                 jdesc.StartIndex = 0
                 jdesc.Masked = 0
                 jdesc.Signaled = 0

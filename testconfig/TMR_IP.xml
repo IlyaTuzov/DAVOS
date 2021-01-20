@@ -378,7 +378,7 @@
 			profiling 						= 'off'
 
 
-			mode 							= "102"
+			mode 							= "101"
 			error_margin_goal 				= "0.3"
 			fault_multiplicity				= "1"
 			injection_time 					= "1"

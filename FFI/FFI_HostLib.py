@@ -793,7 +793,7 @@ class InjectorHostManager:
                     #self.logfile.write('\n'+line)
                     if int( time.time() - last_msg_time ) > self.logtimeout:
                         self.logfile.write('Valid Message Timeout\n\tRestaring from next intjection point')
-                        hang_move_delta = 100
+                        hang_move_delta = 10
                         self.jdesc.StartIndex += hang_move_delta
                         self.jdesc.ExperimentsCompleted = self.jdesc.StartIndex
                         #self.jdesc.Failures += hang_move_delta
@@ -860,7 +860,7 @@ class InjectorHostManager:
 
                 else:
                     self.logfile.write('Timeout - hang\n\tRestaring from next intjection point')
-                    hang_move_delta = 100
+                    hang_move_delta = 10
                     self.jdesc.StartIndex += hang_move_delta
                     self.jdesc.ExperimentsCompleted = self.jdesc.StartIndex
                     #self.jdesc.Failures += hang_move_delta

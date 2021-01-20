@@ -1,4 +1,4 @@
-/*0=วั
+/*
  *  SeuInjector.c
  *
  *  SEU emulation library for Zynq SoC and 7-Series
@@ -101,6 +101,7 @@
 		(MinorAddress << XHI_FAR_MINOR_ADDR_SHIFT_7))
 
 
+
 #define SLCR_CAN_RST_ADDR 0xF8000220
 #define SLCR_CAN_RST_VALUE 0xF
 #define SLCR_WDT_CLK_SEL (XPS_SYS_CTRL_BASEADDR + 0x304)
@@ -119,6 +120,20 @@
 #define SLCR_CLK0_THROTTLE_CTRL_ADR (XPS_SYS_CTRL_BASEADDR + 0x174) //PL Clock 0 Throttle Control
 #define SLCR_CLK0_THROTTLE_CNT_ADR  (XPS_SYS_CTRL_BASEADDR + 0x178) //PL Clock 0 Throttle Count control
 #define SLCR_CLK0_THROTTLE_STA_ADR  (XPS_SYS_CTRL_BASEADDR + 0x17C)	//PL Clock 0 Throttle Status read
+
+#define SLCR_CLK1_THROTTLE_CTRL_ADR (XPS_SYS_CTRL_BASEADDR + 0x184) //PL Clock 1 Throttle Control
+#define SLCR_CLK1_THROTTLE_CNT_ADR  (XPS_SYS_CTRL_BASEADDR + 0x188) //PL Clock 1 Throttle Count control
+#define SLCR_CLK1_THROTTLE_STA_ADR  (XPS_SYS_CTRL_BASEADDR + 0x18C)	//PL Clock 1 Throttle Status read
+
+
+#define SLCR_CLK2_THROTTLE_CTRL_ADR (XPS_SYS_CTRL_BASEADDR + 0x194) //PL Clock 2 Throttle Control
+#define SLCR_CLK2_THROTTLE_CNT_ADR  (XPS_SYS_CTRL_BASEADDR + 0x198) //PL Clock 2 Throttle Count control
+#define SLCR_CLK2_THROTTLE_STA_ADR  (XPS_SYS_CTRL_BASEADDR + 0x19C)	//PL Clock 2 Throttle Status read
+
+
+#define SLCR_CLK3_THROTTLE_CTRL_ADR (XPS_SYS_CTRL_BASEADDR + 0x1A4) //PL Clock 3 Throttle Control
+#define SLCR_CLK3_THROTTLE_CNT_ADR  (XPS_SYS_CTRL_BASEADDR + 0x1A8) //PL Clock 3 Throttle Count control
+#define SLCR_CLK3_THROTTLE_STA_ADR  (XPS_SYS_CTRL_BASEADDR + 0x1AC)	//PL Clock 3 Throttle Status read
 
 
 typedef struct{
@@ -170,6 +185,7 @@ typedef struct{
 	u32 StartIndex;
 	u32 ExperimentsCompleted;
 	u32 CurrentFailureCount;
+	u32 CurrentSignaledCount;
 	u32 CurrentMaskedCount;
 	u32 CurrentLatentCount;
 	u32 CurrentSDCCount;
@@ -236,6 +252,10 @@ typedef struct{
     int BramMaskedIndexes[FRAME_SIZE];
     int BramMaskedCount;
 
+    int faultlist_index;
+    FaultListItem *FarListPtr;
+
+
     int cache_enabled;
     int  (*WorkloadRunFunc)(int);
     void (*TriggerGSRFunc)();
@@ -248,11 +268,14 @@ void PrintInjectorInfo(InjectorDescriptor* InjDesc);
 
 typedef struct{
 	int failures;
+	int signaled;
 	int masked;
 	int latent;
 	int injections;
 	double failure_rate;
 	double failure_error_margin;
+	double signaled_rate;
+	double signaled_error_margin;
 	double masked_rate;
 	double masked_error_margin;
 	double latent_rate;
@@ -304,7 +327,7 @@ void InitInjectionDescriptors();
 void FilterFrameDescriptors(InjectorDescriptor* InjDesc, FrameDescriptor* FrameDesc, int DescCount, int BuildMask, int log_verbosity);
 BitArray GetInjectableWords(InjectorDescriptor* InjDesc, FarFields FC);
 
-
+InjectionCoorditates NextFromFaultList(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc);
 
 
 int cmpfuncInt (const void * a, const void * b);
@@ -341,7 +364,7 @@ InjectionStatistics RunFaultList(InjectorDescriptor* InjDesc, JobDescriptor* Job
 
 //Define these function prototypes in InjectorApp template
 int RunDutTest(int StopAtFirstMismatch);	//Run Workload and check the failure mode
-int InjectionFlowDutEnvelope();
+int InjectionFlowDutEnvelope(u32 *alarm);
 void TriggerGSR();
 
 
