@@ -1667,24 +1667,25 @@ void SleepNS(unsigned int nanoseconds)
 
 
 
-
-void ResetPL(u32 duration_us){
+//active_high:  1 / 0
+//duration_clk: number of clock cycles reset is kept active
+void ResetPL(u32 active_high, u32 duration_clk){
 	//Xil_DCacheFlush();
 	//Xil_DCacheInvalidate();
 	Xil_Out32(SLCR_UNLOCK_ADDR, SLCR_UNLOCK_KEY_VALUE);
     Xil_Out32(SLCR_LVL_SHFTR_EN_ADDR, SLCR_LVL_SHFTR_EN_VALUE);
-    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0x0);
+    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, active_high ? 0xF : 0x0);
     //Xil_DCacheFlush();
-    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0xf);	//rstN = 0 - default
+    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, active_high ? 0x0 : 0xF);	//rstN = 0 - default
     Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 0);
     Xil_Out32(SLCR_CLK1_THROTTLE_CTRL_ADR, 0);
     Xil_Out32(SLCR_CLK2_THROTTLE_CTRL_ADR, 0);
     Xil_Out32(SLCR_CLK3_THROTTLE_CTRL_ADR, 0);
 
-    Xil_Out32(SLCR_CLK0_THROTTLE_CNT_ADR, duration_us);
-    Xil_Out32(SLCR_CLK1_THROTTLE_CNT_ADR, duration_us);
-    Xil_Out32(SLCR_CLK2_THROTTLE_CNT_ADR, duration_us);
-    Xil_Out32(SLCR_CLK3_THROTTLE_CNT_ADR, duration_us);
+    Xil_Out32(SLCR_CLK0_THROTTLE_CNT_ADR, duration_clk);
+    Xil_Out32(SLCR_CLK1_THROTTLE_CNT_ADR, duration_clk);
+    Xil_Out32(SLCR_CLK2_THROTTLE_CNT_ADR, duration_clk);
+    Xil_Out32(SLCR_CLK3_THROTTLE_CNT_ADR, duration_clk);
 
     Xil_Out32(SLCR_CLK0_THROTTLE_CTRL_ADR, 1);
     Xil_Out32(SLCR_CLK1_THROTTLE_CTRL_ADR, 1);
@@ -1697,7 +1698,7 @@ void ResetPL(u32 duration_us){
     while((Xil_In32(SLCR_CLK2_THROTTLE_STA_ADR) & 0xFFFF));
     while((Xil_In32(SLCR_CLK3_THROTTLE_STA_ADR) & 0xFFFF));
 
-    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, 0x0);
+    Xil_Out32(SLCR_FPGA_RST_CTRL_ADDR, active_high ? 0xF : 0x0);
     //Xil_DCacheFlush();
     Xil_Out32(SLCR_LOCK_ADDR, SLCR_LOCK_KEY_VALUE);
 }

@@ -338,7 +338,7 @@ int getIndexbyFAR(u32 FAR);
 
 
 void CustomSleep(unsigned int microseconds);
-void ResetPL(u32 duration_us);
+void ResetPL(u32 active_high, u32 duration_clk);
 void ClockThrottle(u32 mask);
 void RunClockCount(u16 clknum);
 
