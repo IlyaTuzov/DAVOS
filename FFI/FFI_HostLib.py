@@ -397,26 +397,35 @@ class InjectorHostManager:
             self.logfile.write((err if err != None else 'Successfully converted to Bin')+'\n')    
         #Profiling (obtain a list of valid FAR entries)
         if not os.path.exists(self.Input_FarListFile):
-            self.jdesc = JobDescriptor(0)
-            self.jdesc.UpdateBitstream = 1
-            self.jdesc.Mode = 4    #profiling mode
-            self.launch_injector_app()
-            while(True): 
-                line = self.serialport.readline().replace('\n','')
-                if line != None:
-                    matchDesc = re.search(r".*?Profiling Result:.*?([0-9]+).*?frames.*?at.*?0x([0-9abcdef]+)", line)
-                    if matchDesc:
-                        framesnum = matchDesc.group(1)
-                        resaddr   = matchDesc.group(2)
-                        break
-            self.serialport.close()
-            script = """connect\ntarget {0}\nmrd -bin -file FarArray.dat 0x{1} {2}""".format(self.targetid, resaddr, framesnum)
             proc = subprocess.Popen('xsct', stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
-            out, err = proc.communicate(script.encode())
-            proc.wait()
-            with open("FarArray.dat", 'rb') as rb, open(self.Input_FarListFile, "w") as rt:     
-                for i in range(int(framesnum)):
-                    rt.write("{0:08x}\n".format(struct.unpack('<L', rb.read(4))[0]))
+            out, err = proc.communicate("connect \nputs [targets] \nexit".encode())
+            content = re.findall(r'^\s+?([0-9]+)\s+([0-9a-zA-Z]+)', out.decode(), re.MULTILINE|re.DOTALL)
+            device_part = content[-1][-1]   #FPGA is the last listed device
+            cached_FarList_file = os.path.join(self.DAVOS_Config.call_dir, 'FFI', 'FarLists', '{0}.txt'.format(device_part))
+            if os.path.exists(cached_FarList_file):
+                shutil.copyfile(cached_FarList_file, os.path.join(self.Input_FarListFile))
+                print('Using cached FarList for {0} device part'.format(device_part))
+            else:
+                self.jdesc = JobDescriptor(0)
+                self.jdesc.UpdateBitstream = 1
+                self.jdesc.Mode = 4    #profiling mode
+                self.launch_injector_app()
+                while(True): 
+                    line = self.serialport.readline().replace('\n','')
+                    if line != None:
+                        matchDesc = re.search(r".*?Profiling Result:.*?([0-9]+).*?frames.*?at.*?0x([0-9abcdef]+)", line)
+                        if matchDesc:
+                            framesnum = matchDesc.group(1)
+                            resaddr   = matchDesc.group(2)
+                            break
+                self.serialport.close()
+                script = """connect\ntarget {0}\nmrd -bin -file FarArray.dat 0x{1} {2}""".format(self.targetid, resaddr, framesnum)
+                proc = subprocess.Popen('xsct', stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
+                out, err = proc.communicate(script.encode())
+                proc.wait()
+                with open("FarArray.dat", 'rb') as rb, open(self.Input_FarListFile, "w") as rt:     
+                    for i in range(int(framesnum)):
+                        rt.write("{0:08x}\n".format(struct.unpack('<L', rb.read(4))[0]))
         #post-fix check
         check = True
         for i in [self.Input_FarListFile, self.Input_BitstreamFile, self.Input_BinstreamFile, self.Input_EBCFile, self.Input_EBDFile, self.Input_LLFile, self.Input_CellDescFile]:
@@ -515,7 +524,6 @@ class InjectorHostManager:
                 FrameDict = dict()
                 for frame in BIN_FrameList:
                     FrameDict[frame.GetFar()] = frame
-                    #frame.mask = [0x0]*FrameSize                    #REMOVE!!!!!
                 for item in self.ProfilingResult:
                     if item['Actime'] == 0:
                         FrameDict[item['BitstreamCoordinates'][0]].mask[item['BitstreamCoordinates'][1]] &= (0xFFFFFFFF^(1<<item['BitstreamCoordinates'][2]))
@@ -586,9 +594,8 @@ class InjectorHostManager:
                     if t==1 and (block in RecoveryRamLocations):
                         RecoveryFrames.add(FAR)
 
-                    observation_scope = 'BD_i/microblaze_0/U0'
                     if (nodepath.startswith(self.DutScope) or self.DutScope ==''):
-                        if t in [2] and nodepath.startswith(observation_scope): CheckpointFrames.add(FAR)
+                        if t in [2] and nodepath.startswith(self.DutScope): CheckpointFrames.add(FAR)
                         if (t==1 and self.target_logic=='bram') or (t==2 and self.target_logic in ['ff', 'type0', 'ff+lutram']) or self.target_logic == 'all' or (t==3 and self.target_logic in ['lutram', 'ff+lutram']):
                             word, bit =offset/32, offset%32
                             if t==1:
@@ -609,14 +616,14 @@ class InjectorHostManager:
         if len(FFMap)>0:
             Tab = Table('FFMap',['Node','Case','FAR','word','bit','data'])
             for i in FFMap:
-                #CheckpointFrames.add(i[2])
+                CheckpointFrames.add(i[2])
                 Tab.add_row([str(i[0]), str(i[1]), str(i[2]), str(i[3]), str(i[4]), str(i[5])])
             Tab.to_csv(';', True, os.path.join(self.targetDir,'FFMapList.csv'))
 
         if len(BramMap)>0:
             Tab = Table('BramMap',['Node','Case','FAR','word','bit','data'])
             for i in BramMap:
-                #CheckpointFrames.add(i[2])
+                CheckpointFrames.add(i[2])
                 Tab.add_row([str(i[0]), str(i[1]), str(i[2]), str(i[3]), str(i[4]), str(i[5])])
             Tab.to_csv(';', True, os.path.join(self.targetDir,'BramMapList.csv'))
 
@@ -624,7 +631,7 @@ class InjectorHostManager:
         if len(LutramMap)>0:
             Tab = Table('LutramMap',['Node','Case','FAR','word','bit','data'])
             for i in LutramMap:
-                #CheckpointFrames.add(i[2])
+                CheckpointFrames.add(i[2])
                 Tab.add_row([str(i[0]), str(i[1]), str(i[2]), str(i[3]), str(i[4]), str(i[5])])
             with open(os.path.join(self.targetDir,'LutramMapList.csv'),'w') as f:
                 f.write(Tab.to_csv())

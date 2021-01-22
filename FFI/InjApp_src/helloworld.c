@@ -32,12 +32,20 @@ JobDescriptor 		JobDesc;
 
 
 
+#define WorkloadDuration 100
+u32 a[WorkloadDuration], b[WorkloadDuration], op[WorkloadDuration], res_ref[WorkloadDuration], zero_ref[WorkloadDuration];
+
+void reference_result(u32 a, u32 b, u32 op, u32* res, u32* zero);
+void GenerateWorkload();
+
+
 
 
 
 
 int main()
 {
+
 
 
 	XGpioPs_Config* GpioConfigPtr;	//GPIO to interact with DUT
@@ -55,11 +63,6 @@ int main()
 	printf("EMIO-GPIO banks: %d, pins: %d\n", PsGpioPort.MaxBanks, PsGpioPort.MaxPinNum);
 
 
-	RunDutTest(1);
-	input_int();
-
-
-
 	//Mount SD card to use file caching
 	TCHAR *Path = "0:/";
 	FRESULT Res = f_mount(&fatfs, Path, 0);
@@ -67,7 +70,7 @@ int main()
 
 
 	//Auto-initialize the injector structures,  using the DevC ID from Xparameters, pass a DUT-specific callback function to Run the Workload and check it's outputs
-	InjectorInitialize(&InjDesc, XPAR_XDCFG_0_DEVICE_ID, &RunDutTest, &TriggerGSR);
+	InjectorInitialize(&InjDesc, XPAR_XDCFG_0_DEVICE_ID);
 	InjDesc.cache_enabled = 1;				//enable caching of InjectorData, logical drive should be previously mounted (on SD card)
 
 	ReadJobDesc(&JobDesc, BUFFER_ADDR, 1);	//Parse Job Data, uploaded from host
@@ -75,6 +78,13 @@ int main()
 	//JobDesc.UpdateBitstream=0;
 	PrintInjectorInfo(&InjDesc);
 	print_job_desc(&JobDesc);
+
+
+
+
+	GenerateWorkload();
+	//input_int();
+
 
 	//Run default injection flow (custom flow argument is NULL) wait for results,
 	//intermediate results will be logged to stdio and monitored by host App
@@ -95,18 +105,6 @@ int main()
 /* ------------------------------------------------
  * Adapt the functions below according to the DUT
  * ------------------------------------------------ */
-
-u32 test_vector_size = 10;
-
-void TriggerGSR(){
-	XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x000000);
-	XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x100000);
-	CustomSleep(1);
-	XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x000000);
-	CustomSleep(1);
-	//printf("GSR triggered\n");
-}
-
 
 void reference_result(u32 a, u32 b, u32 op, u32* res, u32* zero){
 	switch(op){
@@ -129,70 +127,71 @@ void reference_result(u32 a, u32 b, u32 op, u32* res, u32* zero){
 		*res = 0;
 		break;
 	}
+	*res = (*res) & 0xF;
 	*zero = *res == 0x0;
 }
 
 
-
-int RunDutTest(int StopAtFirstMismatch){
-	u32 mismatches = 0;
-
-	ResetPL(1, 100);			//reset the DUT
-	XGpioPs_SetDirection(&PsGpioPort,    XGPIOPS_BANK2, 0x00107FFF);
-	XGpioPs_SetOutputEnable(&PsGpioPort, XGPIOPS_BANK2, 0x00107FFF);
-
-	u32 a = 4;
-	u32 b = 3;
-	u32 res_ref, zero_ref;
-
-	for(u32 op=0;op<8;op++){
-
-		u32 inp = ((op<<12) & 0xF000) | ((b<<8) & 0xF00)  | ((a<<4) & 0xF0)   |  0x0001 ;
-		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2,  inp   );
-		RunClockCount(1); WaitClockStops();
-		u32 res_buf = (XGpioPs_Read(&PsGpioPort, XGPIOPS_BANK2) & 0xFFFF8000) >> 15;
-		u32 res_uut = res_buf >> 1;
-		u32 zero_uut = res_buf & 0x1;
-
-		reference_result(a,b,op, &res_ref, &zero_ref);
-
-		printf("%10s     :     a: %2d, b:%2d, op: %2d    :     res_ref = %2d, res_uut = %2d, zero = %2d\n", res_uut == res_ref ? "MATCH" : "FAIL",    a, b, op,    res_ref, res_uut, zero_uut);
+void GenerateWorkload(){
+	srand(1);
+	//generate workload and compute reference results
+	for(int i = 0; i<WorkloadDuration; i++){
+		a[i] = rand()%16;
+		b[i] = rand()%16;
+		op[i] = rand()%8;
+		reference_result(a[i],b[i],op[i], &(res_ref[i]), &(zero_ref[i]) );
+		printf("Workload_Vector[%3d]: a=%3x, b=%3x, op=%3x, res=%3x\n", i, a[i], b[i], op[i], res_ref[i]);
 	}
+}
 
-
-	return(mismatches > 0);
+void TriggerGSR(){
+	XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x000000);
+	XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x100000);
+	CustomSleep(1);
+	XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2, 0x000000);
+	CustomSleep(1);
 }
 
 
 
-int InjectionFlowDutEnvelope(u32* alarm){
+
+
+
+
+
+int RunDutTest(int InjectionFlag, int StopAtFirstMismatch, int* alarm){
 	u32 mismatches = 0;
 	*alarm=0;
+	int InjTime;
 
 	ResetPL(1, 100);			//reset the DUT
 	XGpioPs_SetDirection(&PsGpioPort,    XGPIOPS_BANK2, 0x00107FFF);
 	XGpioPs_SetOutputEnable(&PsGpioPort, XGPIOPS_BANK2, 0x00107FFF);
 
-	u32 a = 4;
-	u32 b = 3;
-	u32 res_ref, zero_ref;
+	//Pick injection time (UUT clock cycle)
+	if(InjectionFlag){
+		if(JobDesc.InjectionTime <= 0)  InjTime = rand() % WorkloadDuration;	//by default inject at the workload start
+		else InjTime = JobDesc.InjectionTime-1;									//Precise injection time
+	}
 
-	RunInjectionFlow(&InjDesc, &JobDesc, 1);
+	RunClockCount(1); WaitClockStops();
+	for(u32 i=0; i<WorkloadDuration; i++){
+		//Inject SEUs confjgured by JobDesc at the selected time instant
+		if(InjectionFlag && i==InjTime){
+			InjectSEU(&InjDesc, &JobDesc, InjTime);
+		}
 
-
-	for(u32 op=0;op<8;op++){
-		u32 inp = ((op<<12) & 0xF000) | ((b<<8) & 0xF00)  | ((a<<4) & 0xF0)   |  0x0001 ;
+		u32 inp = ((op[i]<<12) & 0xF000) | ((b[i]<<8) & 0xF00)  | ((a[i]<<4) & 0xF0)   |  0x0001 ;
 		XGpioPs_Write(&PsGpioPort, XGPIOPS_BANK2,  inp   );
 		RunClockCount(1); WaitClockStops();
 		u32 res_buf = (XGpioPs_Read(&PsGpioPort, XGPIOPS_BANK2) & 0xFFFF8000) >> 15;
 		u32 res_uut = res_buf >> 1;
 		u32 zero_uut = res_buf & 0x1;
 
-		reference_result(a,b,op, &res_ref, &zero_ref);
 
-
-		if(res_ref != res_uut) mismatches++;
+		if(res_ref[i] != res_uut) mismatches++;
 		//printf("res_ref = %10d, res_uut = %10d, mismatches=%2d\n", res_ref, res_uut, mismatches);
+		if(StopAtFirstMismatch) break;
 	}
 
 

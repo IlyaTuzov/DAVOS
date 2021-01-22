@@ -127,9 +127,8 @@ InjectionStatistics InjectorRun(InjectorDescriptor* InjDesc, JobDescriptor* JobD
 
 
 	//Check the golden run trace (fault-free run)
-	int failure_mode;
-	//for(int i=0;i<200;i++)
-	failure_mode = RunDutTest(0);
+	int failure_mode, alarm;
+	failure_mode = RunDutTest(0, 0, &alarm);
 	SaveCheckpoint(InjDesc);
 
 
@@ -180,13 +179,22 @@ void RunInjectionFlow(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int W
 	int InjTime;
 	if(JobDesc->InjectionTime <= 0)  InjTime = rand()%(WorkloadDuration);		//by default inject at the workload start
 	else InjTime = JobDesc->InjectionTime-1;									//Precise injection time
-
 	if(InjTime > 0){
-		RunClockCount((u16)InjTime);										//run workload until injection time
+		RunClockCount((u16)InjTime);
 		WaitClockStops();
 	}
 
 	//2. Inject randomly distributed faults
+	InjectSEU(InjDesc, JobDesc, InjTime);
+
+	//3. Run the rest of workload cycles
+	RunClockCount((u16)(WorkloadDuration-InjTime));
+	WaitClockStops();
+}
+
+
+
+void InjectSEU(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, u32 TimeStamp){
 	InjectionCoorditates InjPoint;
 	FarFields Frame;
 	for(int i=0;i<JobDesc->FaultMultiplicity;i++){
@@ -200,14 +208,11 @@ void RunInjectionFlow(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int W
 		else if(JobDesc->mode==201){
 			InjPoint = NextFromFaultList(InjDesc, JobDesc);
 		}
-		InjPoint.InjTime = InjTime;
+		InjPoint.InjTime = TimeStamp;
 		int err = FlipBits(InjDesc, InjPoint, 0, 1);
 	}
-	//3. Run the rest of workload cycles
-	RunClockCount((u16)(WorkloadDuration-InjTime));							//run the rest of workload
-	WaitClockStops();
-}
 
+}
 
 
 //Run Custom injection Flow by this function (mode > 10)  if callbacks are not working properly on target platform
@@ -238,8 +243,8 @@ InjectionStatistics RunSampling(InjectorDescriptor* InjDesc, JobDescriptor* JobD
 			|| 	(JobDesc->SampleSizeGoal==0 && JobDesc->ErrorMarginGoal==0 && res.injections < N) )														/* until sampling complete population */
 	{
 
-		u32 alarm;
-		int	failure   = InjectionFlowDutEnvelope(&alarm);
+		int alarm;
+		int	failure   = RunDutTest(1, 0, &alarm);
 		int cp_mismatches = 0;
 		if(JobDesc->DetectLatentErrors){
 			cp_mismatches = CountCheckpointMismatches(InjDesc);
@@ -281,10 +286,7 @@ InjectionStatistics RunSampling(InjectorDescriptor* InjDesc, JobDescriptor* JobD
 	    }
 
 	    //Recover to fault-free state
-
-//	    	if(failure>0){
-//	    		recover_bitstream(InjDesc, JobDesc, failure, 0);
-//	    	}
+		recover_bitstream(InjDesc, JobDesc, failure, 0);
 
 
 
@@ -293,11 +295,11 @@ InjectionStatistics RunSampling(InjectorDescriptor* InjDesc, JobDescriptor* JobD
 		if(JobDesc->CheckRecovery > 0){
 			if(res.injections % JobDesc->CheckRecovery == 0){
 				//Execute Workload and check failure mode
-			    failure = RunDutTest(0);
+			    failure = RunDutTest(0, 0, &alarm);
 				cp_mismatches = JobDesc->DetectLatentErrors > 0 ? CountCheckpointMismatches(InjDesc) : 0;
 
 			    if(failure > 0 || cp_mismatches > 0){
-					//printf("Complete reconfiguration required after Injection[%5d] FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %2d\n", res.injections, Frame.BLOCK, Frame.TOP, Frame.HCLKROW, Frame.MAJOR, Frame.MINOR, InjPoint.word, InjPoint.bit);
+					printf("Complete reconfiguration required after Injection[%5d] \n", res.injections);
 			    	recover_bitstream(InjDesc, JobDesc, failure, 1);
 					res.complete_reconfigurations++;
 					if (Status != XST_SUCCESS) { xil_printf("ReloadCompleteBitstream ERROR \n\r");}
@@ -341,8 +343,8 @@ InjectionStatistics RunExhaustive(InjectorDescriptor* InjDesc, JobDescriptor* Jo
 	int Status = ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
 
 	for(int run_id=JobDesc->StartIndex;run_id<N;run_id++){
-		u32 alarm;
-		int	failure   = InjectionFlowDutEnvelope(&alarm);
+		int alarm;
+		int	failure   = RunDutTest(1, 0, &alarm);
 		int cp_mismatches = 0;
 		if(JobDesc->DetectLatentErrors){
 			cp_mismatches = CountCheckpointMismatches(InjDesc);
@@ -368,20 +370,19 @@ InjectionStatistics RunExhaustive(InjectorDescriptor* InjDesc, JobDescriptor* Jo
 	    recover_bitstream(InjDesc, JobDesc, failure, 0);
 
 		//check that system has been recovered
-	    /*
 		if(JobDesc->CheckRecovery > 0){
 			if(res.injections % JobDesc->CheckRecovery == 0){
 				//Execute Workload and check failure mode
-			    failure = RunDutTest(1);
+			    failure = RunDutTest(0, 0, &alarm);
 			    if(failure){
-					//printf("Complete reconfiguration required after Injection[%5d] FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %2d\n", res.injections, Frame.BLOCK, Frame.TOP, Frame.HCLKROW, Frame.MAJOR, Frame.MINOR, InjPoint.word, InjPoint.bit);
+					printf("Complete reconfiguration required after Injection[%5d] \n", res.injections);
 			    	recover_bitstream(InjDesc, JobDesc, failure, 1);
 					res.complete_reconfigurations++;
 					if (Status != XST_SUCCESS) { xil_printf("ReloadCompleteBitstream ERROR \n\r");}
 			    }
 			}
 		}
-		*/
+
 
 	}
 
@@ -402,12 +403,9 @@ InjectionStatistics RunFaultList(InjectorDescriptor* InjDesc, JobDescriptor* Job
 	InjDesc->faultlist_index = JobDesc->StartIndex;
 
 
-
-
-
 	for(int i=JobDesc->StartIndex;i<JobDesc->FaultListItems;i++){
-		u32 alarm;
-		int	failure   = InjectionFlowDutEnvelope(&alarm);
+		int alarm;
+		int	failure   = RunDutTest(1, 0, &alarm);
 		int cp_mismatches = 0;
 		if(JobDesc->DetectLatentErrors){
 			cp_mismatches = CountCheckpointMismatches(InjDesc);
@@ -437,19 +435,17 @@ InjectionStatistics RunFaultList(InjectorDescriptor* InjDesc, JobDescriptor* Job
 		if(JobDesc->CheckRecovery > 0){
 			if(res.injections % JobDesc->CheckRecovery == 0){
 				//Execute Workload and check failure mode
-			    failure = RunDutTest(0);
+			    failure = RunDutTest(0, 0, &alarm);
 				cp_mismatches = JobDesc->DetectLatentErrors > 0 ? CountCheckpointMismatches(InjDesc) : 0;
 
 			    if(failure > 0 || cp_mismatches > 0){
-					//printf("Complete reconfiguration required after Injection[%5d] FAR=(%5d, %5d, %5d, %5d, %5d), Word = %3d, Bit = %2d\n", res.injections, Frame.BLOCK, Frame.TOP, Frame.HCLKROW, Frame.MAJOR, Frame.MINOR, InjPoint.word, InjPoint.bit);
+					printf("Complete reconfiguration required after Injection[%5d] \n", res.injections);
 			    	recover_bitstream(InjDesc, JobDesc, failure, 1);
 					res.complete_reconfigurations++;
 					if (Status != XST_SUCCESS) { xil_printf("ReloadCompleteBitstream ERROR \n\r");}
 			    }
 			}
 		}
-
-		//ReloadCompleteBitstream(InjDesc->DevcI, JobDesc->BitstreamAddr, (JobDesc->BitstreamSize >> 2));
 
 	}
 
@@ -566,7 +562,7 @@ InjectionCoorditates NextConsecutiveInjectionTarget(InjectorDescriptor* InjDesc,
 //*******************INJECTOR SETUP FUNCTIONS***********************
 
 //return code: 0 - success, 1 - error
-int InjectorInitialize(InjectorDescriptor * InjDesc, u16 DeviceId, int (*WorkloadRunFunc)(), void (*TriggerGSRFunc)()){
+int InjectorInitialize(InjectorDescriptor * InjDesc, u16 DeviceId){
 	int Status;
 	//Device Configuration Module
 	InjDesc->ConfigPtr = XDcfg_LookupConfig(DeviceId);
@@ -583,9 +579,6 @@ int InjectorInitialize(InjectorDescriptor * InjDesc, u16 DeviceId, int (*Workloa
 	memcpy(InjDesc->BramMaskedIndexes, MaskableBramWords, sizeof(MaskableBramWords));
 	memset(InjDesc->EssentialBitsPerBlockType, 0, sizeof(InjDesc->EssentialBitsPerBlockType));
 
-	//DUT-specific parameters
-	InjDesc->WorkloadRunFunc = WorkloadRunFunc;
-	InjDesc->TriggerGSRFunc = TriggerGSRFunc;
 
   return(0);
 }

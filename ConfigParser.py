@@ -860,6 +860,11 @@ class FFIConfiguration:
         self.error_margin_goal = 0.1
         self.fault_multiplicity = 1
         self.injection_time = 0
+        self.sample_size_goal = 100
+        self.workload_duration = 1
+        self.detect_latent_errors = 0
+        self.log_timeout = 10
+        self.update_bitstream = 1    
         if xnode != None:
             self.build_from_xml(xnode)
 
@@ -883,6 +888,12 @@ class FFIConfiguration:
         self.injection_time = int(xnode.get('injection_time','0'))
         cp = xnode.get('platformconf','')
         if cp != '': self.platformconf = ast.literal_eval(cp)
+        self.sample_size_goal = int(xnode.get('sample_size_goal','100'))
+        self.workload_duration = int(xnode.get('workload_duration','1'))
+        self.detect_latent_errors = 1 if xnode.get('detect_latent_errors','').lower() == 'on' else 0
+        self.log_timeout =  int(xnode.get('log_timeout','10'))
+        self.update_bitstream =  1 if xnode.get('update_bitstream','').lower() == 'on' else 0
+
 
 
 

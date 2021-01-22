@@ -287,7 +287,7 @@ typedef struct{
 
 
 
-int InjectorInitialize(InjectorDescriptor * InjDesc, u16 DeviceId, int (*WorkloadRunFunc)(), void (*TriggerGSRFunc)());
+int InjectorInitialize(InjectorDescriptor * InjDesc, u16 DeviceId);
 void SetReferenceTrace(InjectorDescriptor * InjDesc, u32* RefVect);
 InjectionStatistics InjectorRun(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc,  int (*CustomInjectionFlow)(InjectorDescriptor* , JobDescriptor* ));
 InjectionStatistics RunInSamplingMode(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc,  int (*CustomInjectionFlow)(InjectorDescriptor* , JobDescriptor* ), int verbose);
@@ -356,15 +356,14 @@ void restoreCheckpoint(InjectorDescriptor* InjDesc);
 int CountCheckpointMismatches(InjectorDescriptor* InjDesc);
 
 
-
+void InjectSEU(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, u32 TimeStamp);
 void RunInjectionFlow(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int WorkloadDuration);
 InjectionStatistics RunSampling(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int verbose);
 InjectionStatistics RunExhaustive(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int verbose);
 InjectionStatistics RunFaultList(InjectorDescriptor* InjDesc, JobDescriptor* JobDesc, int verbose);
 
 //Define these function prototypes in InjectorApp template
-int RunDutTest(int StopAtFirstMismatch);	//Run Workload and check the failure mode
-int InjectionFlowDutEnvelope(u32 *alarm);
+int RunDutTest(int InjectionFlag, int StopAtFirstMismatch, int* alarm);
 void TriggerGSR();
 
 

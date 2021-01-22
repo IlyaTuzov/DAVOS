@@ -227,20 +227,20 @@ def build_FFI_report(DavosConfig, ExportLutCsv=False):
     datamodel.SyncAndDisconnectDB()  
 
 
-if __name__ == "__main__":
-    toolconf = ToolOptions(ET.parse('tool_config.xml').getroot().findall('ToolOptions')[0])
-    normconfig = (sys.argv[1]).replace('.xml','_normalized.xml')
-    normalize_xml(os.path.join(os.getcwd(), sys.argv[1]), os.path.join(os.getcwd(), normconfig))
-    xml_conf = ET.parse(os.path.join(os.getcwd(), normconfig))
-    tree = xml_conf.getroot()
-    config = DavosConfiguration(tree.findall('DAVOS')[0])
-    config.toolconf = toolconf
-    config.file = normconfig
+#if __name__ == "__main__":
+#    toolconf = ToolOptions(ET.parse('tool_config.xml').getroot().findall('ToolOptions')[0])
+#    normconfig = (sys.argv[1]).replace('.xml','_normalized.xml')
+#    normalize_xml(os.path.join(os.getcwd(), sys.argv[1]), os.path.join(os.getcwd(), normconfig))
+#    xml_conf = ET.parse(os.path.join(os.getcwd(), normconfig))
+#    tree = xml_conf.getroot()
+#    config = DavosConfiguration(tree.findall('DAVOS')[0])
+#    config.toolconf = toolconf
+#    config.file = normconfig
 
 
 
 
-    build_FFI_report(config, datamodel)
+#    build_FFI_report(config, datamodel)
        
     
     
