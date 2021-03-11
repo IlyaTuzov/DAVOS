@@ -1,4 +1,4 @@
-#!python
+#!/usr/bin/python
 import sys
 import xml.etree.ElementTree as ET
 import re
@@ -190,7 +190,7 @@ class HtmlRef:
         return( "\n<a href=\"" + self.href + "\">" + self.text + "</a>" )
     
     
-val_pattern = re.compile("[0-9a-zA-Z\.\+\-\*]+")
+val_pattern = re.compile("[^\s]+")
 
 def find_between( s, first, last ):
     try:

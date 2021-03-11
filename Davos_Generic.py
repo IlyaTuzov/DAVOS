@@ -366,7 +366,21 @@ def normalize_xml(infilename, outfilename):
         outfile.write(content)
 
 
+def parse_xml_config(xml_file):
+    normalized = xml_file.replace('.xml', '_normalized.xml')
+    normalize_xml(os.path.join(os.getcwd(), xml_file), os.path.join(os.getcwd(), normalized))
+    xml_conf = ET.parse(os.path.join(os.getcwd(), normalized))
+    os.remove(normalized)
+    return xml_conf
 
+
+def set_permissions(path, mode):
+    os.chmod(path, mode)
+    for rt, dlist, flist in os.walk(path, topdown=False):
+        for dn in [os.path.join(rt, d) for d in dlist]:
+            os.chmod(dn, mode)
+        for fn in [os.path.join(rt, f) for f in flist]:
+                os.chmod(fn, mode)
 
 #----------------------------------------------
 # classes for logs and HTML reports

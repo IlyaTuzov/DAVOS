@@ -3,6 +3,7 @@
 *.pdb
 *.tlog
 *.pyc
+*.log
 DecisionSupport/Anova_CUDA/x64/
 DecisionSupport/Anova_CUDA/anova_cuda/x64/
 DecisionSupport/Pareto/x64/

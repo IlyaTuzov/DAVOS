@@ -36,7 +36,8 @@ class RenameItem:
         return('From: ' + self.ifrom + ", To: " + self.ito)
 
 
-val_pattern = re.compile("[0-9a-zA-Z\.\+\-\*]+")
+#val_pattern = re.compile("[0-9a-zA-Z\.\+\-\*:]+")
+val_pattern = re.compile("[^\s]+")
 vect_start_ptn = re.compile('^\s*?[0-9]+')
 
 def find_between( s, first, last ):
@@ -80,7 +81,7 @@ class SimVector:
     def build_from_string(self, intern_num, output_num, str_data):
         clm = re.findall(val_pattern, str_data)
         if(len(clm) < intern_num + output_num + 2):
-            print "build_from_string err: line is not complete"
+            print "build_from_string err: line is not complete: Dumped {0}, Expected_intern {1}, Expected_outputs {2}, C(0)={3}, C(-1)={4}".format(len(clm), intern_num, output_num, clm[0], clm[-1])
             return(None)
         self.time = float(clm[0])
         self.delta = int(clm[1])
