@@ -1658,7 +1658,7 @@ def generate_injection_scripts(conf, genconf, toolconf, fmlist, faultdict):
                     str_index = str("%06d" % (script_index))
                     inj_script = "transcript file " + toolconf.log_dir +"/log_" + str_index + "_nodename.txt"
                     inj_time = []
-                    for t in range(fconfig.injections_per_experiment):
+                    for t in range(fconfig.multiplicity):
                         inj_time.append(inj_start_time if nonrandom else random.randint(inj_start_time, inj_stop_time))
                     inj_time.sort()
 

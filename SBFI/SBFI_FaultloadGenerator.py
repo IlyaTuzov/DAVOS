@@ -256,7 +256,7 @@ def mixed_faultload_generator(config, modelconf, toolconf, faultdict):
                         else:
                             inj_script = "set WLFFilename {0}/WLFSET_{1}.wlf\nset WLFFileLock 0\nset WLFDeleteOnQuit 1".format(toolconf.dataset_dir, str_index)
                             inj_script += "\ntranscript file " + toolconf.log_dir + "/log_" + str_index + "_nodename.txt"
-                    inj_time = get_random_injection_time(h_start_time, h_end_time, fconfig.time_mode, fconfig.injections_per_experiment, scale_factor, modelconf.clk_period, config.genconf.std_workload_time)
+                    inj_time = get_random_injection_time(h_start_time, h_end_time, fconfig.time_mode, fconfig.multiplicity, scale_factor, modelconf.clk_period, config.genconf.std_workload_time)
 
                     if fconfig.trigger_expression == '':  # time-driven injection
                         # find closest checkpoint

@@ -241,7 +241,7 @@ class FaultModelConfig:
             self.target_logic = []
             self.profiling = None
             self.experiments_per_target = int(0)
-            self.injections_per_experiment = int(0)
+            self.multiplicity = int(0)
             self.time_mode = TimeModes.Relative
             self.time_start = float(0)
             self.time_end = float(0)
@@ -256,7 +256,6 @@ class FaultModelConfig:
             self.duration_min, self.duration_max = float(0), float(0)
             self.modifier = ''
             self.trigger_expression = ''
-            self.multiplicity = int(0)
             self.simulataneous_faults = False
         else:
             self.build_from_xml(xnode)
@@ -266,7 +265,7 @@ class FaultModelConfig:
         self.target_logic = re.findall('[a-zA-Z0-9_]+', xnode.get('target_logic').lower())
         self.profiling = xnode.get('profiling', '')
         self.experiments_per_target = int(xnode.get('experiments_per_target', '1'))
-        self.injections_per_experiment = int(xnode.get('injections_per_experiment', '1'))
+        self.multiplicity = int(xnode.get('multiplicity', '1'))
         if xnode.get('time_mode', '').lower() == 'clockcycle': self.time_mode = TimeModes.ClockCycle
         elif xnode.get('time_mode', '').lower() == 'absolute': self.time_mode = TimeModes.Absolute
         else:  self.time_mode = TimeModes.Relative
@@ -283,7 +282,7 @@ class FaultModelConfig:
         self.activity_time_end = float(xnode.get('activity_time_end', '0'))
         self.inactivity_time_start = float(xnode.get('inactivity_time_start', '0'))
         self.inactivity_time_end = float(xnode.get('inactivity_time_end', '0'))
-        self.multiplicity = int(xnode.get('multiplicity','1'))
+        self.multiplicity = int(xnode.get('multiplicity', '1'))
         self.simulataneous_faults = True if int(xnode.get('simultaneous_faults','')=='yes') else False
         return(0)
 

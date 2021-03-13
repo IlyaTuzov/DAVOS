@@ -350,5 +350,9 @@ if __name__ == "__main__":
         datamodel.SaveHdlModels()
     # Launch fault injection experiment
     RunSBFI(datamodel, config, toolconf)
-    set_permissions(davosconf.report_dir, 0o777)
+    try:
+        set_permissions(davosconf.report_dir, 0o777)
+    except OSError as e:
+        print("Warning: Unable to set 777 permissions on {0}".format(davosconf.report_dir))
+    print("Experiment Completed, check SBFI report at: {0}".format(davosconf.report_dir))
 # user_dict = ast.literal_eval(tree.findall('DAVOS')[0].findall('ExperimentalDesign')[0].findall('generic')[0].get('custom_parameters'))

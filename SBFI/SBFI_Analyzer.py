@@ -20,7 +20,7 @@ from threading import Thread
 from Davos_Generic import *
 from Datamanager import *
 
-EnhancedAnalysisOfLatentErrors = True
+EnhancedAnalysisOfLatentErrors = False
 
 
 def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseindex):
@@ -183,16 +183,9 @@ def process_dumps(config, toolconf, conf, datamodel):
     datamodel.SaveInjections()
 
     dumppack = "RESPACK_{0}.zip".format(conf.label)
-    arc_script = toolconf.archive_tool_script + " " + dumppack + " " + "irespack"   +  " " + toolconf.list_init_file  + " > ziplog.log"
     os.chdir(conf.work_dir)
-    print "Compressing results: " + arc_script
-    proc = subprocess.Popen(arc_script, shell=True)
-    ziptime = 0
-    while proc.poll() is None:
-        sys.stdout.write( "\rzip in process: {0} seconds".format(str(ziptime)) )            
-        sys.stdout.flush()        
-        time.sleep(5)
-        ziptime += 5
+    zip_folder(packdir, dumppack)
+    zip_folder(toolconf.code_dir, dumppack)
     shutil.rmtree(packdir)
     if os.path.exists(os.path.join(conf.work_dir, dumppack)):
         shutil.move(os.path.join(conf.work_dir, dumppack), os.path.join(config.report_dir, dumppack))

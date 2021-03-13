@@ -10,6 +10,8 @@ import glob
 import cgi
 import cgitb
 import subprocess
+import zipfile as ZF
+
 
 FilterDumpVectorsByDelta = True
 
@@ -670,15 +672,18 @@ ref_fname = os.path.join(work_dir, toolconf.result_dir, toolconf.reference_file)
 dumppack = "RESPACK_{0}.zip".format(form.getvalue('config')) #glob.glob('*{0}.zip'.format(form.getvalue('config')))[0]
 
 #extract dumps from zip
-if not os.path.exists(work_dir): os.mkdir(work_dir)
+if not os.path.exists(work_dir):
+    os.mkdir(work_dir)
 s = os.path.join(work_dir, toolconf.result_dir)
-if(not os.path.exists(s)):
+if not os.path.exists(s):
     os.mkdir(s)
 z = os.getcwd()
 
-unzip_script = 'unzip -o {0} -d {1} \"{2}/{3}\" \"{4}/{5}\" \"{6}\"> unzip.log'.format(dumppack, work_dir, toolconf.result_dir.replace('./',''), form.getvalue('dump'), toolconf.result_dir.replace('./',''), toolconf.reference_file, toolconf.list_init_file.replace('./','')) 
-proc = subprocess.Popen(unzip_script, shell=True)
-proc.wait()
+with ZF.ZipFile(dumppack, 'r') as zp:
+    zp.extract(os.path.join(toolconf.result_dir.replace('./',''), form.getvalue('dump')),   work_dir)
+    zp.extract(os.path.join(toolconf.result_dir.replace('./',''), toolconf.reference_file), work_dir)
+    zp.extract(toolconf.list_init_file.replace('./',''), work_dir)
+
 os.chdir(z)
 
 

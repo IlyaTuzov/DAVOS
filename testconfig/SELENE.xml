@@ -6,7 +6,7 @@
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "on"
-        report_dir = "#RUNDIR/../HTWEB/SELENE/Test"        
+        report_dir = "#RUNDIR/../HTWEB/SELENE/M7"        
         dbfile = "SELENE.db"  >
         
 
@@ -475,13 +475,13 @@
                     maxproc = "10"
                     workload_split_factor = "20"			
                     campaign_label = "SELENE"		
-                    cleanup_folders="on"
+                    cleanup_folders="off"
                     compile_project = "off"
-                    create_scripts="on"
+                    create_scripts="off"
                     create_checkpoints="off"
                     create_precise_checkpoints = "off"
-                    create_injection_scripts = "on"
-                    run_faultinjection="on"
+                    create_injection_scripts = "off"
+                    run_faultinjection="off"
                     remove_par_lib_after_checkpoint_stored = "off"
                     cancel_pending_tasks = "off"
                     
@@ -507,13 +507,13 @@
                 <fault_model
                     model = "BitFlip"
                     target_logic = "SIGNAL"
-                    faults_per_target = "1"
+                    multiplicity = "5"
                     time_mode = "Relative"
                     injection_time_start = "0.0"            
                     injection_time_end = "1.0"
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
-                    sample_size = "10"
+                    sample_size = "100"
                     rand_seed	= "2"					
                 />                
                 
