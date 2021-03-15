@@ -1,0 +1,40 @@
+                <fault_model
+                    model = "stuck_at"
+                    target_logic = "SIGNAL"
+                    multiplicity = "1"
+                    time_mode = "Relative"
+                    injection_time_start = "0.0"            
+                    injection_time_end = "0.0"
+                    increment_time_step = "0.0" 
+                    experiments_per_target = "1"
+                    forced_value = "1"
+                    sample_size = "10000"
+                    rand_seed	= "2"					
+                />	                
+                
+                <fault_model
+                    model = "stuck_at"
+                    target_logic = "SIGNAL"
+                    multiplicity = "1"
+                    time_mode = "Relative"
+                    injection_time_start = "0.0"            
+                    injection_time_end = "0.0"
+                    increment_time_step = "0.0" 
+                    experiments_per_target = "1"
+                    forced_value = "0"
+                    sample_size = "10000"
+                    rand_seed	= "2"					
+                />	    
+				
+                <fault_model
+                    model = "BitFlip"
+                    target_logic = "SIGNAL"
+                    multiplicity = "1"
+                    time_mode = "Relative"
+                    injection_time_start = "0.0"            
+                    injection_time_end = "1.0"
+                    increment_time_step = "0.0" 
+                    experiments_per_target = "1"
+                    sample_size = "10000"
+                    rand_seed	= "2"					
+                />  				

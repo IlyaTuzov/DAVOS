@@ -180,12 +180,15 @@ def cleanup_path(path):
 
 def zip_folder(path, zipname):
     ziphandle = ZF.ZipFile(zipname, 'a')
+    existing_files = ziphandle.namelist()
     print('Appending folder [{0}] to zip package [{1}]'.format(path, zipname))
     for root, dirs, files in os.walk(path):
         for fname in files:
-            ziphandle.write(os.path.join(root, fname),
-                       os.path.relpath(os.path.join(root, fname),
-                                       os.path.join(path, '..')))
+            c = os.path.relpath(os.path.join(root, fname), os.path.join(path, '..'))
+            if not c in existing_files:
+                ziphandle.write(os.path.join(root, fname), c)
+            else:
+                print('zip_folder: skipping file (already exists): {0}'.format(c))
     ziphandle.close()
 
 

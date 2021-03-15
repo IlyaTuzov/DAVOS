@@ -20,6 +20,31 @@ MODE = "fast"   #fast / robust
 
 T_Table = {0.95:1.96, 0.99:2.576, 0.999:3.291}
 
+
+failuremodes_alias = dict([('M', 'Masked_Fault'), ('L', 'Latent_Fault'), ('S', 'Signalled_Failure'), ('C', 'Silent_Data_Corruption')])
+
+
+fields = [  ('M.Label', 'model', True), 
+            ('I.ID', 'eind', False),
+            ('T.NodeFullPath', 'target', True),
+            ('T.Macrocell', 'instancetype', True) ,
+            ('I.FaultModel', 'faultmodel', True),
+            ('I.ForcedValue', 'forcedvalue', True),
+            ('I.InjectionTime', 'injectiontime', False),
+            ('I.InjectionDuration', 'injectionduration', False),
+            ('I.ObservationTime', 'observationtime', False),
+            ('I.FailureMode', 'failuremode', True),
+            ('I.ErrorCount', 'errorcount', False),
+            ('I.TrapCode', 'trapcode', True),
+            ('I.FaultToFailureLatency', 'latencyfaultfailure', False),
+            ('I.Dumpfile', 'dumpfile', True) ]
+
+
+def inv_dict(indict):
+    return {v: k for k, v in indict.iteritems()}
+
+
+
 def get_sample_size(error_margin, confidence_level, N, P = 0.5):
     t = T_Table[confidence_level]
     return N / ( 1 + error_margin*error_margin*(N-1) / ( t*t * P * (1-P) )  )
@@ -34,6 +59,8 @@ def get_error_margin(sample_size, confidence_level, P = 0.5, N=None):
         
 def get_selector(f, k_httpt, k_selector_alias, enquote = False):
     v = f.getvalue(k_httpt,'')
+    if k_httpt == 'failuremode':
+        v = inv_dict(failuremodes_alias)[v]
     if v == '': return('')
     elif v.find(':')>=0:
         s = v.split(':')
@@ -142,22 +169,7 @@ class DesignNode:
 
 
 
-failuremodes_alias = dict([('M', 'Masked_Fault'), ('L', 'Latent_Fault'), ('S', 'Signalled_Failure'), ('C', 'Silent_Data_Corruption')])
 
-fields = [  ('M.Label', 'model', True), 
-            ('I.ID', 'eind', False),
-            ('T.NodeFullPath', 'target', True),
-            ('T.Macrocell', 'instancetype', True) ,
-            ('I.FaultModel', 'faultmodel', True),
-            ('I.ForcedValue', 'forcedvalue', True),
-            ('I.InjectionTime', 'injectiontime', False),
-            ('I.InjectionDuration', 'injectionduration', False),
-            ('I.ObservationTime', 'observationtime', False),
-            ('I.FailureMode', 'failuremode', True),
-            ('I.ErrorCount', 'errorcount', False),
-            ('I.TrapCode', 'trapcode', True),
-            ('I.FaultToFailureLatency', 'latencyfaultfailure', False),
-            ('I.Dumpfile', 'dumpfile', True) ]
 
 sql_fields = []
 req_fields = []
@@ -168,8 +180,8 @@ for i in fields:
     fdict[i[0]] = i[1]
     
     
+log = open('log.txt','a')       
 try:
-    log = open('log.txt','w')    
     form = cgi.FieldStorage()
     signature = ''
     for k in form.keys():

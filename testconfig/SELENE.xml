@@ -6,7 +6,7 @@
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "on"
-        report_dir = "#RUNDIR/../HTWEB/SELENE/M7"        
+        report_dir = "#RUNDIR/../HTWEB/SELENE/NCPU_T3"        
         dbfile = "SELENE.db"  >
         
 
@@ -453,17 +453,20 @@
                 
                     
             <!-- unit path: withing the design scope-->            
-                <InjectionScope node_prefix = "r."   unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/iu0"          />
+                <InjectionScope     node_prefix = "r."      unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/iu0"               />
+				<InjectionScope   node_prefix = "rfd"     unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/ramrf/rf0"         />                
                 
 
-                <ObservationScope node_prefix = "r." unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(1)/core/u0/iu0" 			label_prefix = "r." sampling_options = "-notrigger"/>
-				<ObservationScope node_prefix = "rfd" unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(1)/core/u0/ramrf/rf0" 	label_prefix = "rfd" sampling_options = "-notrigger"/>
+                <ObservationScope node_prefix = "r." unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/iu0" 			label_prefix = "r." sampling_options = "-notrigger"/>
+				<ObservationScope node_prefix = "rfd" unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/ramrf/rf0" 	label_prefix = "rfd" sampling_options = "-notrigger"/>
 
                     
 					
                     <!-- location: INTERNALS / OUTPUTS -->            
                 <GenericObservationNodes>
-                   <memarray 	location = "OUTPUTS" 	options = "" 			label = "C1.Res" 			path= "/testbench/cpu/cpu/core0/mem0/mig_gen/sim_ram_gen/axi_mem/rb/p/logpages(0).data" low_address = "928" high_address = "967" comment="C1.Res" />		                    
+                   <memarray 	location = "OUTPUTS" 	options = "" 			label = "C1.Res" 			path= "/testbench/cpu/cpu/core0/mem0/mig_gen/sim_ram_gen/axi_mem/rb/p/logpages(0).data" low_address = "928" high_address = "967" comment="C1.Res"  />
+                    	                    
+
                 </GenericObservationNodes>
             </Initializer>
 
@@ -507,15 +510,18 @@
                 <fault_model
                     model = "BitFlip"
                     target_logic = "SIGNAL"
-                    multiplicity = "5"
+                    multiplicity = "1"
                     time_mode = "Relative"
                     injection_time_start = "0.0"            
                     injection_time_end = "1.0"
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
-                    sample_size = "100"
-                    rand_seed	= "2"					
+                    sample_size = "40"
+                    rand_seed	= "15000"					
                 />                
+                                
+
+            
                 
             </Injector>
                 

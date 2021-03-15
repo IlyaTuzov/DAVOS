@@ -184,11 +184,9 @@ def process_dumps(config, toolconf, conf, datamodel):
 
     dumppack = "RESPACK_{0}.zip".format(conf.label)
     os.chdir(conf.work_dir)
-    zip_folder(packdir, dumppack)
-    zip_folder(toolconf.code_dir, dumppack)
+    zip_folder(packdir, os.path.join(config.report_dir, dumppack))
+    zip_folder(toolconf.code_dir, os.path.join(config.report_dir, dumppack))
     shutil.rmtree(packdir)
-    if os.path.exists(os.path.join(conf.work_dir, dumppack)):
-        shutil.move(os.path.join(conf.work_dir, dumppack), os.path.join(config.report_dir, dumppack))
     
     T = Table('SummaryFaultSim', ['Node', 'InjCase', 'InjTime','Duration', 'FailureMode'])
     injsummary = datamodel.LaunchedInjExp_dict.values()
