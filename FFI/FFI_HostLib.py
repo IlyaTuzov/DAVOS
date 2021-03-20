@@ -463,7 +463,7 @@ class InjectorHostManager:
 
 
     def GenerateFaultload(self):
-        if not self.DutScope.endswith('/'): self.DutScope+='/'
+        if not self.DutScope=='' and not self.DutScope.endswith('/'): self.DutScope+='/'
         #Step 1: Build the list of frame addresses (obtained by running InjApp in profiling mode)
         FarList = LoadFarList(self.Input_FarListFile)
    
@@ -485,11 +485,9 @@ class InjectorHostManager:
             else:
                 i+=1
 
-
+        area_filter = []
         if self.PblockCoord:
             area_filter = get_pblock_mjr_coord(self.DevicePart, self.PblockCoord[0], self.PblockCoord[1], self.PblockCoord[2], self.PblockCoord[3])
-        else:
-            area_filter = None
         if self.target_logic=='type0' or self.target_logic=='all' or (self.target_logic=='lut'): # and not self.CustomLutMask):
             #Step 4: Build the list of frame descriptors from EBC+EBD (essential bits)
             EBC_FrameList = EBC_to_FrameList(self.Input_EBCFile, self.Input_EBDFile, FarList)
@@ -508,11 +506,8 @@ class InjectorHostManager:
                 for i in range(len(EBC_FrameList)):
                     #if (self.target_logic in ['type0', 'all']) or (self.target_logic=='lut' and BIN_FrameList[i].Minor in [26,27,28,29, 32,33,34,35]):
                     if (self.target_logic in ['type0', 'all']) or (self.target_logic=='lut' and BIN_FrameList[i].type=="CLB" and BIN_FrameList[i].Minor in [26,27,28,29, 32,33,34,35]):
-                        if area_filter:
-                            if (BIN_FrameList[i].Top, BIN_FrameList[i].Row, BIN_FrameList[i].Major) in area_filter:
+                        if (not area_filter) or (area_filter and (BIN_FrameList[i].Top, BIN_FrameList[i].Row, BIN_FrameList[i].Major) in area_filter):
                                 BIN_FrameList[i].mask = EBC_FrameList[i].mask
-                        else:
-                            BIN_FrameList[i].mask = EBC_FrameList[i].mask
 
 
         XilinxLutBitCnt = 0
@@ -529,12 +524,13 @@ class InjectorHostManager:
                 f.write(LutListToTable(LutMapList).to_csv())
             if self.target_logic in ['type0','all','lut']:
                 for i in BIN_FrameList:
-                    if i.Minor in [26,27,28,29, 32,33,34,35]:
-                        if i.custom_mask==[]: 
-                            i.mask = [0x0]*FrameSize
-                        else:
-                            for k in range(FrameSize):
-                                i.mask[k] =  i.custom_mask[k] #(i.mask[k] ^ i.custom_mask[k]) & i.mask[k]
+                    if (not area_filter) or (area_filter and (i.Top, i.Row, i.Major) in area_filter):
+                        if i.Minor in [26,27,28,29, 32,33,34,35]:
+                            if i.custom_mask==[]: 
+                                i.mask = [0x0]*FrameSize
+                            else:
+                                for k in range(FrameSize):
+                                    i.mask[k] =  i.custom_mask[k] #(i.mask[k] ^ i.custom_mask[k]) & i.mask[k]
             XilinxLutBitCnt = 0
             for frame in BIN_FrameList:
                 stat = frame.get_stat()
@@ -669,9 +665,11 @@ class InjectorHostManager:
         for key in sorted(FARmask):
             for i in BIN_FrameList:
                 if i.GetFar() == key:
-                    i.mask = FARmask[key].mask
-                    if self.verbosity > 2: self.logfile.write("{0:08x} : {1:s}\n".format(i.GetFar(), ' '.join(['{0:08x}'.format(x) for x in i.mask])))
-                    break
+                    if (not area_filter) or (area_filter and (i.Top, i.Row, i.Major) in area_filter):
+                        for k in range(0, len(i.mask)):
+                            i.mask[k] |= FARmask[key].mask[k]
+                        if self.verbosity > 2: self.logfile.write("{0:08x} : {1:s}\n".format(i.GetFar(), ' '.join(['{0:08x}'.format(x) for x in i.mask])))
+                        break
         self.logfile.write('Recovery FAR: {}\n'.format(",".join(["{0:08x}".format(i) for i in sorted(list(RecoveryFrames))])))
         #Export the resulting descriptor
 
