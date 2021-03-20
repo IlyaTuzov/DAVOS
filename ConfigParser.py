@@ -892,7 +892,13 @@ class FFIConfiguration:
         self.detect_latent_errors = 1 if xnode.get('detect_latent_errors','').lower() == 'on' else 0
         self.log_timeout =  int(xnode.get('log_timeout','10'))
         self.update_bitstream =  1 if xnode.get('update_bitstream','').lower() == 'on' else 0
-
+        matchDesc = re.search('X([0-9]+)Y([0-9]+):X([0-9]+)Y([0-9]+)', xnode.get('pblock_coodrinates','').upper().replace(' ',''))
+        if matchDesc:
+            self.pblock_coodrinates = ( int(matchDesc.group(1)), int(matchDesc.group(2)), int(matchDesc.group(3)), int(matchDesc.group(4)) )
+        else:
+            self.pblock_coodrinates = None
+        self.device_part = xnode.get('device_part','').lower()
+        self.extra_xsct_commands = xnode.get('extra_xsct_commands','').replace(';','\n')
 
 
 

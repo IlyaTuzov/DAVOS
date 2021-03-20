@@ -17,6 +17,7 @@ import struct
 import datetime
 import random
 import time
+import math
 #sys.path.insert(0, os.path.abspath(".."))
 from Davos_Generic import Table
 from BitstreamParser import *
@@ -35,7 +36,8 @@ ram_search_ptn = re.compile(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-
 ff_search_ptn = re.compile(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-Z_]+)\s+Latch=([0-9a-zA-Z\.]+)\s+Net=(.*)', re.M)
 lutram_search_ptn = re.compile(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-Z_]+)\s+Ram=(A|B|C|D):([0-9]+)', re.M)
 
-
+#Row heigth (CLB tiles per row) : Rows in top part : Rows in bottom part
+DeviceLayout = { 'xc7z020':(50, 1, 2) }
 
 class JobDescriptor:
     def __init__(self, BitstreamId):
@@ -191,8 +193,27 @@ def LoadFaultList(fname):
 
 
 
-
-
+#returns a list of Major Frame coordinates for a pblock X0Y0 -> X1Y1 (bottom left --> top right)
+def get_pblock_mjr_coord(Device, X0, Y0, X1, Y1):
+    try:
+        height = DeviceLayout[Device][0]
+        TopRows = DeviceLayout[Device][1]
+        BottomRows = DeviceLayout[Device][2]
+    except KeyError:
+        print('Error in get_pblock_mjr_coord: no DeviceLayout exists for {0}'.format(Device))
+    columns = set()
+    for x in range(X0, X1+1):
+        for y in range(Y0, Y1+1):
+            Major = x
+            ClkRegion = y/height
+            if y >= BottomRows*height:
+                TopBottomHalf = 0
+                ClockRow = ClkRegion-BottomRows
+            else:
+                TopBottomHalf = 1
+                ClockRow = BottomRows-1-ClkRegion
+            columns.add( (TopBottomHalf, ClockRow, Major) )
+    return sorted(list(columns))
     
     
     
@@ -269,6 +290,8 @@ class InjectorHostManager:
         self.ProfilingResult = None
         self.target_logic = 'type0'
         self.DutScope = ''
+        self.PblockCoord = None
+        self.DevicePart = ''
 
     def configure(self, targetid, portname, VivadoProjectFile = '', ImplementationRun=''):
         self.targetid = targetid                        #Target CPU id on Xilinx HW server
@@ -463,7 +486,10 @@ class InjectorHostManager:
                 i+=1
 
 
-        LOC = {'top':1, 'row':1, 'major_left':21, 'major_right':29}
+        if self.PblockCoord:
+            area_filter = get_pblock_mjr_coord(self.DevicePart, self.PblockCoord[0], self.PblockCoord[1], self.PblockCoord[2], self.PblockCoord[3])
+        else:
+            area_filter = None
         if self.target_logic=='type0' or self.target_logic=='all' or (self.target_logic=='lut'): # and not self.CustomLutMask):
             #Step 4: Build the list of frame descriptors from EBC+EBD (essential bits)
             EBC_FrameList = EBC_to_FrameList(self.Input_EBCFile, self.Input_EBDFile, FarList)
@@ -482,8 +508,11 @@ class InjectorHostManager:
                 for i in range(len(EBC_FrameList)):
                     #if (self.target_logic in ['type0', 'all']) or (self.target_logic=='lut' and BIN_FrameList[i].Minor in [26,27,28,29, 32,33,34,35]):
                     if (self.target_logic in ['type0', 'all']) or (self.target_logic=='lut' and BIN_FrameList[i].type=="CLB" and BIN_FrameList[i].Minor in [26,27,28,29, 32,33,34,35]):
-                        #if BIN_FrameList[i].Top == LOC['top'] and  BIN_FrameList[i].Row == LOC['row'] and  BIN_FrameList[i].Major >= LOC['major_left'] and  BIN_FrameList[i].Major <= LOC['major_right']:
-                        BIN_FrameList[i].mask = EBC_FrameList[i].mask
+                        if area_filter:
+                            if (BIN_FrameList[i].Top, BIN_FrameList[i].Row, BIN_FrameList[i].Major) in area_filter:
+                                BIN_FrameList[i].mask = EBC_FrameList[i].mask
+                        else:
+                            BIN_FrameList[i].mask = EBC_FrameList[i].mask
 
 
         XilinxLutBitCnt = 0
@@ -719,11 +748,8 @@ class InjectorHostManager:
             if os.path.exists(self.FaultListFile): 
                     script += """dow -data {0}  0x{1:08x}\n""".format(self.FaultListFile, self.jdesc.FaultListAdr)
 
-        #script += """
-        #        dow -data C:/Projects/TESIS/AVR/AVR_TMR_TES/Bitstream_pblock_cpu_core_1_partial.bin 0x3EBC0000
-        #        dow -data C:/Projects/TESIS/AVR/AVR_TMR_TES/Bitstream_pblock_cpu_core_2_partial.bin 0x3EC20000
-        #        dow -data C:/Projects/TESIS/AVR/AVR_TMR_TES/Bitstream_pblock_cpu_core_3_partial.bin 0x3EC80000
-        #"""
+        if self.extra_xsct_commands:
+            script += self.extra_xsct_commands
 
         script += "con \n exit \n"
         script = script.replace('\\','/')

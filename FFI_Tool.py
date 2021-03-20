@@ -23,20 +23,14 @@ from Datamanager import *
 if __name__ == "__main__":
 
 
+
     toolconf = ToolOptions(ET.parse('tool_config.xml').getroot().findall('ToolOptions')[0])
-    normconfig = (sys.argv[1]).replace('.xml','_normalized.xml')
-    normalize_xml(os.path.join(os.getcwd(), sys.argv[1]), os.path.join(os.getcwd(), normconfig))
-    xml_conf = ET.parse(os.path.join(os.getcwd(), normconfig))
-    tree = xml_conf.getroot()
+    tree = parse_xml_config(sys.argv[1]).getroot()
     davosconf = DavosConfiguration(tree.findall('DAVOS')[0])
     davosconf.toolconf = toolconf
-    davosconf.file = normconfig
-
-
-
-
-    #build_FFI_report(davosconf)
-    #raw_input('Ready...')
+    davosconf.file = sys.argv[1]
+    if not os.path.exists(davosconf.report_dir):
+        os.makedirs(davosconf.report_dir)
 
     for modelconf in davosconf.parconf:
 
@@ -53,7 +47,9 @@ if __name__ == "__main__":
         Injector.DAVOS_Config = davosconf
         Injector.target_logic = davosconf.FFIConfig.target_logic.lower()
         Injector.DutScope = davosconf.FFIConfig.dut_scope
-
+        Injector.DevicePart = davosconf.FFIConfig.device_part
+        Injector.PblockCoord = davosconf.FFIConfig.pblock_coodrinates
+        Injector.extra_xsct_commands = davosconf.FFIConfig.extra_xsct_commands
 
 
 
@@ -65,7 +61,7 @@ if __name__ == "__main__":
             print "Available Devices:{}".format("".join(["\n\t"+str(x) for x in devconfig])) 
             devId = int(raw_input("Select Device {}:".format(str(range(len(devconfig))))))
             #Configure the injector
-            Injector.configure(devconfig[devId]['TargetId'], devconfig[devId]['PortID'], "", "impl_1")
+            Injector.configure(devconfig[devId]['TargetId'], devconfig[devId]['PortID'], "", "")
             #Clean the cache
             if raw_input('Clean the cache before running: Y/N: ').lower().startswith('y'):                                   
                 Injector.cleanup_platform()
