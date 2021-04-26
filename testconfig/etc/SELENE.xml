@@ -2,10 +2,10 @@
 <data>
 
     <DAVOS
-        report_dir = "#RUNDIR/../HTWEB/SELENE/MC"
+        report_dir = "#RUNDIR/../HTWEB/DEMO"
         experiment_label = "CCF"
         platform = "Multicore"
-        maxproc = "8" >
+        maxproc = "10" >
 
 
 
@@ -15,7 +15,7 @@
             design_type = "RTL"
 			label = "SELENE"
 			clk_period = "50.0"
-            simulation_time = "18000"
+            workload_time = "18000"
 		/>
 
         <!-- platform: Multicore / Grid / GridLight 
@@ -23,8 +23,8 @@
             mode = clean / continue
         -->
         <SBFI
-            clean_run = "on"
-            checkpoint_mode = "ColdRestore"
+            clean_run = "off"
+            checkpont_mode = "ColdRestore"
             initializer = "on"
             profiler = "off"
             injector = "on"
@@ -35,30 +35,27 @@
 
             <!-- unit path: withing the design scope-->
             <InjectionScope unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/iu0"
-                            node_filter = "r.*"
-                            scope_filter = "-internal"      />
+                            node_prefix = "r."      />
 
-            <!--InjectionItem path ="/tb_reg_sbf/prot_reg" type = "SIGNAL" array_range="0:31" -->
+            <InjectionItem path ="" type = "SIGNAL" array_range="" />
 
 
             <ObservationScope unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(1)/core/u0/iu0"
-                              node_filter = "r.*"
-                              sampling_options = "-notrigger"
-                              scope_filter = "-internal"
-                              group = "INTERNALS"
-                              label_prefix = "core0_"            />
+                              node_prefix = "r."
+                              label_prefix = "core0.r."
+                              sampling_options = ""
+                              location = "" />
 
             <ObservationItem
                 path= "/testbench/cpu/cpu/core0/mem0/mig_gen/sim_ram_gen/axi_mem/rb/p/logpages(0).data"
                 array_range = "928:967"
-                label = "Core0.Res"
-                sampling_options = ""
-                group = "OUTPUTS"
+                location = "OUTPUTS"
+                label = "C1.Res"
             />
 
 
 
-            <faultload
+            <fault_model
                 model = "BitFlip"
                 target_logic = "SIGNAL"
                 multiplicity = "1"
@@ -67,20 +64,24 @@
                 injection_time_end = "1.0"
                 increment_time_step = "0.0"
                 experiments_per_target = "1"
-                sample_size = "100"
+                sample_size = "40"
                 rand_seed	= "1"
             />
 
 
 
+
+
+
             <Analyzer
-                mode = "MAV"
-                time_window = ""
-                max_time_violation = "0"
+                unpack_from_dir = ""
+                detect_failures_at_finish_time = "on"
                 error_flag_signal = ""
-                error_flag_active_value = "1"
+                error_flag_active_value = ""
                 trap_type_signal = ""
-                threads = "4"
+                neg_timegap = "0"
+                pos_timegap = "1000"
+                check_duration_factor = "0"
                 >
 
                 <join_groups>

@@ -84,7 +84,7 @@ def execute_injection_scripts_sge(config, toolconf, conf):
                 taskproc = tasksize
             print "TASKPROC = " + str(taskproc)
             shell_script_list = []
-            if config.injector.checkpont_mode == CheckpointModes.ColdRestore:
+            if config.injector.checkpoint_mode == CheckpointModes.ColdRestore:
                 checkpoint_set = []
                 for ind in range(0, taskproc, 1):
                     shell_script_list.append("")
@@ -103,7 +103,7 @@ def execute_injection_scripts_sge(config, toolconf, conf):
                             # sim_script += " > $TMP/log_{0}".format(checked_list[ind].replace('.do', '.log'))
                             # sim_script += "\nrm " + './idatasets/WLFSET_{0}.wlf'.format(re.findall('[0-9]+',checked_list[ind])[0])
                             shell_script_list[ind - ibase] += sim_script
-            elif config.injector.checkpont_mode == CheckpointModes.WarmRestore:
+            elif config.injector.checkpoint_mode == CheckpointModes.WarmRestore:
                 checkpoint_dict = []
                 for ind in range(0, taskproc, 1):
                     shell_script_list.append("")
@@ -235,15 +235,10 @@ def execute_injection_scripts_sge(config, toolconf, conf):
 
 
 def execute_injection_scripts_Multicore(config, toolconf, conf):
-    fscriptlist = []
     print "\n\nStarting fault injection: " + conf.work_dir
     os.chdir(os.path.join(conf.work_dir, toolconf.script_dir))
-    dolist = glob.glob('*.do')
-    for i in dolist:
-        if i.startswith('fault_') or i.startswith('areference_'):
-            fscriptlist.append(i)
-    fscriptlist.sort()
-    print "Init scripts: " + str(len(fscriptlist))
+    fscriptlist = sorted([i for i in glob.glob('*.do') if i.startswith('fault_') or i.startswith('areference_')])
+    print "Init scripts: {0}".format(len(fscriptlist))
     checked_list = []
     for s in fscriptlist:
         with open(s, 'r') as ds:
@@ -253,44 +248,30 @@ def execute_injection_scripts_Multicore(config, toolconf, conf):
     print("Scripts to Execute: {0}".format(len(checked_list)))
 
     tasksize = len(checked_list)
-    if conf.stop_at > 0 and conf.stop_at < tasksize:
-        tasksize = conf.stop_at
     os.chdir(conf.work_dir)
     create_restricted_file('vsim.wlf')
     proclist = []
     time_start = datetime.datetime.now().replace(microsecond=0)
 
     TME_Start = time.time()
-    if config.injector.checkpont_mode == CheckpointModes.ColdRestore:
-        for ind in range(conf.start_from, tasksize, 1):
+    if config.SBFI.checkpoint_mode == CheckpointModes.ColdRestore:
+        for ind in range(0, tasksize, 1):
             checkpoint = re.findall("checkpoint_[0-9]+", checked_list[ind])[0] + ".sim"
-            sim_script = "vsim -c -restore " + toolconf.checkpoint_dir + "/" + checkpoint
-            sim_script += " -do \"do " + toolconf.script_dir + "/" + checked_list[ind] + "\""
-            sim_script += " > " + toolconf.log_dir + "/log_" + str("%06d" % ind) + ".log"
-            while get_active_proc_number(proclist) >= config.injector.maxproc:
+            sim_script = "vsim -c -restore {0}/{1} -do \"do {2}/{3}\" > {4}/log_{5:06d}.log".format(toolconf.checkpoint_dir, checkpoint,
+                                                                                                    toolconf.script_dir, checked_list[ind],
+                                                                                                    toolconf.log_dir, ind)
+            while get_active_proc_number(proclist) >= config.maxproc:
                 time.sleep(0.2)
             proc = subprocess.Popen(sim_script, shell=True)
             proclist.append(proc)
             console_message("Progress: {0:5d}/{1:5d}, Running proc: {2:5d}, Remaining time: {3:.2f} minutes".format(
                 ind, tasksize, get_active_proc_number(proclist),
                 (float(time.time()) - float(TME_Start)) * (float(tasksize - ind) / float(ind + 1)) / float(60)), ConsoleColors.Green, True)
-            wlflist = glob.glob('wlft*')
-            otd_wlf_cnt = 0
-            otd_wlf_mod_time_min = 1000000
-            for w in wlflist:
-                tmodif = how_old_file(w)
-                if tmodif > config.injector.wlf_remove_time:
-                    try:
-                        os.remove(w)
-                        otd_wlf_cnt += 1
-                        if tmodif < otd_wlf_mod_time_min: otd_wlf_mod_time_min = tmodif
-                    except Exception as e:
-                        print "Exception [" + str(e) + "] on file remove: " + w
 
-    elif config.injector.checkpont_mode == CheckpointModes.WarmRestore:
+    elif config.SBFI.checkpoint_mode == CheckpointModes.WarmRestore:
         shell_script_list = []
         checkpoint_dict = []
-        taskproc = config.injector.maxproc
+        taskproc = config.maxproc
         for ind in range(0, taskproc, 1):
             shell_script_list.append("")
             checkpoint_dict.append(dict())
@@ -308,27 +289,29 @@ def execute_injection_scripts_Multicore(config, toolconf, conf):
             for cp, lst in checkpoint_dict[ind].iteritems():
                 globaldofile = toolconf.script_dir + '/sim_' + str(ind) + '_' + cp.replace('.sim', '.do')
                 with open(globaldofile, 'w') as dofile:
-                    dofile.write("set WLFFilename {0}/WLFSET_{1}.wlf\nset WLFDeleteOnQuit 1".format(toolconf.dataset_dir, ind))
+                    dofile.write("catch {{ set WLFFilename {0}/WLFSET_{1}.wlf}}\nset WLFDeleteOnQuit 1".format(toolconf.dataset_dir, ind))
                     dofile.write("\ntranscript file {0}/transcript_{1}.txt".format(toolconf.script_dir, ind))
-                    dofile.write("\ndo " + toolconf.list_init_file)
+                    dofile.write("\ndo {0}".format(toolconf.list_init_file))
                     dofile.write("\ncheckpoint {0}/cpoint_{1}.sim".format(toolconf.dataset_dir, str(ind)))
                     for l in lst:
                         dofile.write("\n\nrestore {0}/cpoint_{1}.sim".format(toolconf.dataset_dir, str(ind)))
                         dofile.write("\nif { [catch {nowhen *} err] } {}")
-                        dofile.write("\ndo " + toolconf.script_dir + "/" + l)
+                        dofile.write("\ndo {0}/{1}".format(toolconf.script_dir, l))
                     dofile.write("\nquit\n")
-                shell_script_list[ind] += "\nvsim -c -restore {0}/{1} -do \"do {2}\" > {3}/log_{4}.log".format(toolconf.checkpoint_dir, cp, globaldofile, toolconf.log_dir, str(ind))
+                shell_script_list[ind] += "\nvsim -c -restore {0}/{1} -do \"do {2}\" > {3}/log_{4:d}.log".format(toolconf.checkpoint_dir, cp, globaldofile, toolconf.log_dir, ind)
         for ind in range(len(shell_script_list)):
             script_file = "{0}/shfile_{1}.sh".format(toolconf.script_dir, str(ind))
             robust_file_write(script_file, shell_script_list[ind][1:])
-            if not script_file.startswith('./'): script_file = './' + script_file
-            proc = subprocess.Popen(script_file, shell=True)
+            #if not script_file.startswith('./'): script_file = './{0}'.format(script_file)
+            proc = subprocess.Popen('./{0}'.format(script_file), shell=True)
             proclist.append(proc)
-            print 'Runned: ' + script_file
+            print 'Simulation started: ' + script_file
     while get_active_proc_number(proclist) > 0:
         tracenum = len(os.listdir(os.path.join(conf.work_dir, toolconf.result_dir))) - 2
         try:
-            console_message("Running Processes: {0}, Traces stored: {1}/{2}, Remaining time: {3:.2f} minutes\r".format(len(get_active_proc_indexes(proclist)), tracenum, tasksize, (float(time.time()) - float(TME_Start)) * (float(tasksize - tracenum) / float(tracenum + 1)) / float(60)), ConsoleColors.Green, True)
+            console_message("Active simulations: {0}, Traces stored: {1}/{2}, Remaining time: {3:.2f} minutes\r".format(
+                len(get_active_proc_indexes(proclist)), tracenum, tasksize,
+                (float(time.time()) - float(TME_Start)) * (float(tasksize - tracenum) / float(tracenum + 1)) / float(60)), ConsoleColors.Green, True)
         except:
             pass
         time.sleep(5)

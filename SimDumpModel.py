@@ -275,17 +275,21 @@ class simDump:
         hdump = open(fname, "w")
         hdump.write(content)
         hdump.close()
-        
+
     def get_vector_by_time(self, itime, idelta=None):
-        if idelta != None:
+        if idelta is not None:
             for v in self.vectors:
-                if((v.time == itime) and (v.delta == idelta)):
-                    return(v)
+                if (v.time == itime) and (v.delta == idelta):
+                    return v
         else:
             for v in self.vectors:
-                if (v.time == itime):
-                    return(v)
-        return(None)
+                if v.time == itime:
+                    return v
+        #if nothing found at itime, return the vector just previous to that time
+        for i in range(len(self.vectors)-1, -1, -1):
+            if v.time < itime:
+                return self.vectors[i]
+        return None
     
     def compare_to_html(self, refdump, fname):
         nrows = len(self.vectors)

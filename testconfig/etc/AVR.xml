@@ -6,7 +6,7 @@
         SBFI = "off"
 		FFI  = "on"
         DecisionSupport = "on"
-        report_dir = "#RUNDIR/../../HTWEB/Bench/AVR/SBFI_stuck"        
+        report_dir = "#RUNDIR/../../HTWEB/DEMO/AVRTMR"        
         dbfile = "AVR.db"  >
         
 
@@ -95,8 +95,8 @@
                     <Constraint
                         placeholder = "#CONSTRAINT"
                         goal = "max"
-                        start_value = "45"
-                        adjust_step = "5"
+                        start_value = "24"
+                        adjust_step = "2"
                         return_to_phase = "Synthesis"
                         check_handler = "VivadoCheckTimingSatisfied" />
                 </phase>
@@ -368,32 +368,47 @@
 			   2XX: using external fault list
 		injection_time = 0-random, > 0 - inject after that number of clock cycles, e.g. ==1 - inject at the workload start, ==10 - inject after 9 clock cycles	   
 	-->
+		
 		<FFI
-            injector_phase 		= "on"
-            reportbuilder_phase = "on" 
-
-			dut_scope 						= ""			
-			target_logic 					= "TYPE0"
-			custom_lut_mask 				= 'on' 
-			profiling 						= 'off'
-
-
-			mode 							= "101"
-			error_margin_goal 				= "0.1"
+            injector_phase 		 = "on"
+            reportbuilder_phase  = "on" 
+            custom_lut_mask 	 = "on" 
+			profiling 			 = "off"
+            detect_latent_errors = "on"            
+            update_bitstream     = "on"
+            device_part          = "xc7z020"
+            
+			dut_scope 						= "cpu_core_1"
+			pblock_coodrinates              = "X21Y1:X29Y44"
+			target_logic 					= "TYPE0"            
 			fault_multiplicity				= "1"
-			injection_time 					= "1"
+			injection_time 					= "0"
+			mode 							= "101"
+			error_margin_goal 				= "2.0"
+            sample_size_goal                = "5000"
+            workload_duration               = "14000"
+
+            
 			
 			post_injection_recovery_nodes 	= "['prog_mem_even_inst', 'prog_mem_odd_inst']"			
 			hdf_path 						= "./AVR_ZC.sdk/ZynqEnv_wrapper_hw_platform_0/system.hdf"
 			init_tcl_path 					= "./AVR_ZC.sdk/ZynqEnv_wrapper_hw_platform_0/ps7_init.tcl"
 			injectorapp_path 				= "./AVR_ZC.sdk/InjectorApp/Debug/InjectorApp.elf"
 			memory_buffer_address 			= "0x3E000000"
-			platformconf 					= "[{'TargetId':'2', 'PortID':'COM13'}, {'TargetId':'6', 'PortID':'COM3'}]"
+			platformconf 					= "[{'TargetId':'2', 'PortID':'COM3'}]"
+            log_timeout                     = "50"
+            extra_xsct_commands = "
+                dow -data C:/Projects/TESIS/AVR/AVR_TMR/Bitstream_pblock_cpu_core_1_partial.bin 0x3EBC0000;
+                dow -data C:/Projects/TESIS/AVR/AVR_TMR/Bitstream_pblock_cpu_core_2_partial.bin 0x3EC20000;
+                dow -data C:/Projects/TESIS/AVR/AVR_TMR/Bitstream_pblock_cpu_core_3_partial.bin 0x3EC80000;"
+
 		>
 		
 		
 		
-		</FFI>
+		</FFI>        
+        
+
 	
 	
     
@@ -416,15 +431,15 @@
             <Generic
                 design_type = "RTL"
                 library_specification = "./FaultDictionaries/Xilinx_Unisim_Ver.xml"
-                compile_script = "./rtl_compile.do"
-                run_script = "./rtl_run.do"	
+                compile_script = "./sim_compile.do"
+                run_script = "./sim_run.do"	
 				trace_script = ""
                 std_clk_period = "20.0"
                 std_rst_delay = "0"
                 std_init_time =  "0"
                 std_workload_time = "410000"
 				std_trace_time =     "0"
-                finish_flag = "/TbTop/FinishFlag"
+                finish_flag = ""
             />
             
 
@@ -440,14 +455,15 @@
                     observe_outputs = "notrigger"                
                     build_injection_list   = "on"
                     build_dump_init_script = "on"		
-                    match_pattern_file = ""			
+                    match_pattern_file = "../../Projects/TESIS/AVR/AVRDefault/code/IMPL_SimNodes.xml"	
+                    trim_path = "/ZynqEnv_wrapper/ZynqEnv_i/cpu_core_0/U0/"                    
                 >
                 
                     
             <!-- unit path: withing the design scope-->            
-                <InjectionScope node_prefix = ""   unit_path = "TbTop/cpu_core_0/" />
+                <InjectionScope node_prefix = ""   unit_path = "/TbTop/cpu_core_0" />
 
-                <ObservationScope node_prefix = "" unit_path = "/TbTop/cpu_core_0/" label_prefix = "" sampling_options = "-notrigger"/>
+                <ObservationScope node_prefix = "" unit_path = "/TbTop/cpu_core_0" label_prefix = "" sampling_options = "-notrigger"/>
 
                     
                     <!-- location: INTERNALS / OUTPUTS -->            
@@ -457,12 +473,13 @@
             </Initializer>
 
 
+
             <!-- ColdRestore/WarmRestore - cold checkpoint restore /    -->
             <Injector
                     checkpont_mode = "ColdRestore"
-                    maxproc = "4"
+                    maxproc = "10"
                     workload_split_factor = "20"			
-                    campaign_label = "AVR"		
+                    campaign_label = "SELENE"		
                     cleanup_folders="off"
                     compile_project = "off"
                     create_scripts="off"
@@ -476,7 +493,7 @@
                     sim_time_checkpoints = "16:00:00"
                     sim_time_injections =  "20:00:00"
                     work_label = "simpy_"
-                    wlf_remove_time = "500"	
+                    wlf_remove_time = "100"	
                     runtime_terminate = "off"
                     run_cleanup = "on"
                     monitoring_mode = "on"
@@ -488,40 +505,31 @@
                 
 
                 <!-- # for current value, $SCALE to multiply by scaling factor for given configuration -->                
-                <fault_model
-                    model = "stuck_at"
-                    target_logic = "SIGNAL"
-                    faults_per_target = "1"
-                    time_mode = "ClockCycle"
-                    injection_time_start = "0.0"            
-                    injection_time_end = "0.0"
-                    increment_time_step = "0.0" 
-                    experiments_per_target = "1"
-                    forced_value = "1"
-                    sample_size = "0"
-                    rand_seed	= "2"					
-                />	
+
+
+                
 
                 <fault_model
-                    model = "stuck_at"
+                    model = "BitFlip"
                     target_logic = "SIGNAL"
-                    faults_per_target = "1"
-                    time_mode = "ClockCycle"
+                    multiplicity = "1"
+                    time_mode = "Relative"
                     injection_time_start = "0.0"            
-                    injection_time_end = "0.0"
+                    injection_time_end = "1.0"
                     increment_time_step = "0.0" 
                     experiments_per_target = "1"
-                    forced_value = "0"
-                    sample_size = "0"
-                    rand_seed	= "2"					
-                />	
-	
-        
+                    sample_size = "1"
+                    rand_seed	= "1000"					
+                />                
+                                
+
+            
+                
             </Injector>
                 
 
             <Analyzer
-                report_dir = "#RUNDIR/../../HTWEB/Bench/AVR/SBFI"
+                report_dir = "#RUNDIR/../HTWEB/DEMO/AVRTMR"
                 unpack_from_dir = ""        
                 detect_failures_at_finish_time = "on"
                 error_flag_signal = ""
@@ -566,14 +574,15 @@
 	
 	
 		<ModelConfig
-			work_dir = "../../Projects/TESIS/AVR/AVR_TMR_v2"
-			label = "AVR_Default"
+			work_dir = "../../Projects/TESIS/AVR/AVR_TMR"
+			label = "AVR_TMR"
 			compile_options = ""
 			run_options = ""
-			clk_period = "20.0"
+			clk_period = "50.0"
 			start_from = ""
 			stop_at = ""
 		/>
+			
 			
 			
 			
@@ -616,10 +625,12 @@
                 <variable goal = "min" name = "POWER_PL" 	weight = "0.10"/>                                              
                 <variable goal = "min" name = "FIT" 	    weight = "0.10"/>        
             </Scenario>        
-        </MCDM>
+        </MCDM>        
+        
+        
+        
         
     </DecisionSupport>
-
     
     </DAVOS>
     
