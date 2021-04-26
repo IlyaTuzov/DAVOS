@@ -23,7 +23,7 @@
             mode = clean / continue
         -->
         <SBFI
-            clean_run = "on"
+            clean_run = "off"
             checkpoint_mode = "ColdRestore"
             initializer = "on"
             profiler = "off"
@@ -65,7 +65,6 @@
                 time_mode = "Relative"
                 injection_time_start = "0.0"
                 injection_time_end = "1.0"
-                increment_time_step = "0.0"
                 experiments_per_target = "1"
                 sample_size = "100"
                 rand_seed	= "1"

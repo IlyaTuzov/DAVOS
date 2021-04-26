@@ -109,7 +109,7 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
             InjDesc.Status = 'S'  # Simulted and dumpfile exists
             inj_dump.join_output_columns(datamodel.reference.JnGrLst.copy())
             # ensure that time window starts after fault injection time
-            tw = (config.SBFI.analyzer.time_window[0] if config.SBFI.analyzer.time_window[0] >= InjDesc.InjectionTime else InjDesc.InjectionTime, config.SBFI.analyzer.time_window[1])
+            tw = (basetime + config.SBFI.analyzer.time_window[0] if config.SBFI.analyzer.time_window[0] >= InjDesc.InjectionTime else basetime + InjDesc.InjectionTime, basetime + config.SBFI.analyzer.time_window[1])
             out_misnum, out_mistime = check_outputs(datamodel.reference.reference_dump, inj_dump, tw, config.SBFI.analyzer.mode, config.SBFI.analyzer.max_time_violation)
 
             err_raised = False
