@@ -48,3 +48,8 @@ For more details refer to user manual.
 ## References
 Dataset illustrating the basic application scenarios:   https://doi.org/10.5281/zenodo.891316
 
+
+## Acknowledgement
+
+This work has been performed under the support of the "Programa de Ayudas de Investigación y Desarrollo" (PAID) de la Universitat Politécnica de Valéncia.
+Adaptation to the NOEL-V RISCV platform is currently supported by the H2020 SELENE project (www.selene-project.eu). 
