@@ -79,7 +79,7 @@
 
 
 	
-<fdesc 	model = "stuck_at" 
+<fdesc 	model = "StuckAt" 
 		macrocells = "SIGNAL" >
 	<injection_rule
 		code_pattern = "force -freeze #PATH #FORCEDVALUE 0" >

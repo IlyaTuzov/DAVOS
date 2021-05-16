@@ -824,11 +824,12 @@ class InjectorHostManager:
                     #self.logfile.write('\n'+line)
                     if int( time.time() - last_msg_time ) > self.logtimeout:
                         self.logfile.write('Valid Message Timeout\n\tRestaring from next intjection point')
-                        hang_move_delta = 10
+                        hang_move_delta = 1
                         self.jdesc.StartIndex += hang_move_delta
                         self.jdesc.ExperimentsCompleted = self.jdesc.StartIndex
-                        #self.jdesc.Failures += hang_move_delta
+                        self.jdesc.Signaled += hang_move_delta
                         if self.jdesc.sample_size_goal > 0: self.jdesc.sample_size_goal += hang_move_delta
+                        self.jdesc.UpdateBitstream = 0
                         self.export_JobDescriptor()
                         self.launch_injector_app()  
                         last_msg_time = time.time()                     
@@ -890,12 +891,13 @@ class InjectorHostManager:
                                 if self.verbosity > 0: sys.stdout.write(stat+'\n'); sys.stdout.flush()
 
                 else:
-                    self.logfile.write('Timeout - hang\n\tRestaring from next intjection point')
-                    hang_move_delta = 10
+                    self.logfile.write('Timeout - hang\n\tRestarting from next injection point')
+                    hang_move_delta = 1
                     self.jdesc.StartIndex += hang_move_delta
                     self.jdesc.ExperimentsCompleted = self.jdesc.StartIndex
-                    #self.jdesc.Failures += hang_move_delta
+                    self.jdesc.Signaled += hang_move_delta
                     if self.jdesc.sample_size_goal > 0: self.jdesc.sample_size_goal += hang_move_delta
+                    self.jdesc.UpdateBitstream = 0
                     self.export_JobDescriptor()
                     self.launch_injector_app()                           
         self.serialport.close()

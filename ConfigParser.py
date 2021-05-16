@@ -65,45 +65,7 @@ class ToolOptions:
 
 
 
-#1.1 HDL Model Configuration parameters: generics
-class HDLModelConfigGeneric:
-    def __init__(self, xnode):
-        if xnode is None:
-            self.design_type = ""
-            self.library_specification = ""
-            self.compile_script = ""
-            self.run_script = ""
-            self.trace_script = ""
-            self.std_clk_period = float(0)
-            self.std_rst_delay = int(0)
-            self.std_init_time = int(0)
-            self.std_workload_time = int(0)
-            self.std_trace_time = int(0)  
-            self.finish_flag = ""
-            self.clk_signal = ""
-        else:
-            self.build_from_xml(xnode)
-            
-    def build_from_xml(self, xnode):
-        self.design_type = xnode.get('design_type').lower()
-        self.library_specification = xnode.get('library_specification')
-        self.compile_script = xnode.get('compile_script')
-        self.run_script = xnode.get('run_script')
-        self.trace_script = xnode.get('trace_script')
-        self.std_clk_period = float(xnode.get('std_clk_period'))
-        self.std_rst_delay = int(xnode.get('std_rst_delay', '0'))
-        self.std_init_time = int(xnode.get('std_init_time', '0'))
-        self.std_workload_time = int(xnode.get('std_workload_time'))    
-        self.std_trace_time = int(xnode.get('std_workload_time', '0'))    
-        self.finish_flag = xnode.get('finish_flag', '')        
-        self.clk_signal  = xnode.get('clk_signal', '')        
-        return(0)
 
-    def to_string(self, msg):
-        res = msg
-        for key, val in self.__dict__.items():
-            res += str("\n\t%s = %s" % (key, str(val)))
-        return(res)
  
 
 
@@ -111,119 +73,68 @@ class HDLModelConfigGeneric:
 class ObservationScope:
     def __init__(self, xnode):
         if xnode is None:
-            self.node_prefix = ""
+            self.node_filter = ""
             self.unit_path = ""
             self.label_prefix = ""
             self.sampling_options = ""
+            self.scope_filter = ""
+            self.group = ""
+            self.domain = "Root"
         else:
             self.build_from_xml(xnode)
 
     def build_from_xml(self, xnode):
-            self.node_prefix = xnode.get('node_prefix')
-            self.unit_path = xnode.get('unit_path')
-            self.label_prefix = xnode.get('label_prefix')
-            self.sampling_options = xnode.get('sampling_options')
+        self.unit_path = xnode.get('unit_path')
+        self.node_filter = xnode.get('node_filter')
+        self.label_prefix = xnode.get('label_prefix')
+        self.sampling_options = xnode.get('sampling_options','')
+        self.scope_filter = xnode.get('scope_filter', '')
+        self.group = xnode.get('group', 'internals').lower()
+        self.domain = xnode.get('domain', 'Root')
 
 
 class InjectionScope:
     def __init__(self, xnode):
         if xnode is None:
-            self.node_prefix = ""
             self.unit_path = ""
+            self.node_filter = ""
+            self.scope_filter = ""
         else:
             self.build_from_xml(xnode)
 
     def build_from_xml(self, xnode):
-            self.node_prefix = xnode.get('node_prefix')
-            self.unit_path = xnode.get('unit_path')
+        self.unit_path = xnode.get('unit_path')
+        self.node_filter = xnode.get('node_filter', '')
+        self.scope_filter = xnode.get('scope_filter', '')
 
 
-class ObservationNodeConf(object):
+
+class ModelItem(object):
     def __init__(self, xnode):
         if xnode is None:
-            self.location = ""
+            self.path = ""
+            self.array_items = []
+            self.group = ""
             self.options = ""
             self.label = ""
-            self.path = ""
-            self.comment = ""
+            self.type = ""
+            self.sampling_options = ""
+            self.domain = "Root"
         else:
-            self.location = xnode.get('location')
+            self.path = xnode.get('path', '')
+            match_desc = re.search('([0-9]+):([0-9]+)', xnode.get('array_range', ''))
+            self.array_items = [] if match_desc is None else range(int(match_desc.group(1)), int(match_desc.group(2))+1)
+            self.group = xnode.get('group', 'internals').lower()
             self.options = xnode.get('options','')
-            self.label = xnode.get('label')
-            self.path = xnode.get('path','')
-            self.comment = xnode.get('comment','')
+            self.label = xnode.get('label','')
+            self.type = xnode.get('type', 'SIGNAL')
+            self.sampling_options = xnode.get('sampling_options', '')
+            self.domain = xnode.get('domain', 'Root')
 
 
 
 
-class VirtualSignalConf(ObservationNodeConf):
-    def __init__(self, xnode):
-        super(VirtualSignalConf, self).__init__(xnode)
-        self.env = ""
-        self.expression = ""
-        if xnode != None:
-            self.build_from_xml(xnode)
 
-    def build_from_xml(self, xnode):
-        self.env = xnode.get('env', '')
-        self.expression = xnode.get('expression')
-
-
-class MemarrayConf(ObservationNodeConf):
-    def __init__(self, xnode):
-        super(MemarrayConf, self).__init__(xnode)
-        self.low_address = int(0)
-        self.high_address = int(0)
-        if xnode != None:
-            self.build_from_xml(xnode)
-
-    def build_from_xml(self, xnode):
-        self.low_address = int(xnode.get('low_address', '0'))
-        self.high_address = int(xnode.get('high_address', '0'))
-
-
-class GenericObservationNodes:
-    def __init__(self, xnode):
-        self.signals = []
-        self.virtual_signals = []
-        self.memarrays = []
-        if xnode != None:
-            self.build_from_xml(xnode)
-
-    def build_from_xml(self, xnode):
-        for i in xnode.findall('signal'):
-            self.signals.append(ObservationNodeConf(i))
-        for i in xnode.findall('virtual_signal'):
-            self.virtual_signals.append(VirtualSignalConf(i))
-        for i in xnode.findall('memarray'):
-            self.memarrays.append(MemarrayConf(i))
-
-
-class SBFIConfigInitializer:
-    def __init__(self, xnode):
-        self.virtual_register_reconstruction = False
-        self.observe_outputs = ""
-        self.build_injection_list = False
-        self.build_dump_init_script = False
-        self.match_pattern_file = ""
-        self.injection_scopes = [] #InjectionScope
-        self.observation_scopes = [] #ObservationScope
-        self.generic_observation_nodes = None
-        if xnode != None:
-            self.build_from_xml(xnode)
-            
-    def build_from_xml(self, xnode):
-        self.virtual_register_reconstruction = True if xnode.get('virtual_register_reconstruction').lower() == "on" else False
-        self.observe_outputs = xnode.get('observe_outputs')
-        self.build_injection_list = True if  xnode.get('build_injection_list', '') == 'on' else False
-        self.build_dump_init_script = True if  xnode.get('build_dump_init_script', '') == 'on' else False
-        self.match_pattern_file = xnode.get('match_pattern_file', '')
-        self.trim_path = xnode.get('trim_path', '')
-        for i in xnode.findall('InjectionScope'):
-            self.injection_scopes.append(InjectionScope(i))   
-        for i in xnode.findall('ObservationScope'):
-            self.observation_scopes.append(ObservationScope(i))   
-        self.generic_observation_nodes = GenericObservationNodes(xnode.findall('GenericObservationNodes')[0])
 
 
 #1.3 Configuration parameters: used by injector (simulation) module
@@ -257,6 +168,7 @@ class FaultModelConfig:
             self.modifier = ''
             self.trigger_expression = ''
             self.simulataneous_faults = False
+            self.CCF = None
         else:
             self.build_from_xml(xnode)
                  
@@ -284,6 +196,11 @@ class FaultModelConfig:
         self.inactivity_time_end = float(xnode.get('inactivity_time_end', '0'))
         self.multiplicity = int(xnode.get('multiplicity', '1'))
         self.simulataneous_faults = True if int(xnode.get('simultaneous_faults','')=='yes') else False
+        self.CCF = re.findall('{(.*?)}', xnode.get('CCF',''))
+
+
+
+
         return(0)
 
 class SBFIConfigInjector:
@@ -292,7 +209,6 @@ class SBFIConfigInjector:
         if xnode is None:
             self.checkpont_mode = CheckpointModes.ColdRestore
             self.reference_check_pattern = ''
-            self.maxproc = int(1)
             self.workload_split_factor = int(0)            
             self.campaign_label = "AFIT_"
             self.compile_project = False
@@ -334,7 +250,7 @@ class SBFIConfigInjector:
         self.wlf_remove_time = int(xnode.get('wlf_remove_time'))
         self.run_cleanup = xnode.get('run_cleanup')
         self.monitoring_mode = xnode.get('monitoring_mode', '')
-        for i in xnode.findall('fault_model'):
+        for i in xnode.findall('faultload'):
             self.fault_model.append(FaultModelConfig(i))
         return(0) 
 
@@ -381,41 +297,52 @@ class JoinGroupList:
             res.group_list.append(c.copy())
         return(res)
 
+class RenameItem:
+    def __init__(self, ifrom="", ito=""):
+        self.ifrom = ifrom
+        self.ito = ito
+    def to_string(self):
+        return('From: ' + self.ifrom + ", To: " + self.ito)
+
+
+class TraceCheckModes:
+    MLV, MAV = range(2)
+
+
+
 class SBFIConfigAnalyzer:
-   def __init__(self, xnode):
-       self.join_group_list = JoinGroupList()
-       self.rename_list = []
-       if xnode is None:
-           self.unpack_from_dir = ""
-           self.detect_failures_at_finish_time = True
-           self.error_flag_signal = ""
-           self.error_flag_active_value = ""
-           self.trap_type_signal = ""
-           self.neg_timegap = float(0)
-           self.pos_timegap = float(0)
-           self.check_duration_factor = float(0)
-           self.report_dir = ''
-           self.threads = int(1)
-       else:
+    def __init__(self, xnode):
+        self.join_group_list = JoinGroupList()
+        self.rename_list = []
+        if xnode is None:
+            self.error_flag_signal = ""
+            self.error_flag_active_value = ""
+            self.trap_type_signal = ""
+            self.mode = TraceCheckModes.MAV
+            self.time_window = None
+            self.max_time_violation = int(0)
+            self.threads = int(1)
+            self.domain_mode = ""
+        else:
             self.build_from_xml(xnode)
+
            
-   def build_from_xml(self, xnode):
-       self.unpack_from_dir = xnode.get('unpack_from_dir','')
-       self.detect_failures_at_finish_time = True if xnode.get('detect_failures_at_finish_time','').lower() == "on" else False
-       self.error_flag_signal = xnode.get('error_flag_signal','')
-       self.error_flag_active_value = xnode.get('error_flag_active_value','')
-       self.trap_type_signal = xnode.get('trap_type_signal','')
-       self.neg_timegap = float(xnode.get('neg_timegap','0'))
-       self.pos_timegap = float(xnode.get('pos_timegap','0'))
-       self.check_duration_factor = float(xnode.get('check_duration_factor',''))
-       self.report_dir = xnode.get('report_dir','')
-       self.threads = int(xnode.get('threads','1'))
-       tag = xnode.findall('join_groups')
-       if len(tag) > 0: self.join_group_list.init_from_tag(tag[0])
-       tag = xnode.findall('rename_list')
-       if len(tag) > 0:
-           for c in tag[0].findall('item'):
-               self.rename_list.append(RenameItem(c.get('from'), c.get('to')))
+    def build_from_xml(self, xnode):
+        self.error_flag_signal = xnode.get('error_flag_signal','')
+        self.error_flag_active_value = xnode.get('error_flag_active_value','')
+        self.trap_type_signal = xnode.get('trap_type_signal','')
+        self.mode = TraceCheckModes.MLV if xnode.get('mode','').upper()=='MLV' else TraceCheckModes.MAV
+        self.domain_mode = xnode.get('domain_mode','').upper()
+        match_desc = re.search('([0-9]+):([0-9]+)', xnode.get('time_window', ''))
+        self.time_window = None if match_desc is None else (int(match_desc.group(1)), int(match_desc.group(2)))
+        self.max_time_violation = int(xnode.get('max_time_violation','0'))
+        self.threads = int(xnode.get('threads','1'))
+        tag = xnode.findall('join_groups')
+        if len(tag) > 0: self.join_group_list.init_from_tag(tag[0])
+        tag = xnode.findall('rename_list')
+        if len(tag) > 0:
+            for c in tag[0].findall('item'):
+                self.rename_list.append(RenameItem(c.get('from'), c.get('to')))
 
 
 #1.5 Configuration Items for HDL models under test (annex for genconfig)
@@ -423,30 +350,23 @@ class ParConfig:
     def __init__(self, xnode):
         self.report_dir = ""
         if xnode is None:
-            self.relative_path = ""
             self.work_dir = ""
+            self.checkpoint = ""
+            self.design_type = ""
             self.label = ""
-            self.compile_options = ""
-            self.run_options = ""
             self.clk_period = float(0)
-            self.start_from = int(0)
-            self.stop_at = int(0)
-            self.report_label = ""
+            self.workload_time = int(0)
         else:
             self.build_from_xml(xnode)
 
     def build_from_xml(self, xnode):
-        self.relative_path = xnode.get('relative_path','on')            
-        self.work_dir = xnode.get('work_dir')     
+        self.work_dir = xnode.get('work_dir')
+        self.checkpoint = xnode.get('checkpoint', '')
+        self.design_type = xnode.get('design_type', 'RTL').lower()
         self.label = xnode.get('label')
-        self.compile_options = xnode.get('compile_options', '')
-        self.run_options = xnode.get('run_options', '')
         self.clk_period = float(xnode.get('clk_period'))
-        buf = xnode.get('start_from', '')
-        self.start_from = 0 if buf=='' else int(buf)
-        buf = xnode.get('stop_at', '')        
-        self.stop_at = 0 if buf=='' else int(buf)
-        self.report_label = self.label
+        self.workload_time = int(xnode.get('simulation_time'))
+
         
 
 class Platforms:
@@ -455,50 +375,43 @@ class Platforms:
 #1.6 Root SBFI Configuration Object
 class SBFIConfiguration:
     def __init__(self, xnode):
-        self.call_dir = os.getcwd()
-        self.file = ''
-        self.ConfigFile = ''
-        self.platform = Platforms.Multicore
-        self.report_dir = ''
-        self.dbfile = ''
+        self.clean_run = False
+        self.checkpoint_mode = CheckpointModes.ColdRestore
         self.initializer_phase = False
         self.profiler_phase = False
         self.injector_phase = False
         self.reportbuilder_phase = False
-        self.genconf = None
-        self.parconf = []
-        self.initializer = None
-        self.injector = None
+        self.time_quota = '20:00:00'
+        self.fault_dictionary = ''
+        self.injection_scopes = []
+        self.observation_scopes = []
+        self.injection_items = []
+        self.observation_items = []
+        self.fault_model = []
         self.analyzer = None
-        self.reportbuilder = None
+        self.workload_split_factor = 20
         if xnode != None:
             self.build_from_xml(xnode)
-        if self.initializer.match_pattern_file.find('#RUNDIR') >= 0:
-            self.initializer.match_pattern_file = os.path.normpath(self.initializer.match_pattern_file.replace('#RUNDIR', self.call_dir))
-        self.genconf.library_specification = os.path.join(self.call_dir, self.genconf.library_specification)
-
-                
-    def get_DBfilepath(self, backup_path = False):
-        if not backup_path:
-            return( os.path.normpath(os.path.join(self.report_dir, self.dbfile)) )
-        else:
-            return( os.path.normpath(os.path.join(self.report_dir, self.dbfile.replace('.db', '_Backup.db')) )  )           
-        
-
 
     def build_from_xml(self, xnode):
+        self.clean_run = True if xnode.get('clean_run','').lower() == 'on' else False
+        self.checkpoint_mode = CheckpointModes.WarmRestore if xnode.get('checkpoint_mode', '').lower() == 'warmrestore' else CheckpointModes.ColdRestore
         self.initializer_phase = True if xnode.get('initializer_phase', '') == 'on' else False
         self.profiler_phase = True if xnode.get('profiler_phase', '') == 'on' else False
         self.injector_phase = True if xnode.get('injector_phase', '') == 'on' else False
         self.reportbuilder_phase = True if xnode.get('reportbuilder_phase', '') == 'on' else False
-        self.report_dir = os.path.normpath(xnode.get('report_dir', '').replace('#RUNDIR', self.call_dir))
-        self.dbfile = xnode.get('dbfile', 'Results.db')
-        tag = xnode.findall('Generic')
-        if len(tag) > 0: self.genconf = HDLModelConfigGeneric(tag[0])
-        tag = xnode.findall('Initializer')
-        if len(tag) > 0: self.initializer = SBFIConfigInitializer(tag[0])
-        tag = xnode.findall('Injector')
-        if len(tag) > 0: self.injector = SBFIConfigInjector(tag[0])
+        self.time_quota = xnode.get('time_quota', '20:00:00')
+        self.fault_dictionary = xnode.get('fault_dictionary')
+        for i in xnode.findall('InjectionScope'):
+            self.injection_scopes.append(InjectionScope(i))
+        for i in xnode.findall('ObservationScope'):
+            self.observation_scopes.append(ObservationScope(i))
+        for i in xnode.findall('InjectionItem'):
+            self.injection_items.append(ModelItem(i))
+        for i in xnode.findall('ObservationItem'):
+            self.observation_items.append(ModelItem(i))
+        for i in xnode.findall('faultload'):
+            self.fault_model.append(FaultModelConfig(i))
         tag = xnode.findall('Analyzer')
         if len(tag) > 0: self.analyzer = SBFIConfigAnalyzer(tag[0])
 
@@ -904,54 +817,52 @@ class FFIConfiguration:
 
 class DavosConfiguration:
     def __init__(self, xnode):
-        self.call_dir = os.getcwd()
-        self.platform = Platforms.Multicore
-        self.DesignBuilder = False
-        self.SBFI = False
-        self.FFI = False
-        self.DecisionSupport = False
-        self.ExperimentalDesignConfig = None
-        self.SBFIConfig = None
-        self.FFIConfig = None
-        self.DecisionSupportConfig = None
         self.report_dir = ''
+        self.experiment_label = ''
+        self.platform = Platforms.Multicore
+        self.maxproc = 1
+        self.call_dir = os.getcwd()
+        self.DesignBuilder_enable = False
+        self.SBFI_enable = False
+        self.FFI_enable = False
+        self.DecisionSupport_enable = False
+        self.ExperimentalDesignConfig = None
+        self.SBFI = None
+        self.FFI = None
+        self.DecisionSupportConfig = None
         self.dbfile = ''
         self.parconf=[]
         if xnode != None:
             self.build_from_xml(xnode)
-        self.SBFIConfig.report_dir = self.report_dir
-        self.SBFIConfig.dbfile = self.dbfile
-        self.SBFIConfig.platform = self.platform
-        self.ExperimentalDesignConfig.platform = self.platform
         self.ConfigFile = ''
         for c in self.parconf:
-            if(c.relative_path =="on"):
-                c.work_dir = os.path.normpath(os.path.join(self.call_dir, c.work_dir))
+            c.work_dir = os.path.normpath(os.path.join(self.call_dir, c.work_dir))
 
 
     def build_from_xml(self, xnode):
+        self.report_dir = os.path.normpath(xnode.get('report_dir', '').replace('#RUNDIR', self.call_dir))
+        self.experiment_label = xnode.get('experiment_label', 'Exp1')
         v = xnode.get('platform', 'multicore').lower()
         if v == 'multicore': self.platform = Platforms.Multicore
         elif v == 'grid': self.platform = Platforms.Grid
         elif v == 'gridlight': self.platform = Platforms.GridLight
-        self.DesignBuilder = True if xnode.get('DesignBuilder', '') == 'on' else False
-        self.SBFI = True if xnode.get('SBFI', '') == 'on' else False
-        self.FFI = True if xnode.get('FFI', '') == 'on' else False
+        self.maxproc = int(xnode.get('maxproc','1'))
+        self.DesignBuilder_enable = True if xnode.get('DesignBuilder', '') == 'on' else False
+        self.SBFI_enable = True if xnode.get('SBFI', '') == 'on' else False
+        self.FFI_enable = True if xnode.get('FFI', '') == 'on' else False
         self.DecisionSupport = True if xnode.get('DecisionSupport', '') == 'on' else False
-        self.report_dir = os.path.normpath(xnode.get('report_dir', '').replace('#RUNDIR', self.call_dir))
-        self.dbfile = xnode.get('dbfile', 'Results.db')
+        self.dbfile = '{0}.db'.format(self.experiment_label)
         tag = xnode.findall('ExperimentalDesign')
         if len(tag) > 0: self.ExperimentalDesignConfig = ExperiementalDesignConfiguration(tag[0])
         tag = xnode.findall('SBFI')
-        if len(tag) > 0: self.SBFIConfig = SBFIConfiguration(tag[0])
+        if len(tag) > 0: self.SBFI = SBFIConfiguration(tag[0])
         tag = xnode.findall('FFI')
-        if len(tag) > 0: self.FFIConfig = FFIConfiguration(tag[0])
+        if len(tag) > 0: self.FFI = FFIConfiguration(tag[0])
         tag = xnode.findall('DecisionSupport')
         if len(tag) > 0: self.DecisionSupportConfig = DecisionSupportConfiguration(tag[0])
         for c in xnode.findall('ModelConfig'):
             self.parconf.append(ParConfig(c))
         self.parconf.sort(key=lambda x: x.label, reverse = False)
-        self.SBFIConfig.platform = self.platform
 
 
     def get_DBfilepath(self, backup_path = False):

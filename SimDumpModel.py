@@ -117,6 +117,9 @@ class simDump:
         self.vectors = []
         self.internal_labels = []
         self.output_labels = []
+        self.internal_domain = []
+        self.output_domain = []
+        self.domain_indices = {}
         self.caption = ""
         #subset of vectors where only inputs/outputs change their value
         self.v_out_filtered = []
@@ -132,8 +135,18 @@ class simDump:
         initfile.close()
         internals_content = find_between(fcontent, "#<INTERNALS>","#</INTERNALS>")
         outputs_content = find_between(fcontent, "#<OUTPUTS>","#</OUTPUTS>")
-        self.internal_labels = re.findall("-label\s+?(.+?)\s+?", internals_content)
-        self.output_labels = re.findall("-label\s+?(.+?)\s+?", outputs_content)
+        for item in re.findall("-label \{(.+?)\}.*?#domain=\{(.+?)\}", internals_content):
+            self.internal_labels.append(item[0])
+            self.internal_domain.append(item[1])
+        for item in re.findall("-label \{(.+?)\}.*?#domain=\{(.+?)\}", outputs_content):
+            self.output_labels.append(item[0])
+            self.output_domain.append(item[1])
+        for key in sorted(list(set(self.output_domain))):
+            for i, v in enumerate(self.output_domain):
+                if v == key:
+                    if key not in self.domain_indices:
+                        self.domain_indices[key] = []
+                    self.domain_indices[key].append(i)
         if(rename_list != None):
             for c in rename_list:
                 for i in range(0, len(self.internal_labels), 1):
@@ -275,17 +288,21 @@ class simDump:
         hdump = open(fname, "w")
         hdump.write(content)
         hdump.close()
-        
+
     def get_vector_by_time(self, itime, idelta=None):
-        if idelta != None:
+        if idelta is not None:
             for v in self.vectors:
-                if((v.time == itime) and (v.delta == idelta)):
-                    return(v)
+                if (v.time == itime) and (v.delta == idelta):
+                    return v
         else:
             for v in self.vectors:
-                if (v.time == itime):
-                    return(v)
-        return(None)
+                if v.time == itime:
+                    return v
+        #if nothing found at itime, return the vector just previous to that time
+        for i in range(len(self.vectors)-1, -1, -1):
+            if v.time < itime:
+                return self.vectors[i]
+        return None
     
     def compare_to_html(self, refdump, fname):
         nrows = len(self.vectors)

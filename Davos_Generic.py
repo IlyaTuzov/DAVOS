@@ -155,6 +155,23 @@ def qsub_wait_workpack(iname, imax):
     return (0)
 
 
+def monitor_sge_job(job_label, reporting_interval):
+    """Periodically reports the state of SGE job, blocks current execution thread until SGE job completes
+
+    Args:
+        job_label (string): name of the job in GSE queue
+        reporting_interval (int): seconds between consecutive queue checks
+
+    Returns:
+    """
+    joblist = get_queue_state_by_job_prefix(job_label)
+    while joblist.total_len() > 0:
+        print("\rRunning: {0:5d}\tPending: {1:5d}".format(len(joblist.running), len(joblist.pending)))
+        time.sleep(reporting_interval)
+        joblist = get_queue_state_by_job_prefix(job_label)
+
+
+
 # --------------------------------------------------
 # Various generic functions
 # -------------------------------------------------
@@ -179,7 +196,7 @@ def cleanup_path(path):
 
 
 def zip_folder(path, zipname):
-    ziphandle = ZF.ZipFile(zipname, 'a')
+    ziphandle = ZF.ZipFile(zipname, 'a', allowZip64=True)
     existing_files = ziphandle.namelist()
     print('Appending folder [{0}] to zip package [{1}]'.format(path, zipname))
     for root, dirs, files in os.walk(path):
@@ -259,6 +276,7 @@ def create_folder(rtdir, nestdir, prefix=''):
             os.mkdir(targetpath)
             print "Created: " + str(targetpath)
     return (0)
+
 
 
 def check_termination(config_file_path):
@@ -349,7 +367,7 @@ def list_difference(scr_lst, rmval_lst):
 # Auxiliary Functions
 def to_string(obj, msg=''):
     res = '\n' + msg
-    if str(type(obj)).find('str') >= 0:
+    if str(type(obj)).find('str') >= 0 or str(type(obj)).find('int') >= 0 :
         return (res + str(obj))
     for key, val in obj.__dict__.items():
         if str(type(getattr(obj, key))).find('list') >= 0:

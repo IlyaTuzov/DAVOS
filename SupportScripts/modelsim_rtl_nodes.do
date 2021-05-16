@@ -1,4 +1,4 @@
-#do modelsim_rtl_nodes.do {Scope/*} {outfile.txt} {parse arrays: on/...} {filter_expression} {injectable }
+#do modelsim_rtl_nodes.do {Scope/*} {outfile.txt} {parse arrays: on/...} {injectable } {filter_expression}
 #do modelsim_rtl_nodes.do /tb/mc8051_top/mc8051_core//* ./code/obs_instances_log.txt on on -internal 
 
 quietly set allsignals {}
@@ -47,7 +47,7 @@ if { $argc > 4} {
 	quietly set filter ""
 }
 
-quietly set allsignals [lsort -dictionary [find signals $filter -recursive  $inst]]
+quietly set allsignals [lsort -dictionary [find signals -r $filter $inst]]
 quietly set fp [open $fout w]
 addElements $allsignals $fp $parsearrays $injectable $filter
 

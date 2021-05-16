@@ -82,7 +82,7 @@ class HtmlTable:
         for i in range(0, ncol, 1):
             self.labels.append("")
             
-    def add_row(self, nrow):
+    def add_row(self, nrow=None):
         if(nrow != None):
             self.rows.append(nrow)
         else:
@@ -101,7 +101,10 @@ class HtmlTable:
         if(irow < len(self.rows)):
             self.rows[irow].put_data(icol, idata)
         else:
-            print "put_data index error"              
+            print "put_data index error"     
+            
+    def get_cell(self, irow, icol):
+        return self.get_row(irow).get_cell(icol)
     
     def set_class(self, irow, icol, iclass):
         if(irow < len(self.rows)):
@@ -435,14 +438,22 @@ class simDump:
                     return(v)
         return(None)
     
+    #mode 0- export trace and highlights, 1 - only highlights, 2 - only trace 
     def compare_to_html(self, refdump, req_args, fname=''):
         afrom = 0 if req_args['from'] < 0 else req_args['from']
         ato =   len(self.vectors) if req_args['to'] > len(self.vectors) else req_args['to']
+        mode= int(req_args['mode'])
+        skipmatches = int(req_args['skipmatches'])
         nrows = ato - afrom + 1 #len(self.vectors)
         ncols = 2 + len(self.internal_labels) + len(self.output_labels)
-        htable = HtmlTable(nrows, ncols, self.caption)
+        htable = HtmlTable(1, ncols, self.caption)
         htable.set_label(0, "Time")
         htable.set_label(1, "Delta")
+        
+        highlights = HtmlTable(1, 3, "highlights")
+        highlights.set_label(0, "Time")
+        highlights.set_label(1, "Delta")
+        highlights.set_label(2, "Discrepancies")        
         
         len_int = len(self.internal_labels)
         len_out = len(self.output_labels)
@@ -451,34 +462,52 @@ class simDump:
         for i in range(0, len_out , 1):
             htable.set_label(2+len_int + i, self.output_labels[i])
             
-                    
+        idx = 0   
+        hdx = 0
         for i in range(afrom, ato, 1):
+            ms_cnt = 0
             itime = self.vectors[i].time
             idelta = self.vectors[i].delta
-            htable.put_data(i-afrom, 0, str(itime))
-            htable.put_data(i-afrom, 1, str(idelta))            
+            htable.put_data(hdx, 0, str(itime))
+            htable.put_data(hdx, 1, str(idelta))            
             refvector = refdump.get_vector_by_time(itime, idelta)
+            
+
+            if highlights.get_cell(idx, 2).hdata != '':
+                idx+=1    
+                highlights.add_row()
+            highlights.put_data(idx, 0, str(itime))
+            highlights.put_data(idx, 1, str(idelta))
+            
+            
             for j in range(0, len_int, 1):
-                htable.put_data(i-afrom,2+j, self.vectors[i].internals[j])
-                htable.set_class(i-afrom,2+j,"nomatch")
+                htable.put_data(hdx,2+j, self.vectors[i].internals[j])
+                htable.set_class(hdx,2+j,"nomatch")
                 if(refvector != None):
                     if(self.vectors[i].internals[j] == refvector.internals[j]):
-                        htable.set_class(i-afrom,2+j,"pass")
+                        htable.set_class(hdx,2+j,"pass")
                     else:
-                        htable.set_class(i-afrom,2+j,"fail")
+                        htable.set_class(hdx,2+j,"fail")
+                        ms_cnt += 1
+                        highlights.put_data(idx, 2, str(highlights.get_cell(idx, 2).hdata) + ' , ' + str(self.internal_labels[j]) )
             for j in range(0, len_out, 1):
-                htable.put_data(i-afrom,2+len_int+j, self.vectors[i].outputs[j])
-                htable.set_class(i-afrom,2+len_int+j,"nomatch")
+                htable.put_data(hdx,2+len_int+j, self.vectors[i].outputs[j])
+                htable.set_class(hdx,2+len_int+j,"nomatch")
                 if(refvector != None):
                     if(self.vectors[i].outputs[j] == refvector.outputs[j]):
-                        htable.set_class(i-afrom,2+len_int+j,"pass")
+                        htable.set_class(hdx,2+len_int+j,"pass")
                     else:
-                        htable.set_class(i-afrom,2+len_int+j,"fail")                        
+                        htable.set_class(hdx,2+len_int+j,"fail")
+                        ms_cnt += 1
+                        highlights.put_data(idx, 2, str(highlights.get_cell(idx, 2).hdata) + ' , ' + str(self.output_labels[j]) )
+            if (skipmatches > 0 and ms_cnt > 0) or skipmatches == 0:
+                hdx+=1
+                htable.add_row()
+                
         hpage = HtmlPage(self.caption)
         hpage.css_file = "markupstyle.css"
         hpage.js_files.append('jquery-1.12.1.min.js')
         hpage.js_files.append('myscript.js')
-
         hpage.put_data('<input type = \"text\" id = \"xfrom\" value = \"' + str(afrom)  +'\" >')
         hpage.put_data('<input type = \"text\" id = \"xto\" value = \"'+ str(ato) +'\" >')
         hpage.put_data('<button onclick=\"update()\">View trace vectors</button><div>&nbsp;Max Index Range: 0 to ' + str(len(self.vectors)) + '</div>')
@@ -489,11 +518,21 @@ class simDump:
         hpage.put_script('function update(){  ' + req0 + req1 + '\nwindow.location =req; }')
         
         
-        hpage.put_data(htable.to_string())
-        hpage.put_data(self.get_highlight_comment())
+        if mode==0:
+            hpage.put_data(htable.to_string())
+            hpage.put_data(self.get_highlight_comment())
+        elif mode==1:
+            hpage.put_data(self.get_highlight_comment())
+        elif mode==2:
+            hpage.put_data(htable.to_string())
+            
+        hpage.put_data(highlights.to_string())
+        
         if(fname != ''):
             hpage.write_to_file(fname)
         return(hpage.to_string())
+    
+    
     
     def get_highlight_comment(self):
         res = HtmlTable(1, 3, "Highlighting Options")
@@ -714,7 +753,11 @@ req_args = dict()
 req_args['config'] = form.getvalue('config')
 req_args['dump'] = form.getvalue('dump')
 req_args['from'] = int(form.getfirst('from', '0'))
-req_args['to'] = int(form.getfirst('to', '100'))
+req_args['to'] = int(form.getfirst('to', '30'))
+req_args['mode'] = int(form.getfirst('mode', '0'))
+req_args['skipmatches'] = int(form.getfirst('skipmatches', '0'))
+
+
 
 
 content = inj_dump.compare_to_html(reference_dump, req_args)
