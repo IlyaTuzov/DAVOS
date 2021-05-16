@@ -26,19 +26,18 @@ from SBFI.SBFI_Analyzer import *
 from Reportbuilder import *
 
 
-def cleanup(config, toolconfig):
+def cleanup(config, toolconfig, c, backup_label=''):
     timestamp = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d_%H-%M-%S')
-    for c in config.parconf:
-        if config.SBFI.clean_run:
-            dumppack = "Backup_{0}.zip".format(timestamp)
-            os.chdir(c.work_dir)
-            for d in [toolconfig.result_dir, toolconfig.script_dir, toolconfig.checkpoint_dir, toolconfig.code_dir]:
-                zip_folder(d, dumppack)
-            for d in [toolconfig.result_dir, toolconfig.script_dir, toolconfig.checkpoint_dir, toolconfig.log_dir, toolconfig.dataset_dir, toolconfig.code_dir]:
-                remove_dir(os.path.join(c.work_dir, d))
+    if config.SBFI.clean_run:
+        dumppack = "Backup_{0}_({1}).zip".format(backup_label, timestamp)
+        os.chdir(c.work_dir)
+        for d in [toolconfig.result_dir, toolconfig.script_dir, toolconfig.checkpoint_dir, toolconfig.code_dir]:
+            zip_folder(d, dumppack)
         for d in [toolconfig.result_dir, toolconfig.script_dir, toolconfig.checkpoint_dir, toolconfig.log_dir, toolconfig.dataset_dir, toolconfig.code_dir]:
-            if not os.path.exists(os.path.join(c.work_dir, d)):
-                os.mkdir(os.path.join(c.work_dir, d))
+            remove_dir(os.path.join(c.work_dir, d))
+    for d in [toolconfig.result_dir, toolconfig.script_dir, toolconfig.checkpoint_dir, toolconfig.log_dir, toolconfig.dataset_dir, toolconfig.code_dir]:
+        if not os.path.exists(os.path.join(c.work_dir, d)):
+            os.mkdir(os.path.join(c.work_dir, d))
 
 
 def compile_project(config, toolconfig):
@@ -121,6 +120,7 @@ def golden_run(config, toolconfig, c):
         set ExecTime {1}ns
         do {2}
         run $ExecTime
+        config list -strobeperiod 1ns -strobestart [expr $now/1000] -usestrobe 1; run 1ns;
         write list {3}/{4}
         quit
         """.format(toolconfig.log_dir, c.workload_time, toolconfig.list_init_file, toolconfig.result_dir, toolconfig.reference_file)
@@ -201,11 +201,12 @@ def tweak_config_and_check_termination(config):
 
 
 def RunSBFI(datamodel, config, toolconf):
-    cleanup(config, toolconf)
-    # Prepare models for SBFI experiments: locate fault targets, and generate trace scripts
-    InitializeHDLModels(config, toolconf)
-
+    backup_label = ''
     for conf in config.parconf:
+        cleanup(config, toolconf, conf, backup_label)
+
+        InitializeHDLModels(config, toolconf, conf)
+
         generate_clustering_checkpoints(config, toolconf, conf)
         golden_run(config, toolconf, conf)
 
@@ -217,7 +218,7 @@ def RunSBFI(datamodel, config, toolconf):
 
         # Analyze observation traces and save the results to the database
         launch_analysis(config, toolconf, conf, datamodel)
-
+        backup_label = conf.label
     # Build SBFI report on the basis of results collected in the database
     build_report(config, toolconf, datamodel)
     if datamodel is not None:

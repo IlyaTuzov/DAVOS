@@ -167,7 +167,7 @@ def sample_fault_generator(config, modelconf, toolconf, faultdict):
                         fname = "fault_" + str_index + "__checkpoint_0" + ".do"
                 if config.SBFI.checkpoint_mode == CheckpointModes.ColdRestore:
                     inj_script += "\n\ndo {0}".format(toolconf.list_init_file)
-                inj_script += "\nrun $ExecTime"
+                inj_script += "\nrun $ExecTime; config list -strobeperiod 1ns -strobestart [expr $now/1000] -usestrobe 1; run 1ns;"
                 dumpfilename = "dump_{0}_nodename.lst".format(str_index)
                 inj_script += "\nwrite list {0}/{1}".format(toolconf.result_dir, dumpfilename)
                 if config.SBFI.checkpoint_mode == CheckpointModes.ColdRestore:
@@ -286,7 +286,7 @@ def mixed_faultload_generator(config, modelconf, toolconf, faultdict):
                     inj_script += ("\nwhen \"\$now >= $ExecTime && {0}'event && {1} == 1\"".format(config.genconf.clk_signal, config.genconf.clk_signal) if config.genconf.clk_signal != '' else "\nwhen \"\$now >= $ExecTime\"") + " { force -freeze " + (toolconf.finish_flag if config.genconf.finish_flag == '' else config.genconf.finish_flag) + " 1 }"
                     if config.injector.checkpoint_mode == CheckpointModes.ColdRestore:
                         inj_script += "\n\ndo " + toolconf.list_init_file
-                    inj_script += "\nrun [scaleTime $ExecTime 1.01]"
+                    inj_script += "\nrun [scaleTime $ExecTime 1.01]; config list -strobeperiod 1ns -strobestart [expr $now/1000] -usestrobe 1; run 1ns;"
                     dumpfilename = "dump_" + str_index + "_nodename.lst"
                     inj_script += "\nwrite list " + toolconf.result_dir + '/' + dumpfilename
                     if config.injector.checkpoint_mode == CheckpointModes.ColdRestore:

@@ -79,6 +79,7 @@ class ObservationScope:
             self.sampling_options = ""
             self.scope_filter = ""
             self.group = ""
+            self.domain = "Root"
         else:
             self.build_from_xml(xnode)
 
@@ -89,6 +90,7 @@ class ObservationScope:
         self.sampling_options = xnode.get('sampling_options','')
         self.scope_filter = xnode.get('scope_filter', '')
         self.group = xnode.get('group', 'internals').lower()
+        self.domain = xnode.get('domain', 'Root')
 
 
 class InjectionScope:
@@ -117,15 +119,17 @@ class ModelItem(object):
             self.label = ""
             self.type = ""
             self.sampling_options = ""
+            self.domain = "Root"
         else:
             self.path = xnode.get('path', '')
             match_desc = re.search('([0-9]+):([0-9]+)', xnode.get('array_range', ''))
-            self.array_items = [] if match_desc is None else range(int(match_desc.group(1)), int(match_desc.group(2)))
+            self.array_items = [] if match_desc is None else range(int(match_desc.group(1)), int(match_desc.group(2))+1)
             self.group = xnode.get('group', 'internals').lower()
             self.options = xnode.get('options','')
             self.label = xnode.get('label','')
             self.type = xnode.get('type', 'SIGNAL')
-            self.sampling_options = xnode.get('sampling_options','')
+            self.sampling_options = xnode.get('sampling_options', '')
+            self.domain = xnode.get('domain', 'Root')
 
 
 
@@ -304,36 +308,41 @@ class RenameItem:
 class TraceCheckModes:
     MLV, MAV = range(2)
 
+
+
 class SBFIConfigAnalyzer:
-   def __init__(self, xnode):
-       self.join_group_list = JoinGroupList()
-       self.rename_list = []
-       if xnode is None:
-           self.error_flag_signal = ""
-           self.error_flag_active_value = ""
-           self.trap_type_signal = ""
-           self.mode = TraceCheckModes.MAV
-           self.time_window = None
-           self.max_time_violation = int(0)
-           self.threads = int(1)
-       else:
+    def __init__(self, xnode):
+        self.join_group_list = JoinGroupList()
+        self.rename_list = []
+        if xnode is None:
+            self.error_flag_signal = ""
+            self.error_flag_active_value = ""
+            self.trap_type_signal = ""
+            self.mode = TraceCheckModes.MAV
+            self.time_window = None
+            self.max_time_violation = int(0)
+            self.threads = int(1)
+            self.domain_mode = ""
+        else:
             self.build_from_xml(xnode)
+
            
-   def build_from_xml(self, xnode):
-       self.error_flag_signal = xnode.get('error_flag_signal','')
-       self.error_flag_active_value = xnode.get('error_flag_active_value','')
-       self.trap_type_signal = xnode.get('trap_type_signal','')
-       self.mode = TraceCheckModes.MLV if xnode.get('mode','').upper()=='MLV' else TraceCheckModes.MAV
-       match_desc = re.search('([0-9]+):([0-9]+)', xnode.get('time_window', ''))
-       self.time_window = None if match_desc is None else (int(match_desc.group(1)), int(match_desc.group(2)))
-       self.max_time_violation = int(xnode.get('max_time_violation','0'))
-       self.threads = int(xnode.get('threads','1'))
-       tag = xnode.findall('join_groups')
-       if len(tag) > 0: self.join_group_list.init_from_tag(tag[0])
-       tag = xnode.findall('rename_list')
-       if len(tag) > 0:
-           for c in tag[0].findall('item'):
-               self.rename_list.append(RenameItem(c.get('from'), c.get('to')))
+    def build_from_xml(self, xnode):
+        self.error_flag_signal = xnode.get('error_flag_signal','')
+        self.error_flag_active_value = xnode.get('error_flag_active_value','')
+        self.trap_type_signal = xnode.get('trap_type_signal','')
+        self.mode = TraceCheckModes.MLV if xnode.get('mode','').upper()=='MLV' else TraceCheckModes.MAV
+        self.domain_mode = xnode.get('domain_mode','').upper()
+        match_desc = re.search('([0-9]+):([0-9]+)', xnode.get('time_window', ''))
+        self.time_window = None if match_desc is None else (int(match_desc.group(1)), int(match_desc.group(2)))
+        self.max_time_violation = int(xnode.get('max_time_violation','0'))
+        self.threads = int(xnode.get('threads','1'))
+        tag = xnode.findall('join_groups')
+        if len(tag) > 0: self.join_group_list.init_from_tag(tag[0])
+        tag = xnode.findall('rename_list')
+        if len(tag) > 0:
+            for c in tag[0].findall('item'):
+                self.rename_list.append(RenameItem(c.get('from'), c.get('to')))
 
 
 #1.5 Configuration Items for HDL models under test (annex for genconfig)

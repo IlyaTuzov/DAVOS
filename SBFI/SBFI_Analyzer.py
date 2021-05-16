@@ -21,7 +21,6 @@ from Davos_Generic import *
 from Datamanager import *
 
 EnhancedAnalysisOfLatentErrors = False
-domain_indices = {}  # {'C0':range(0,40), 'C1':range(40,80), 'C2':range(80,120)}
 
 
 def check_outputs(ref_trace, inj_trace, time_window, mode, max_time_violation):
@@ -34,32 +33,42 @@ def check_outputs(ref_trace, inj_trace, time_window, mode, max_time_violation):
         time_window ():
 
     Returns:
-        number of mismatches and the time of first mismatch (tuple(int, int))
+         dictionary: key='DomainLabel', val= [number of mismatches, time of first mismatch]
     """
-    mismatches, mistime = 0, None
+    res = dict((k, [0, None]) for k in ref_trace.domain_indices.keys())
     time_points = sorted(list(set([i.time for i in ref_trace.vectors + inj_trace.vectors
-                                   if (i.time >= time_window[0]) and (i.time <= time_window[1])])))
+                                   if (i.time >= time_window[0])])))
     if mode == TraceCheckModes.MAV:
         for t in time_points:
             ref_v = ref_trace.get_vector_by_time(t, None)
             inj_v = inj_trace.get_vector_by_time(t, None)
-            if ref_v.outputs != inj_v.outputs:
-                mismatches += 1
-                if mistime is None:
-                    mistime = t
+            for k, v in ref_trace.domain_indices.items():
+                for i in v:
+                    if ref_v.outputs[i] != inj_v.outputs[i]:
+                        res[k][0] += 1
+                        if res[k][1] is None:
+                            res[k][1] = t
+                        break
+
     elif mode == TraceCheckModes.MLV and len(time_points) > 0:
         ref_v = ref_trace.get_vector_by_time(time_points[-1], None)
         inj_v = inj_trace.get_vector_by_time(time_points[-1], None)
-        if ref_v.outputs != inj_v.outputs:
-            mismatches = 1
-            mistime = time_points[-1]
-    return mismatches, mistime
+        for k, v in ref_trace.domain_indices.items():
+            for i in v:
+                if ref_v.outputs[i] != inj_v.outputs[i]:
+                    res[k][0] = 1
+                    res[k][1] = time_points[-1]
+                    break
+    return res
 
 
 def count_latent_errors(ref_trace, inj_trace, time_window):
     mismatches = 0
+    #    time_points = sorted(list(set([i.time for i in ref_trace.vectors + inj_trace.vectors
+    #                                   if (i.time >= time_window[0]) and (i.time <= time_window[1])])))
     time_points = sorted(list(set([i.time for i in ref_trace.vectors + inj_trace.vectors
-                                   if (i.time >= time_window[0]) and (i.time <= time_window[1])])))
+                                   if (i.time >= time_window[0])])))
+
     if len(time_points) > 0:
         ref_v = ref_trace.get_vector_by_time(time_points[-1], None)
         inj_v = inj_trace.get_vector_by_time(time_points[-1], None)
@@ -98,19 +107,20 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
         InjDesc.Node = item.target
         InjDesc.InjCase = item.injection_case
         InjDesc.DomainMatch = {}
-        for k in domain_indices.keys():
+        for k in datamodel.reference.reference_dump.domain_indices.keys():
             InjDesc.DomainMatch[k] = '-'
         inj_dump = simDump()
         inj_dump.set_labels_copy(datamodel.reference.initial_internal_labels, datamodel.reference.initial_output_labels)
         if inj_dump.build_vectors_from_file(os.path.join(conf.work_dir, toolconf.result_dir, item.dumpfile)) == None:
             InjDesc.Status = 'E'  # error
         else:
-            # inj_dump.replaceval("proc_error", "X", "0")
-            InjDesc.Status = 'S'  # Simulted and dumpfile exists
-            inj_dump.join_output_columns(datamodel.reference.JnGrLst.copy())
+            InjDesc.Status = 'S'  # Simulation successful and dumpfile exists
+            # inj_dump.join_output_columns(datamodel.reference.JnGrLst.copy())
             # ensure that time window starts after fault injection time
             tw = (basetime + config.SBFI.analyzer.time_window[0] if config.SBFI.analyzer.time_window[0] >= InjDesc.InjectionTime else basetime + InjDesc.InjectionTime, basetime + config.SBFI.analyzer.time_window[1])
-            out_misnum, out_mistime = check_outputs(datamodel.reference.reference_dump, inj_dump, tw, config.SBFI.analyzer.mode, config.SBFI.analyzer.max_time_violation)
+            output_match_res = check_outputs(datamodel.reference.reference_dump, inj_dump, tw, config.SBFI.analyzer.mode, config.SBFI.analyzer.max_time_violation)
+            for k, v in output_match_res.items():
+                InjDesc.DomainMatch[k] = 'V' if v[0] == 0 else 'X'
 
             err_raised = False
             if err_signal_index[0] is not None:
@@ -126,21 +136,33 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
 
             InjDesc.ErrorCount = count_latent_errors(datamodel.reference.reference_dump, inj_dump, tw)
             InjDesc.FaultToFailureLatency = float(0)
-            if out_misnum > 0:
-                InjDesc.FaultToFailureLatency = out_mistime - basetime - float(InjDesc.InjectionTime)
-                if InjDesc.FaultToFailureLatency < 0:  InjDesc.FaultToFailureLatency = float(0)
 
-            # Determine failure mode
-            if out_misnum == 0:
-                if InjDesc.ErrorCount == 0:
-                    InjDesc.FailureMode = 'M'  # Masked fault
+            if config.SBFI.analyzer.domain_mode.upper() in ['', 'SIMPLEX']:
+                out_misnum = sum(v[0] for k, v in output_match_res.items())
+                if out_misnum > 0:
+                    first_mismatch = min(v[1] for k, v in output_match_res.items() if v[1] is not None)
+                    InjDesc.FaultToFailureLatency = first_mismatch - basetime - float(InjDesc.InjectionTime)
+                    if InjDesc.FaultToFailureLatency < 0:  InjDesc.FaultToFailureLatency = float(0)
+                # Determine failure mode
+                if out_misnum == 0:
+                    if InjDesc.ErrorCount == 0:
+                        InjDesc.FailureMode = 'M'  # Masked fault
+                    else:
+                        InjDesc.FailureMode = 'L'  # Latent fault
                 else:
+                    if err_raised:
+                        InjDesc.FailureMode = 'S'  # Signaled Failure
+                    else:
+                        InjDesc.FailureMode = 'C'  # Silent Data Corruption
+            elif config.SBFI.analyzer.domain_mode.upper() in ['TMR']:
+                if sum(i == 'V' for i in InjDesc.DomainMatch.values()) < 2:
+                    InjDesc.FailureMode = 'C'
+                    first_mismatch = min(v[1] for k, v in output_match_res.items() if v[1] is not None)
+                    InjDesc.FaultToFailureLatency = first_mismatch - basetime - float(InjDesc.InjectionTime)
+                elif sum(i == 'V' for i in InjDesc.DomainMatch.values()) == 2:
                     InjDesc.FailureMode = 'L'  # Latent fault
-            else:
-                if err_raised:
-                    InjDesc.FailureMode = 'S'  # Signaled Failure
                 else:
-                    InjDesc.FailureMode = 'C'  # Silent Data Corruption
+                    InjDesc.FailureMode = 'M'  # Masked fault
 
         # rename dumpfile to string of unique index {InjDesc.ID}.lst
         InjDesc.Dumpfile = '{0:010d}.lst'.format(InjDesc.ID)
@@ -217,15 +239,28 @@ def process_dumps(config, toolconf, conf, datamodel):
         for k in domains:
             T.put(i, T.labels.index(k), injsummary[i].DomainMatch[k])
 
-    with open(os.path.join(conf.work_dir, 'SummaryFaultSim.csv'), 'w') as f:
+    with open(os.path.join(config.report_dir, 'Summary_{0}_{1}.csv'.format(config.experiment_label, conf.label)), 'w') as f:
         f.write(T.to_csv())
     datamodel.LaunchedInjExp_dict.clear()
 
-    raw_input('before cleaning...')
     dumppack = "RESPACK_{0}.zip".format(conf.label)
     os.chdir(conf.work_dir)
     zip_folder(packdir, os.path.join(config.report_dir, dumppack))
     zip_folder(toolconf.code_dir, os.path.join(config.report_dir, dumppack))
     shutil.rmtree(packdir)
+
+    domain_stats = {}
+    valid_exp = sum(i.Status == 'S' for i in injsummary)
+    failures = sum(i.FailureMode == 'C' for i in injsummary)
+    for i in range(len(injsummary)):
+        for k in domains:
+            if k not in domain_stats:
+                domain_stats[k] = 0
+            if injsummary[i].DomainMatch[k] == 'X':
+                domain_stats[k] += 1
+    with open(os.path.join(config.report_dir, 'Statistics.log'), 'a') as f:
+        f.write('\n{0:30s}: Failures: {1:5d}/{2:5d}: {3}'.format(conf.label,
+                                                                 failures, valid_exp,
+                                                                 '; '.join(['{0:10s}:{1:5d}'.format(k, domain_stats[k]) for k in sorted(domain_stats.keys())])))
 
     print('\n\nAnalysys completed, time taken: ' + str(time_to_seconds(datetime.datetime.now().replace(microsecond=0) - timestart)))

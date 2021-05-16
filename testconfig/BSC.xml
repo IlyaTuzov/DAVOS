@@ -2,7 +2,7 @@
 <data>
 
     <DAVOS
-        report_dir = "/home/tester/HTWEB/BSC/DEMO"
+        report_dir = "/home/tester/HTWEB/BSC/DEMO_1"
         experiment_label = "BSC_PMU"
         platform = "Multicore"
         maxproc = "4" >
@@ -10,7 +10,7 @@
 
 
 		<ModelConfig
-			work_dir = "/home/tester/bsc_pmu/tb/questa_sim/HELLO_WORLD/fi_DAVOS"
+			work_dir = "../../tb/questa_sim/HELLO_WORLD/fi_DAVOS"
             checkpoint = "startpoint.sim"
             design_type = "RTL"
 			label = "DEMO_DUT"
@@ -59,12 +59,11 @@
                               scope_filter = "-out"
                               group = "OUTPUTS"/>
 
-            <ObservationItem
-                path= "/tb_reg_sbf/tb_error_o"
-                array_range = ""
-                label = ""
-                sampling_options = ""
-                group = "OUTPUTS"
+            <ObservationItem  path= "/tb_reg_sbf/tb_error_o"
+                              array_range = ""
+                              label = ""
+                              sampling_options = ""
+                              group = "OUTPUTS"
             />
 
 

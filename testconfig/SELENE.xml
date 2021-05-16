@@ -11,11 +11,136 @@
 
 		<ModelConfig
 			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
-            checkpoint = "startpoint.sim"
+            checkpoint = "./checkpoints/workload_1_matmult_20_nop.sim"
             design_type = "RTL"
-			label = "SELENE"
-			clk_period = "50.0"
-            simulation_time = "18000"
+			label = "NOEL_matmult_20_nop"
+			clk_period = "5.0"
+            simulation_time = "18700"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_1_matmult_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_matmult_200_nop"
+			clk_period = "5.0"
+            simulation_time = "25700"
+		/>
+
+
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_2_dijkstra_20_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_2_dijkstra_20_nop"
+			clk_period = "5.0"
+            simulation_time = "62000"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_2_dijkstra_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_2_dijkstra_200_nop"
+			clk_period = "5.0"
+            simulation_time = "67500"
+		/>
+
+
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_3_aes_20_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_3_aes_20_nop"
+			clk_period = "5.0"
+            simulation_time = "93500"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_3_aes_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_3_aes_200_nop"
+			clk_period = "5.0"
+            simulation_time = "98500"
+		/>
+
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_4_crc_20_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_4_crc_20_nop"
+			clk_period = "5.0"
+            simulation_time = "7500"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_4_crc_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_4_crc_200_nop"
+			clk_period = "5.0"
+            simulation_time = "11500"
+		/>
+
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_5_qsort_20_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_5_qsort_20_nop"
+			clk_period = "5.0"
+            simulation_time = "74500"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_5_qsort_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_5_qsort_200_nop"
+			clk_period = "5.0"
+            simulation_time = "77000"
+		/>
+
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_6_binarysearch_20_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_6_binarysearch_20_nop"
+			clk_period = "5.0"
+            simulation_time = "17000"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_6_binarysearch_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_6_binarysearch_200_nop"
+			clk_period = "5.0"
+            simulation_time = "24500"
+		/>
+
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_7_fir_20_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_7_fir_20_nop"
+			clk_period = "5.0"
+            simulation_time = "17700"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_7_fir_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_7_fir_200_nop"
+			clk_period = "5.0"
+            simulation_time = "24000"
 		/>
 
         <!-- platform: Multicore / Grid / GridLight 

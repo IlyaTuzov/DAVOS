@@ -47,7 +47,7 @@ if { $argc > 4} {
 	quietly set filter ""
 }
 
-quietly set allsignals [lsort -dictionary [find signals $filter $inst]]
+quietly set allsignals [lsort -dictionary [find signals -r $filter $inst]]
 quietly set fp [open $fout w]
 addElements $allsignals $fp $parsearrays $injectable $filter
 
