@@ -45,12 +45,14 @@ def run_qsub(itag, iscript, ipath, reqtime, reqmem, logdir=None, slots=1):
     os.chdir(ipath)
     robust_file_write(os.path.join(ipath, sh_fname), sh_script)
     val = commands.getoutput("chmod u+x " + sh_fname)
-    qscript = "qsub -q " + "general" + " -V -wd " + ipath + " " + sh_fname
+    #qscript = "qsub -q " + "general" + " -V -wd " + ipath + " " + sh_fname
+    qscript = "qsub -V -wd " + ipath + " " + sh_fname
+
     res = ''
     while res.lower().find('submitted') < 0 or res.lower().find('error') >= 0:
         res = commands.getoutput(qscript)
         print res
-        time.sleep(0.1)
+        time.sleep(1.0)
     os.remove(os.path.join(ipath, sh_fname))
     return res
 
@@ -196,7 +198,7 @@ def cleanup_path(path):
 
 
 def zip_folder(path, zipname):
-    ziphandle = ZF.ZipFile(zipname, 'a', allowZip64=True)
+    ziphandle = ZF.ZipFile(zipname, mode='a', compression=ZF.ZIP_DEFLATED, allowZip64=True)
     existing_files = ziphandle.namelist()
     print('Appending folder [{0}] to zip package [{1}]'.format(path, zipname))
     for root, dirs, files in os.walk(path):

@@ -146,7 +146,8 @@ def golden_run(config, toolconfig, c):
 
 def launch_analysis(config, toolconf, conf, datamodel):
     if config.platform == Platforms.Multicore or config.platform == Platforms.Grid:
-        if datamodel == None: raw_input('Err 01: datamodel not initialized')
+        if datamodel is None:
+            raw_input('Error in launch_analysis: datamodel not initialized')
         datamodel.dbhelper.BackupDB(False)
         process_dumps(config, toolconf, conf, datamodel)
     elif config.platform == Platforms.GridLight:

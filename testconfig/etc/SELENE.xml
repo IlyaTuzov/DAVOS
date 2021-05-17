@@ -2,20 +2,145 @@
 <data>
 
     <DAVOS
-        report_dir = "#RUNDIR/../HTWEB/DEMO"
+        report_dir = "#RUNDIR/../HTWEB/SELENE/MC"
         experiment_label = "CCF"
         platform = "Multicore"
-        maxproc = "10" >
+        maxproc = "8" >
 
 
 
 		<ModelConfig
 			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
-            checkpoint = "startpoint.sim"
+            checkpoint = "./checkpoints/workload_1_matmult_20_nop.sim"
             design_type = "RTL"
-			label = "SELENE"
-			clk_period = "50.0"
-            workload_time = "18000"
+			label = "NOEL_matmult_20_nop"
+			clk_period = "5.0"
+            simulation_time = "18700"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_1_matmult_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_matmult_200_nop"
+			clk_period = "5.0"
+            simulation_time = "25700"
+		/>
+
+
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_2_dijkstra_20_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_2_dijkstra_20_nop"
+			clk_period = "5.0"
+            simulation_time = "62000"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_2_dijkstra_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_2_dijkstra_200_nop"
+			clk_period = "5.0"
+            simulation_time = "67500"
+		/>
+
+
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_3_aes_20_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_3_aes_20_nop"
+			clk_period = "5.0"
+            simulation_time = "93500"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_3_aes_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_3_aes_200_nop"
+			clk_period = "5.0"
+            simulation_time = "98500"
+		/>
+
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_4_crc_20_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_4_crc_20_nop"
+			clk_period = "5.0"
+            simulation_time = "7500"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_4_crc_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_4_crc_200_nop"
+			clk_period = "5.0"
+            simulation_time = "11500"
+		/>
+
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_5_qsort_20_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_5_qsort_20_nop"
+			clk_period = "5.0"
+            simulation_time = "74500"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_5_qsort_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_5_qsort_200_nop"
+			clk_period = "5.0"
+            simulation_time = "77000"
+		/>
+
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_6_binarysearch_20_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_6_binarysearch_20_nop"
+			clk_period = "5.0"
+            simulation_time = "17000"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_6_binarysearch_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_6_binarysearch_200_nop"
+			clk_period = "5.0"
+            simulation_time = "24500"
+		/>
+
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_7_fir_20_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_7_fir_20_nop"
+			clk_period = "5.0"
+            simulation_time = "17700"
+		/>
+
+		<ModelConfig
+			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/workload_7_fir_200_nop.sim"
+            design_type = "RTL"
+			label = "NOEL_7_fir_200_nop"
+			clk_period = "5.0"
+            simulation_time = "24000"
 		/>
 
         <!-- platform: Multicore / Grid / GridLight 
@@ -24,7 +149,7 @@
         -->
         <SBFI
             clean_run = "off"
-            checkpont_mode = "ColdRestore"
+            checkpoint_mode = "ColdRestore"
             initializer = "on"
             profiler = "off"
             injector = "on"
@@ -35,53 +160,51 @@
 
             <!-- unit path: withing the design scope-->
             <InjectionScope unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/iu0"
-                            node_prefix = "r."      />
+                            node_filter = "r.*"
+                            scope_filter = "-internal"      />
 
-            <InjectionItem path ="" type = "SIGNAL" array_range="" />
+            <!--InjectionItem path ="/tb_reg_sbf/prot_reg" type = "SIGNAL" array_range="0:31" -->
 
 
             <ObservationScope unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(1)/core/u0/iu0"
-                              node_prefix = "r."
-                              label_prefix = "core0.r."
-                              sampling_options = ""
-                              location = "" />
+                              node_filter = "r.*"
+                              sampling_options = "-notrigger"
+                              scope_filter = "-internal"
+                              group = "INTERNALS"
+                              label_prefix = "core0_"            />
 
             <ObservationItem
                 path= "/testbench/cpu/cpu/core0/mem0/mig_gen/sim_ram_gen/axi_mem/rb/p/logpages(0).data"
                 array_range = "928:967"
-                location = "OUTPUTS"
-                label = "C1.Res"
+                label = "Core0.Res"
+                sampling_options = ""
+                group = "OUTPUTS"
             />
 
 
 
-            <fault_model
+            <faultload
                 model = "BitFlip"
                 target_logic = "SIGNAL"
                 multiplicity = "1"
                 time_mode = "Relative"
                 injection_time_start = "0.0"
                 injection_time_end = "1.0"
-                increment_time_step = "0.0"
                 experiments_per_target = "1"
-                sample_size = "40"
+                sample_size = "100"
                 rand_seed	= "1"
             />
 
 
 
-
-
-
             <Analyzer
-                unpack_from_dir = ""
-                detect_failures_at_finish_time = "on"
+                mode = "MAV"
+                time_window = ""
+                max_time_violation = "0"
                 error_flag_signal = ""
-                error_flag_active_value = ""
+                error_flag_active_value = "1"
                 trap_type_signal = ""
-                neg_timegap = "0"
-                pos_timegap = "1000"
-                check_duration_factor = "0"
+                threads = "4"
                 >
 
                 <join_groups>

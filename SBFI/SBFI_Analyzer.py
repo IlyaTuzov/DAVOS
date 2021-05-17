@@ -80,8 +80,10 @@ def count_latent_errors(ref_trace, inj_trace, time_window):
 
 def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseindex):
     model = datamodel.GetHdlModel(conf.label)
-    basetime = datamodel.reference.reference_dump.vectors[0].time
+    basetime = datamodel.reference.reference_dump.vectors[-1].time - conf.workload_time
     ExpDescIdCnt = baseindex
+    tw = config.SBFI.analyzer.time_window if config.SBFI.analyzer.time_window is not None else (datamodel.reference.reference_dump.vectors[0].time, datamodel.reference.reference_dump.vectors[-1].time)
+    print("Analysis of traces, time window: {0}".format(str(tw)))
 
     err_signal_index = None, None
     if config.SBFI.analyzer.error_flag_signal != '':
@@ -117,7 +119,6 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
             InjDesc.Status = 'S'  # Simulation successful and dumpfile exists
             # inj_dump.join_output_columns(datamodel.reference.JnGrLst.copy())
             # ensure that time window starts after fault injection time
-            tw = (basetime + config.SBFI.analyzer.time_window[0] if config.SBFI.analyzer.time_window[0] >= InjDesc.InjectionTime else basetime + InjDesc.InjectionTime, basetime + config.SBFI.analyzer.time_window[1])
             output_match_res = check_outputs(datamodel.reference.reference_dump, inj_dump, tw, config.SBFI.analyzer.mode, config.SBFI.analyzer.max_time_violation)
             for k, v in output_match_res.items():
                 InjDesc.DomainMatch[k] = 'V' if v[0] == 0 else 'X'
@@ -189,8 +190,7 @@ def process_dumps(config, toolconf, conf, datamodel):
     datamodel.reference.reference_dump.join_output_columns(datamodel.reference.JnGrLst.copy())
     desctable = ExpDescTable(conf.label)
     desctable.build_from_csv_file(os.path.normpath(os.path.join(conf.work_dir, toolconf.result_dir, toolconf.exp_desc_file)), "Other")
-    if config.SBFI.analyzer.time_window is None:
-        config.SBFI.analyzer.time_window = (0, conf.workload_time)
+
 
     print('Processing simulation traces')
     progress = 0

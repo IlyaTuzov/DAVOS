@@ -64,11 +64,11 @@ def execute_injection_scripts_sge(config, toolconf, conf):
                     checked_list.append(s)
                     sys.stdout.write('Appending to run queue [{0}]: {1}\r'.format(str(len(checked_list)), s))
                     sys.stdout.flush()
-                elif config.injector.reference_check_pattern != '':
-                    with open(os.path.join(conf.work_dir, toolconf.result_dir, dumpname), 'r') as dmpfile:
-                        buf = dmpfile.read()
-                        if buf.find(config.injector.reference_check_pattern) < 0:
-                            checked_list.append(s)
+                # elif config.SBFI.reference_check_pattern != '':
+                #     with open(os.path.join(conf.work_dir, toolconf.result_dir, dumpname), 'r') as dmpfile:
+                #         buf = dmpfile.read()
+                #         if buf.find(config.SBFI.reference_check_pattern) < 0:
+                #             checked_list.append(s)
         # if grid IO error occur (no dump file after script completion) - let 0.1% of scripts to be bypassed (0.1% error margin)
         if len(checked_list) < int(0.001 * len(fscriptlist)):
             break
@@ -78,18 +78,18 @@ def execute_injection_scripts_sge(config, toolconf, conf):
         # Build the list of shell scripts
         os.chdir(conf.work_dir)
         tasksize = len(checked_list)
-        if (tasksize > 0):
-            taskproc = config.injector.maxproc
-            if (tasksize < config.injector.maxproc):
+        if tasksize > 0:
+            taskproc = config.maxproc
+            if tasksize < config.maxproc:
                 taskproc = tasksize
             print "TASKPROC = " + str(taskproc)
             shell_script_list = []
-            if config.injector.checkpoint_mode == CheckpointModes.ColdRestore:
+            if config.SBFI.checkpoint_mode == CheckpointModes.ColdRestore:
                 checkpoint_set = []
                 for ind in range(0, taskproc, 1):
                     shell_script_list.append("")
                     checkpoint_set.append(set())
-                for ibase in range(conf.start_from, tasksize, taskproc):
+                for ibase in range(0, tasksize, taskproc):
                     for ind in range(ibase, ibase + taskproc, 1):
                         if (ind < tasksize):
                             sim_script = ""
@@ -103,12 +103,12 @@ def execute_injection_scripts_sge(config, toolconf, conf):
                             # sim_script += " > $TMP/log_{0}".format(checked_list[ind].replace('.do', '.log'))
                             # sim_script += "\nrm " + './idatasets/WLFSET_{0}.wlf'.format(re.findall('[0-9]+',checked_list[ind])[0])
                             shell_script_list[ind - ibase] += sim_script
-            elif config.injector.checkpoint_mode == CheckpointModes.WarmRestore:
+            elif config.SBFI.checkpoint_mode == CheckpointModes.WarmRestore:
                 checkpoint_dict = []
                 for ind in range(0, taskproc, 1):
                     shell_script_list.append("")
                     checkpoint_dict.append(dict())
-                for ibase in range(conf.start_from, tasksize, taskproc):
+                for ibase in range(0, tasksize, taskproc):
                     for ind in range(ibase, ibase + taskproc, 1):
                         if (ind < tasksize):
                             checkpoint = re.findall("checkpoint_[0-9]+", checked_list[ind])[0] + ".sim"
@@ -140,7 +140,7 @@ def execute_injection_scripts_sge(config, toolconf, conf):
                 shell_script_list[ind] = shell_script_list[ind][1:]
                 robust_file_write("./ilogs/shfile_" + str(ind) + ".sh", shell_script_list[ind])
                 # Push to the queue - qsub
-                run_qsub(work_label + str("%03d" % ind), shell_script_list[ind], conf.work_dir, config.injector.sim_time_injections, "4g", os.path.join(conf.work_dir, toolconf.log_dir))
+                run_qsub(work_label + str("%03d" % ind), shell_script_list[ind], conf.work_dir, config.SBFI.time_quota, "4g", os.path.join(conf.work_dir, toolconf.log_dir))
         time.sleep(15)
         jstat = get_queue_state_by_job_prefix(work_label)
         print "\n\tRunning processes:"
@@ -152,14 +152,14 @@ def execute_injection_scripts_sge(config, toolconf, conf):
         print "STARTED MONITORING"
         # Wait for work finish, delete unused temporary wlf files
         remaining_jobs = False
-        simtime_max = time.strptime(config.injector.sim_time_injections, '%H:%M:%S')
+        simtime_max = time.strptime(config.SBFI.time_quota, '%H:%M:%S')
         simtime_max_sec = simtime_max.tm_hour * 3600 + simtime_max.tm_min * 60 + simtime_max.tm_sec
         joblst = get_queue_state_by_job_prefix(work_label)
-        if (config.injector.cancel_pending_tasks == 'on' and len(joblst.pending) > 0 and len(joblst.pending) <= (len(joblst.running) / 2) and (tasksize / config.injector.maxproc) > 10):
-            print "Removing pending jobs"
-            cancel_pending_jobs(joblst)
-            joblst = get_queue_state_by_job_prefix(work_label)
-            remaining_jobs = True
+        # if (config.injector.cancel_pending_tasks == 'on' and len(joblst.pending) > 0 and len(joblst.pending) <= (len(joblst.running) / 2) and (tasksize / config.maxproc) > 10):
+        #     print "Removing pending jobs"
+        #     cancel_pending_jobs(joblst)
+        #     joblst = get_queue_state_by_job_prefix(work_label)
+        #     remaining_jobs = True
         joblst_prev = joblst
         resdir = os.path.join(conf.work_dir, toolconf.result_dir)
         prev_resdirstate = Dirstate(resdir)
@@ -182,7 +182,7 @@ def execute_injection_scripts_sge(config, toolconf, conf):
                 prev_resdirstate = current_resdirstate
             t_resdir_not_changed = current_resdirstate.time_difference_to_sec(prev_resdirstate)
             print "Running: " + str(len(joblst.running)) + ",\tPending: " + str(len(joblst.pending)) + ", \tQueue not changed since: " + str(t_queue_not_changed) + " [sec] / Max: " + str(simtime_max_sec) + ", \tRes_Files: " + str(current_resdirstate.nfiles) + " / " + str(full_jobset_size) + " not changed since: " + str(t_resdir_not_changed) + " [sec]"
-            if (config.injector.monitoring_mode != 'on') and (t_resdir_not_changed > config.injector.wlf_remove_time):  # queue hang - remove remaining jobs and restart
+            if t_resdir_not_changed > 500:  # queue hang - remove remaining jobs and restart
                 print 'Clearing the Queue...'
                 res = commands.getoutput('qdel -f -u tuil')
                 print res
@@ -212,7 +212,7 @@ def execute_injection_scripts_sge(config, toolconf, conf):
             time_stop = datetime.datetime.now().replace(microsecond=0)
             time_taken = time_stop - time_start
             print "\tTIME TAKEN: " + str(time_taken)
-            with open(os.path.join(config.call_dir, 'sim_log_' + config.injector.campaign_label + '.txt'), 'a') as simlog:
+            with open(os.path.join(config.call_dir, 'sim_log_{0}.txt'.format(config.experiment_label)), 'a') as simlog:
                 simlog.write("\nConfig: " + conf.label + ": Sim Time = " + str(time_taken))
 
             # Remove temporary files at working dir, produced by both modelsim and cluster engine
@@ -275,7 +275,7 @@ def execute_injection_scripts_Multicore(config, toolconf, conf):
         for ind in range(0, taskproc, 1):
             shell_script_list.append("")
             checkpoint_dict.append(dict())
-        for ibase in range(conf.start_from, tasksize, taskproc):
+        for ibase in range(0, tasksize, taskproc):
             for ind in range(ibase, ibase + taskproc, 1):
                 if (ind < tasksize):
                     checkpoint = re.findall("checkpoint_[0-9]+", checked_list[ind])[0] + ".sim"
