@@ -1,28 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <data>
 
+		<!-- platform: Multicore / Grid / GridLight 
+            mode = clean / continue
+        -->
     <DAVOS
-        report_dir = "#RUNDIR/../HTWEB/SELENE/SBFI/SingleFaults"
-        experiment_label = "SingleFaults"
-        platform = "Multicore"
-        maxproc = "8" >
+        report_dir = "/home/tuil/HTWEB/SELENE/DEMO"
+        experiment_label = "SEU"
+        platform = "Grid"
+        maxproc = "100" >
 
 
 
 		<ModelConfig
 			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
-            checkpoint = "./checkpoints/startpoint.sim"
+            checkpoint = "./checkpoints/seleneMC.sim"
             design_type = "RTL"
-			label = "NOEL_matmult_20_nop"
+			label = "SeleneMC"
 			clk_period = "5.0"
-            simulation_time = "18700"
+            simulation_time = "20000"
 		/>
 
 
-        <!-- platform: Multicore / Grid / GridLight 
-            #RUNDIR - path from where SBFI tool is launched
-            mode = clean / continue
-        -->
         <SBFI
             clean_run = "on"
             checkpoint_mode = "ColdRestore"
@@ -39,23 +38,23 @@
                             node_filter = "r.*"
                             scope_filter = "-internal" />
 
-            <InjectionScope unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/ramrf/rf0"
-                            node_filter = "*rfd"
+
+            <InjectionScope unit_path = "testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/dffrf/rf0/"
+                            node_filter = "r.*"
                             scope_filter = "-internal"      />
 
-            <!--ObservationScope unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/iu0"
+
+
+            <ObservationScope unit_path = "testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/dffrf/rf0/"
                               node_filter = "r.*"
                               sampling_options = "-notrigger"
                               scope_filter = "-internal"
                               group = "INTERNALS"
-                              label_prefix = "Core0_IU_"            -->
+                              label_prefix = "Core0_Regfile_"
+                              domain = "Core0"
+            />
 
-            <ObservationScope unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/ramrf/rf0"
-                              node_filter = "*rfd"
-                              sampling_options = "-notrigger"
-                              scope_filter = "-internal"
-                              group = "INTERNALS"
-                              label_prefix = "Core0_Regfile_"            />
+
 
             <ObservationItem
                 path= "/testbench/cpu/cpu/core0/mem0/mig_gen/sim_ram_gen/axi_mem/rb/p/logpages(1).data"
@@ -63,10 +62,11 @@
                 label = "Core0.Res"
                 sampling_options = ""
                 group = "OUTPUTS"
+                domain = "Core0"
             />
 
 
-
+			
             <faultload
                 model = "BitFlip"
                 target_logic = "SIGNAL"
@@ -75,35 +75,56 @@
                 injection_time_start = "0.0"
                 injection_time_end = "1.0"
                 experiments_per_target = "1"
-                sample_size = "500"
-                rand_seed	= "1"
+                sample_size = "5000"
+                rand_seed	= "10"
+                CCF = ""
+            />
+			
+
+			
+            <faultload
+                model = "StuckAt"
+			    target_logic = "SIGNAL"
+                forced_value = "1"
+ 			    multiplicity = "1"
+                time_mode = "Relative"
+                injection_time_start = "0.0"
+                injection_time_end = "0.0"
+                experiments_per_target = "1"
+                sample_size = "5000"
+                rand_seed	= "10"
                 CCF = ""
             />
 
+			
             <faultload
                 model = "StuckAt"
-                forced_value = "1"
-                target_logic = "SIGNAL"
+			    target_logic = "SIGNAL"					   
+                forced_value = "0"
                 multiplicity = "1"
                 time_mode = "Relative"
                 injection_time_start = "0.0"
                 injection_time_end = "0.0"
                 experiments_per_target = "1"
-                sample_size = "500"
-                rand_seed	= "1"
+                sample_size = "5000"
+                rand_seed	= "10"
                 CCF = ""
             />
-
-
+			
+			
+			
+			
+			
+            <!-- domain_mode: "" / SIMPLEX / TMR -->
             <Analyzer
                 mode = "MLV"
+                domain_mode = "SIMPLEX"
                 time_window = ""
                 max_time_violation = "0"
                 error_flag_signal = ""
                 error_flag_active_value = "1"
                 trap_type_signal = ""
                 threads = "4"
-                trace_domains="{} {} {}"
                 >
 
                 <join_groups>

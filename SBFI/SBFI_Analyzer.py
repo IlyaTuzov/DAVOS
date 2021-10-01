@@ -62,6 +62,40 @@ def check_outputs(ref_trace, inj_trace, time_window, mode, max_time_violation):
     return res
 
 
+def check_tmr(ref_trace, inj_trace, time_window, mode, max_time_violation):
+    if len(ref_trace.domain_indices.keys()) < 3:
+        print('SBFI analyzer error: number of domains ({0}) is less than required for TMR')
+        return None
+    time_points = sorted(list(set([i.time for i in ref_trace.vectors + inj_trace.vectors
+                                   if (i.time >= time_window[0])])))
+    ref_v = ref_trace.get_vector_by_time(time_points[-1], None)
+    inj_v = inj_trace.get_vector_by_time(time_points[-1], None)
+    tmr_match = True
+    m1, m2, m3 = 0, 0, 0
+    t1, t2, t3 = None, None, None
+    domains = sorted(ref_trace.domain_indices.keys())
+    rsize = len(ref_trace.domain_indices[domains[0]])
+    for item_id in range(rsize):
+        i1, i2, i3 = ref_trace.domain_indices[domains[0]][item_id], ref_trace.domain_indices[domains[1]][item_id], ref_trace.domain_indices[domains[2]][item_id]
+        h1, h2, h3 = int(inj_v.outputs[i1], 16), int(inj_v.outputs[i2], 16), int(inj_v.outputs[i3], 16)
+        if h1 != int(ref_v.outputs[i1], 16):
+            m1 += 1
+            if t1 is None: t1 = time_points[-1]
+        if h2 != int(ref_v.outputs[i2], 16):
+            m2 += 1
+            if t2 is None: t2 = time_points[-1]
+        if h3 != int(ref_v.outputs[i3], 16):
+            m3 += 1
+            if t3 is None: t3 = time_points[-1]
+        voted = (h1 & h2) | (h1 & h3) | (h2 & h3)
+        if voted != int(ref_v.outputs[i1], 16):
+            tmr_match = False
+    return {domains[0]: (m1, t1), domains[1]: (m2, t2), domains[2]: (m3, t3)}, tmr_match
+
+
+
+
+
 def count_latent_errors(ref_trace, inj_trace, time_window):
     mismatches = 0
     #    time_points = sorted(list(set([i.time for i in ref_trace.vectors + inj_trace.vectors
@@ -117,11 +151,6 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
             InjDesc.Status = 'E'  # error
         else:
             InjDesc.Status = 'S'  # Simulation successful and dumpfile exists
-            # inj_dump.join_output_columns(datamodel.reference.JnGrLst.copy())
-            # ensure that time window starts after fault injection time
-            output_match_res = check_outputs(datamodel.reference.reference_dump, inj_dump, tw, config.SBFI.analyzer.mode, config.SBFI.analyzer.max_time_violation)
-            for k, v in output_match_res.items():
-                InjDesc.DomainMatch[k] = 'V' if v[0] == 0 else 'X'
 
             err_raised = False
             if err_signal_index[0] is not None:
@@ -139,6 +168,9 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
             InjDesc.FaultToFailureLatency = float(0)
 
             if config.SBFI.analyzer.domain_mode.upper() in ['', 'SIMPLEX']:
+                output_match_res = check_outputs(datamodel.reference.reference_dump, inj_dump, tw, config.SBFI.analyzer.mode, config.SBFI.analyzer.max_time_violation)
+                for k, v in output_match_res.items():
+                    InjDesc.DomainMatch[k] = 'V' if v[0] == 0 else 'X'
                 out_misnum = sum(v[0] for k, v in output_match_res.items())
                 if out_misnum > 0:
                     first_mismatch = min(v[1] for k, v in output_match_res.items() if v[1] is not None)
@@ -156,14 +188,19 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
                     else:
                         InjDesc.FailureMode = 'C'  # Silent Data Corruption
             elif config.SBFI.analyzer.domain_mode.upper() in ['TMR']:
-                if sum(i == 'V' for i in InjDesc.DomainMatch.values()) < 2:
+                output_match_res, tmr_match = check_tmr(datamodel.reference.reference_dump, inj_dump, tw, config.SBFI.analyzer.mode, config.SBFI.analyzer.max_time_violation)
+                for k, v in output_match_res.items():
+                    InjDesc.DomainMatch[k] = 'V' if v[0] == 0 else 'X'
+                if not tmr_match:
                     InjDesc.FailureMode = 'C'
                     first_mismatch = min(v[1] for k, v in output_match_res.items() if v[1] is not None)
                     InjDesc.FaultToFailureLatency = first_mismatch - basetime - float(InjDesc.InjectionTime)
-                elif sum(i == 'V' for i in InjDesc.DomainMatch.values()) == 2:
+                elif sum(i == 'V' for i in InjDesc.DomainMatch.values()) < 3:
                     InjDesc.FailureMode = 'L'  # Latent fault
                 else:
                     InjDesc.FailureMode = 'M'  # Masked fault
+
+
 
         # rename dumpfile to string of unique index {InjDesc.ID}.lst
         InjDesc.Dumpfile = '{0:010d}.lst'.format(InjDesc.ID)

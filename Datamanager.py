@@ -114,7 +114,8 @@ class DataModel:
         elif EntityName == DataDescriptors.Profiling:
             pass
         elif EntityName == DataDescriptors.InjectionExp:
-            pass
+            injdesc = self.dbhelper.InjectionDesc_load()
+            self.LaunchedInjExp_dict = dict((desc.ID, desc) for desc in injdesc)
 
 
     def GetOrAppendTarget(self, NodeFullPath, Macrocell, InjectionCase):
@@ -549,11 +550,36 @@ class SqlHelper:
             self.robust_db_exec(query, (t.ID, t.NodeFullPath, t.Macrocell, t.InjectionCase))
         self.connection.commit()
 
+
+    def InjectionDesc_load(self):
+        InjDesc_lst = []
+        self.robust_db_exec('SELECT ID, ModelID, TargetID, FaultModel, ForcedValue, InjectionTime, InjectionDuration, ObservationTime, Status, FailureMode, ErrorCount, TrapCode, FaultToFailureLatency, Dumpfile FROM Injections', None)
+        rows = self.cursor.fetchall()
+        for c in rows:
+            a = InjectionDescriptor()
+            a.ID = int(c[0])
+            a.ModelID = int(c[1])
+            a.TargetID = int(c[2])
+            a.FaultModel = str(c[3])
+            a.ForcedValue = str(c[4])
+            a.InjectionTime = float(c[5])
+            a.InjectionDuration = float(c[6])
+            a.ObservationTime = float(c[7])
+            a.Status = str(c[8])    #S - successfully simulated and analyzed, P - profiled, H - no finish vector (hang), E - analysis error (no sim dump, etc.)
+            a.FailureMode = str(c[9])   #M - masked, L - latent, S - signalled failure, C  - silent data corruption
+            a.ErrorCount = int(c[10])
+            a.TrapCode = str(c[11])
+            a.FaultToFailureLatency = float(c[12])
+            a.Dumpfile = str(c[13])
+            InjDesc_lst.append(a)
+        return(InjDesc_lst)
+
     def InjectionDesc_save(self, InjDesc_lst):
         for i in InjDesc_lst:
             query = "\nINSERT INTO Injections (ID, ModelID, TargetID, FaultModel, ForcedValue, InjectionTime, InjectionDuration, ObservationTime, Status, FailureMode, ErrorCount, TrapCode, FaultToFailureLatency, Dumpfile) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
             self.robust_db_exec(query, (i.ID, i.ModelID, i.TargetID, i.FaultModel, i.ForcedValue, i.InjectionTime, i.InjectionDuration, i.ObservationTime, i.Status, i.FailureMode, i.ErrorCount, i.TrapCode, i.FaultToFailureLatency, i.Dumpfile))
         self.connection.commit()
+
 
 
     def get_distinct(self, field, table, sortflag = False):

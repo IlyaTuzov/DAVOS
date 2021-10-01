@@ -140,7 +140,7 @@ def execute_injection_scripts_sge(config, toolconf, conf):
                 shell_script_list[ind] = shell_script_list[ind][1:]
                 robust_file_write("./ilogs/shfile_" + str(ind) + ".sh", shell_script_list[ind])
                 # Push to the queue - qsub
-                run_qsub(work_label + str("%03d" % ind), shell_script_list[ind], conf.work_dir, config.SBFI.time_quota, "4g", os.path.join(conf.work_dir, toolconf.log_dir))
+                run_qsub(work_label + str("%03d" % ind), shell_script_list[ind], conf.work_dir, config.SBFI.time_quota, "6g", os.path.join(conf.work_dir, toolconf.log_dir))
         time.sleep(15)
         jstat = get_queue_state_by_job_prefix(work_label)
         print "\n\tRunning processes:"

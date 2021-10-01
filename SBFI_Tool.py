@@ -26,13 +26,14 @@ from SBFI.SBFI_Analyzer import *
 from Reportbuilder import *
 
 
-def cleanup(config, toolconfig, c, backup_label=''):
+def cleanup(config, toolconfig, c, backup_flag = True, backup_label=''):
     timestamp = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d_%H-%M-%S')
     if config.SBFI.clean_run:
         dumppack = "Backup_{0}_({1}).zip".format(backup_label, timestamp)
         os.chdir(c.work_dir)
-        for d in [toolconfig.result_dir, toolconfig.script_dir, toolconfig.checkpoint_dir, toolconfig.code_dir]:
-            zip_folder(d, dumppack)
+        if backup_flag:
+            for d in [toolconfig.result_dir, toolconfig.script_dir, toolconfig.checkpoint_dir, toolconfig.code_dir]:
+                zip_folder(d, dumppack)
         for d in [toolconfig.result_dir, toolconfig.script_dir, toolconfig.checkpoint_dir, toolconfig.log_dir, toolconfig.dataset_dir, toolconfig.code_dir]:
             remove_dir(os.path.join(c.work_dir, d))
     for d in [toolconfig.result_dir, toolconfig.script_dir, toolconfig.checkpoint_dir, toolconfig.log_dir, toolconfig.dataset_dir, toolconfig.code_dir]:
@@ -48,7 +49,7 @@ def compile_project(config, toolconfig):
         for c in config.parconf:
             run_qsub(config.injector.work_label + '_compile_' + c.label,
                      "vsim -c -do \"do " + config.genconf.compile_script + " " + c.compile_options + " ;quit\" > ./ilogs/compile_log.txt",
-                     c.work_dir, config.injector.sim_time_checkpoints, "2g", os.path.join(c.work_dir, toolconf.log_dir))
+                     c.work_dir, config.injector.sim_time_checkpoints, "8g", os.path.join(c.work_dir, toolconf.log_dir))
         joblst = get_queue_state_by_job_prefix(config.injector.work_label + '_compile_')
         while joblst.total_len() > 0:
             print "[Compile] Running: " + str(len(joblst.running)) + ",\tPending: " + str(len(joblst.pending))
@@ -94,7 +95,7 @@ def generate_clustering_checkpoints(config, toolconf, conf):
             proc = subprocess.Popen(sim_script, shell=True)
             proc.wait()
         elif config.platform == Platforms.Grid or config.platform == Platforms.GridLight:
-            run_qsub(config.experiment_label, sim_script, conf.work_dir, config.SBFI.time_quota, "4g",
+            run_qsub(config.experiment_label, sim_script, conf.work_dir, config.SBFI.time_quota, "8g",
                      os.path.join(conf.work_dir, toolconf.log_dir))
             monitor_sge_job(config.experiment_label, 15)
         print("{0}: Clustering checkpoints stored".format(conf.label))
@@ -132,7 +133,7 @@ def golden_run(config, toolconfig, c):
         # Run on SGE cluster
         if config.platform == Platforms.Grid or config.platform == Platforms.GridLight:
             run_qsub(config.experiment_label, runscript, c.work_dir,
-                     config.SBFI.time_quota, "4g", os.path.join(c.work_dir, toolconf.log_dir))
+                     config.SBFI.time_quota, "8g", os.path.join(c.work_dir, toolconf.log_dir))
             monitor_sge_job(config.experiment_label, 15)
         # Run on Multicore PC
         elif config.platform == Platforms.Multicore:
@@ -153,7 +154,7 @@ def launch_analysis(config, toolconf, conf, datamodel):
     elif config.platform == Platforms.GridLight:
         work_label = config.injector.work_label + 'Analysis_'
         run_qsub(work_label, 'python Analyzer_Iso_Grid.py ' + config.file + ' ' + conf.label + ' > ' + 'Analyzer.log',
-                 config.call_dir, config.injector.sim_time_injections, "4g",
+                 config.call_dir, config.injector.sim_time_injections, "8g",
                  os.path.join(conf.work_dir, toolconf.log_dir))
         joblst_prev = get_queue_state_by_job_prefix(work_label)
         remaining_jobs = True
@@ -166,7 +167,7 @@ def launch_analysis(config, toolconf, conf, datamodel):
             if joblst.total_len() == 0:
                 remaining_jobs = False
                 # Check for job hang
-            elif t_queue_not_changed > 500 and how_old_file(
+            elif t_queue_not_changed > 3000 and how_old_file(
                     os.path.normpath(os.path.join(config.call_dir, 'Analyzer.log'))) > 200:
                 res = commands.getoutput('qdel -f -u tuil')
                 print res
@@ -181,7 +182,7 @@ def launch_analysis(config, toolconf, conf, datamodel):
                 # Re-run analysis
                 run_qsub(work_label,
                          'python Analyzer_Iso_Grid.py ' + config.file + ' ' + conf.label + ' > ' + 'Analyzer.log',
-                         config.call_dir, config.injector.sim_time_injections, "4g",
+                         config.call_dir, config.injector.sim_time_injections, "8g",
                          os.path.join(conf.work_dir, toolconf.log_dir))
                 remaining_jobs = True
             print "Analysis: " + str(len(joblst.running)) + ",\tPending: " + str(len(joblst.pending))
@@ -204,7 +205,7 @@ def tweak_config_and_check_termination(config):
 def RunSBFI(datamodel, config, toolconf):
     backup_label = ''
     for conf in config.parconf:
-        cleanup(config, toolconf, conf, backup_label)
+        cleanup(config, toolconf, conf, False, backup_label)
 
         InitializeHDLModels(config, toolconf, conf)
 
@@ -219,7 +220,9 @@ def RunSBFI(datamodel, config, toolconf):
 
         # Analyze observation traces and save the results to the database
         launch_analysis(config, toolconf, conf, datamodel)
+
         backup_label = conf.label
+        config.SBFI.clean_run = False
     # Build SBFI report on the basis of results collected in the database
     build_report(config, toolconf, datamodel)
     if datamodel is not None:
