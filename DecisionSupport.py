@@ -27,7 +27,7 @@ import DerivedMetrics
 from RegressionModel_Manager import *
 from EvalEngine import *
 from FactorialDesignBuilder import *
-import FFI.FFI_HostLib 
+import FFI.Host_Zynq
 import EvalEngine
 import ImplementationTool
 import MCDM

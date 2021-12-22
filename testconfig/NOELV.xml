@@ -2,34 +2,16 @@
 <data>
 
     <DAVOS
-        report_dir = "/home/tester/HTWEB/NOELV/RFR"
-        experiment_label = "RFR"
+        report_dir = "C:/HTWEB/FFI/"
+        experiment_label = "FFI"
         platform = "Multicore"
         maxproc = "2" >
 
 		<ModelConfig
-			work_dir = "../HTWEB/NOELV/RFR"
-            checkpoint = "./checkpoints/RFR_1_matmult_20.sim"
+			work_dir = "C:/Projects/FFIMIC/"
+            checkpoint = ""
             design_type = "RTL"
-			label = "RFR_1_matmult_20"
-			clk_period = "5.0"
-            simulation_time = "17500"
-		/>
-
-		<ModelConfig
-			work_dir = "../HTWEB/NOELV/RFR"
-            checkpoint = "./checkpoints/RFRV2_1_matmult.sim"
-            design_type = "RTL"
-			label = "RFRV2_1_matmult"
-			clk_period = "5.0"
-            simulation_time = "17500"
-		/>
-
-		<ModelConfig
-			work_dir = "../HTWEB/NOELV/RFR"
-            checkpoint = "./checkpoints/ORIG_1_matmult_20.sim"
-            design_type = "RTL"
-			label = "ORIG_1_matmult_20"
+			label = "NOELV"
 			clk_period = "5.0"
             simulation_time = "17500"
 		/>
@@ -53,15 +35,19 @@
             >
 
             <!-- unit path: withing the design scope-->
-            <InjectionScope unit_path = "/testbench/cpu/core0/noelv0/cpuloop(0)/core/u0/iu0"
+            <InjectionScope unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/iu0"
                             node_filter = "r.*"
                             scope_filter = "-internal" />
 
 
+            <InjectionScope unit_path = "testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/dffrf/rf0/"
+                            node_filter = "r.*"
+                            scope_filter = "-internal"      />
 
 
-            <ObservationScope unit_path = "/testbench/cpu/core0/noelv0/cpuloop(0)/core/u0/ramrf/rf0"
-                              node_filter = "*rfd"
+
+            <ObservationScope unit_path = "testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/dffrf/rf0/"
+                              node_filter = "r.*"
                               sampling_options = "-notrigger"
                               scope_filter = "-internal"
                               group = "INTERNALS"
@@ -69,50 +55,18 @@
                               domain = "Core0"
             />
 
-            <ObservationScope unit_path = "/testbench/cpu/core0/noelv0/cpuloop(1)/core/u0/ramrf/rf0"
-                              node_filter = "*rfd"
-                              sampling_options = "-notrigger"
-                              scope_filter = "-internal"
-                              group = "INTERNALS"
-                              label_prefix = "Core1_Regfile_"
-                              domain = "Core1"
-            />
-
-            <ObservationScope unit_path = "/testbench/cpu/core0/noelv0/cpuloop(2)/core/u0/ramrf/rf0"
-                              node_filter = "*rfd"
-                              sampling_options = "-notrigger"
-                              scope_filter = "-internal"
-                              group = "INTERNALS"
-                              label_prefix = "Core2_Regfile_"
-                              domain = "Core2"
-            />
 
 
             <ObservationItem
-                path= "/testbench/cpu/sim_mem_gen/ahb_mem_gen/mig_ahbram/ram_trace"
-                array_range = "0:4"
+                path= "/testbench/cpu/cpu/core0/mem0/mig_gen/sim_ram_gen/axi_mem/rb/p/logpages(1).data"
+                array_range = "0:127"
                 label = "Core0.Res"
                 sampling_options = ""
                 group = "OUTPUTS"
                 domain = "Core0"
             />
 
-            <ObservationItem
-                path= "/testbench/cpu/sim_mem_gen/ahb_mem_gen/mig_ahbram/ram_trace"
-                array_range = "16:20"
-                label = "Core1.Res"
-                group = "OUTPUTS"
-                domain = "Core1"
-            />
 
-            <ObservationItem
-                path= "/testbench/cpu/sim_mem_gen/ahb_mem_gen/mig_ahbram/ram_trace"
-                array_range = "32:36"
-                label = "Core2.Res"
-                sampling_options = ""
-                group = "OUTPUTS"
-                domain = "Core2"
-            />
 
             <faultload
                 model = "BitFlip"
@@ -122,16 +76,50 @@
                 injection_time_start = "0.0"
                 injection_time_end = "1.0"
                 experiments_per_target = "1"
-
-                sample_size = "100"
-                rand_seed	= "1"
-                CCF = "{core0/noelv0/cpuloop(0)} {core0/noelv0/cpuloop(1)} {core0/noelv0/cpuloop(2)}"
+                sample_size = "5000"
+                rand_seed	= "10"
+                CCF = ""
             />
+
+
+
+            <faultload
+                model = "StuckAt"
+			    target_logic = "SIGNAL"
+                forced_value = "1"
+ 			    multiplicity = "1"
+                time_mode = "Relative"
+                injection_time_start = "0.0"
+                injection_time_end = "0.0"
+                experiments_per_target = "1"
+                sample_size = "5000"
+                rand_seed	= "10"
+                CCF = ""
+            />
+
+
+            <faultload
+                model = "StuckAt"
+			    target_logic = "SIGNAL"
+                forced_value = "0"
+                multiplicity = "1"
+                time_mode = "Relative"
+                injection_time_start = "0.0"
+                injection_time_end = "0.0"
+                experiments_per_target = "1"
+                sample_size = "5000"
+                rand_seed	= "10"
+                CCF = ""
+            />
+
+
+
+
 
             <!-- domain_mode: "" / SIMPLEX / TMR -->
             <Analyzer
                 mode = "MLV"
-                domain_mode = "TMR"
+                domain_mode = "SIMPLEX"
                 time_window = ""
                 max_time_violation = "0"
                 error_flag_signal = ""
@@ -150,6 +138,38 @@
 
         </SBFI>
 
+
+	<!--
+		injector: MICROBLAZE / ZYNQ
+		target_logic = FF/LUT/BRAM/TYPE0/ALL
+		mode = 1XX: using essential bits: 101 - sampling, 102 - exhaustive
+			   2XX: using external fault list
+		injection_time = 0-random, > 0 - inject after that number of clock cycles, e.g. ==1 - inject at the workload start, ==10 - inject after 9 clock cycles
+	-->
+		<FFI
+			injector 						= "MICROBLAZE"
+            injector_phase 					= "on"
+            reportbuilder_phase 			= "on"
+			device_part 					= "7vx485tffg1761"
+
+			dut_scope 						= "noelv0/cpuloop[0].core/u0/iu0"
+			pblock 							= "NOELV: X77Y2:X151Y147"
+			target_logic 					= "LUT"
+			custom_lut_mask 				= "on"
+
+			mode 							= "101"
+			sample_size_goal 				= "10000"
+			error_margin_goal 				= "0.5"
+			fault_multiplicity				= "1"
+			injection_time 					= "1"
+
+			grmon_script 					= "C:/Projects/FFIMIC/host_grmon.do"
+			grmon_uart						= "/dev/ttyUSB2"
+		>
+
+
+
+		</FFI>
 
 
     </DAVOS>

@@ -5,12 +5,457 @@ import ast
 from collections import OrderedDict
 import copy
 
-
-
-FrameSize = 101                         #Frame size 101 words for 7-Seres and Zynq
-
 class ByteOrder:
     LittleEndian, BigEndian = range(2)
+
+class FPGASeries:
+    S7, US, USP = range(3)
+
+FrameSizeDict = {FPGASeries.S7 : 101, FPGASeries.US : 123, FPGASeries.USP : 93}
+
+
+class FarFields:
+    def __init__(self, series, BlockType, Top, Row, Major, Minor):
+        self.series = series
+        self.BlockType, self.Top, self.Row, self.Major, self.Minor = BlockType, Top, Row, Major, Minor
+
+    @staticmethod
+    def from_FAR(FAR, series):
+        if series == FPGASeries.S7:
+            return FarFields(series, (FAR>>23)&0x7, (FAR>>22)&0x1, (FAR>>17)&0x1F, (FAR>>7)&0x3FF, FAR&0x7F)
+        elif series == FPGASeries.US:
+            return FarFields(series, (FAR>>23)&0x7, 0x0,           (FAR>>17)&0x3F, (FAR>>7)&0x3FF, FAR&0x7F)
+        elif series == FPGASeries.USP:
+            return FarFields(series, (FAR>>24)&0x7, 0x0,           (FAR>>18)&0x3F, (FAR>>8)&0x3FF, FAR&0xFF)
+        else:
+            print('FarFields: unknown FPGA series')
+            return None
+
+    def to_string(self):
+        return("Block={0:3d}, Top={1:3d}, Row={2:3d}, Column={3:3d}, Minor={4:3d}".format(self.BlockType, self.Top, self.Row, self.Major, self.Minor))
+
+
+    def get_far(self):
+        if self.series == FPGASeries.S7:
+            return (self.BlockType<<23) | (self.Top<<22) | (self.Row<<17) | (self.Major<<7) | (self.Minor)
+        elif self.series == FPGASeries.US:
+            return (self.BlockType<<23) |                  (self.Row<<17) | (self.Major<<7) | (self.Minor)
+        elif self.series == FPGASeries.USP:
+            return (self.BlockType<<23) |                  (self.Row<<18) | (self.Major<<8) | (self.Minor)
+        else:
+            print "get_far() : unknown FPGA series"
+            return 0x0
+
+
+
+class FrameStatistics:
+    def __init__(self):
+        self.Empty = True
+        self.EssentialBitsCount = 0
+        self.Type = 0
+
+
+class FrameDesc:
+    def __init__(self, FAR=0x0, Series=FPGASeries.S7, SLR_ID=0x0):
+        self.FAR = FAR
+        self.SLR_ID = SLR_ID
+        self.Series = Series
+        self.coord = FarFields.from_FAR(self.FAR, self.Series)
+        self.data = []
+        self.mask = []
+        self.ebc_data = []
+        self.custom_mask = []
+        self.stat = FrameStatistics()
+        self.type = 'Unknown'
+        self.size = FrameSizeDict[self.Series]
+
+    def SetFar(self, FAR):
+        self.FAR = FAR
+        self.Coord = FarFields.from_FAR(self.FAR, self.Series)
+
+    def GetFar(self):
+        return(self.FAR)
+
+    def update_stat(self):
+        self.stat.Type = FarFields.from_FAR(self.FAR, self.Series).BlockType
+        # flag[0] - not_empty - when at least one word is not masked-out
+        self.stat.EssentialBitsCount = sum([bin(i).count("1") for i in self.mask])
+        for i in self.data:
+            if i!=0x0:
+                self.stat.Empty=False
+                break
+
+
+    def to_string(self, log_data, log_mask, log_word_indexes):
+        res = "\nFAR : {0:08x} ({1:s})\tSLR: {2:08x}".format(self.FAR, self.coord.to_string(), self.SLR_ID)
+        if log_word_indexes:
+            res += "\nWord: " + ' : '.join(['{0:8d}'.format(i) for i in range(self.size)])
+        if log_data:
+            res += "\nData: " + ' : '.join(['{0:08x}'.format(self.data[i]) for i in range(self.size)])
+        if log_mask:
+            if len(self.ebc_data) > 0:
+                res += "\nEBC : " + ' : '.join(['{0:08x}'.format(self.ebc_data[i]) for i in range(self.size)])
+            else:
+                res += "\nEBC : " + ' : '.join(['--------' for i in range(FrameSizeDict[self.Series])])
+            if len(self.mask) > 0:
+                res += "\nMask: " + ' : '.join(['{0:08x}'.format(self.mask[i]) for i in range(self.size)])
+            else:
+                res += "\nMask: " + ' : '.join(['--------' for i in range(FrameSizeDict[self.Series])])
+        return res
+
+
+class ConfMemLayout:
+    def __init__(self):
+        self.TopRows, self.BottomRows = 0, 0
+        self.Columns = 0
+        self.RowHeight = 0
+
+    def to_string(self):
+        return("TopRows: {0:d}, BottomRows: {1:d}, Columns: {2:d}, RowHeight: {3:d}".format(
+            self.TopRows, self.BottomRows, self.Columns, self.RowHeight))
+
+
+class BitfileType:
+    Debug, Regular = range(2)
+
+class FileTypes:
+    EBC, EBD, BIT, BIN, LL = range (5)
+
+
+
+class BitstreamStatistics:
+    def __init__(self):
+        self.UtilizedFrames = 0
+        self.Type0Frames = 0
+        self.Type1Frames = 0
+        self.EssentialBitsCount = 0
+
+
+#Config memory of Super Logic Region
+class SuperLogicRegion:
+    def __init__(self, SLR_ID, Series):
+        self.SLR_ID = SLR_ID
+        self.FarList = []
+        self.Frames = dict()
+        self.layout = ConfMemLayout()
+        self.stat = BitstreamStatistics()
+        self.Empty = True
+        self.Series = Series
+
+    def put_frame(self, frame):
+        if not self.Empty:
+            if frame.FAR == self.FarList[-1]:
+                print "FAR = {0:08x} already registered (pad frame)".format(frame.FAR)
+                return
+        self.FarList.append(frame.FAR)
+        self.Frames[frame.FAR] = frame
+        self.Empty = False
+
+    def get_frame_by_FAR(self, FAR):
+        return self.Frames[FAR]
+
+    def get_frame_by_index(self, index):
+        FAR = self.FarList[index]
+        return self.Frames[FAR]
+
+    def update_stat(self):
+        self.stat = BitstreamStatistics()
+        for frame in self.Frames.values():
+            frame.update_stat()
+            if not frame.stat.Empty:
+                self.stat.UtilizedFrames += 1
+            if frame.stat.Type == 0:
+                self.stat.Type0Frames += 1
+            elif frame.stat.Type == 1:
+                self.stat.Type1Frames += 1
+            self.stat.EssentialBitsCount += frame.stat.EssentialBitsCount
+
+    def to_string(self):
+        res = '\nCM Fragment ID = {0:08x}:\n{1:30s}: {2:8d}\n{3:30s}: {4:8d}\n{5:30s}: {6:8d}\n{7:30s}: {8:8d}\n{9:30s}: {10:8d}\n{11:30s}: {12:s}'.format(
+            self.SLR_ID,
+            "    Fragment  Frames", len(self.FarList),
+            "        Type-0", self.stat.Type0Frames,
+            "        Type-1", self.stat.Type1Frames,
+            "    Utilized Frames", self.stat.UtilizedFrames,
+            "    Essential bits", self.stat.EssentialBitsCount,
+            "    Layout", self.layout.to_string())
+        return res
+
+    def get_frames_of_column(self, column_FAR):
+        res = []
+        idx = self.FarList.index(column_FAR)
+        if idx >= 0:
+            first = FarFields.from_FAR(column_FAR, self.Series)
+            current = first
+            while (first.BlockType == current.BlockType) and (first.Top == current.Top) and (first.Row == current.Row) and (first.Major == current.Major):
+                res.append(self.get_frame_by_index(idx))
+                idx += 1
+                current = FarFields.from_FAR(self.FarList[idx], self.Series)
+        return res
+
+
+class ConfigMemory:
+    def __init__(self, series = FPGASeries.S7):
+        self.set_series(series)
+        self.DevicePart = ""
+        self.VivadoVersion = ""
+        self.BitstreamFile = ""
+        self.SLR_ID_LIST = []
+        self.FragmentDict = dict()
+        self.moduledir = os.path.dirname(os.path.realpath(__file__))
+        print('Config Memory Model instantiated from: {0}'.format(self.moduledir))
+
+    def set_series(self, series):
+        self.Series = series
+        self.FrameSize = FrameSizeDict[self.Series]
+
+    def get_frame_by_FAR(self, FAR, chip_id=None):
+        if chip_id is not None:
+            fragment = self.FragmentDict[chip_id]
+        else:
+            fragment = self.FragmentDict.values()[0]
+        return fragment.get_frame_by_FAR(FAR)
+
+    def put_frame(self, frame):
+        if frame.SLR_ID not in self.FragmentDict.keys():
+            fragment = SuperLogicRegion(frame.SLR_ID, self.Series)
+            self.FragmentDict[frame.SLR_ID] = fragment
+        else:
+            fragment = self.FragmentDict[frame.SLR_ID]
+        fragment.put_frame(frame)
+
+    def update_stat(self):
+        for fragment in self.FragmentDict.values():
+            fragment.update_stat()
+
+    def get_frames_of_column(self, slr_idx, column_FAR):
+        fragment = self.FragmentDict[self.SLR_ID_LIST[slr_idx]]
+        return fragment.get_frames_of_column(column_FAR)
+
+    def load_bitstream(self, fname, filetype=BitfileType.Regular):
+        self.BitstreamFile = fname
+        FrameSize = FrameSizeDict[self.Series]
+        res = []
+        if fname.endswith('.bin'):
+            specificator = '<I'
+        elif fname.endswith('.bit'):
+            specificator = '>I'
+        else:
+            raw_input('bitstream_to_FrameList: Unknown file format')
+            return (None)
+        header = []
+        bus_width_detect = 0x0
+        with open(fname, 'rb') as f:
+            while bus_width_detect != 0x000000BB11220044:
+                data = f.read(1)
+                header.append(struct.unpack('>c', data)[0])
+                bus_width_detect = ((bus_width_detect << 8) | struct.unpack('>B', data)[0] & 0xFF) & 0xFFFFFFFFFFFFFFFF
+            matchDesc = re.search("Version=([0-9]+.*?[0-9]+.*?[a-zA-Z]+).*?([0-9a-zA-Z\\-]+)", ''.join(header))
+            if matchDesc:
+                self.VivadoVersion = matchDesc.group(1)
+                self.DevicePart = matchDesc.group(2)
+            else:
+                print "load_bitstream: device part is not found in the bitstream header"
+            bitstream = [0x000000BB, 0x11220044]
+            data = f.read()
+            for i in range(0, len(data), 4):
+                bitstream.append(struct.unpack(specificator, data[i:i+4])[0])
+
+        # In a debug bitstream data are written frame by frame with CRC check after each frame
+        if filetype == BitfileType.Debug:
+            i=0
+            while i < len(bitstream)-5:
+                #bus width detect, followed by two pad words, and one sync word
+                if [ bitstream[i], bitstream[i+1], bitstream[i+2], bitstream[i+3], bitstream[i+4] ] == [0x000000BB, 0x11220044, 0xFFFFFFFF, 0xFFFFFFFF, 0xAA995566] :
+                    #extract Device_ID from ICcode register
+                    while(bitstream[i] != 0x30018001): i += 1
+                    IDcode = bitstream[i+1]
+                    self.SLR_ID_LIST.append(IDcode)
+
+                #FDRI register: word count = FrameSize (101 or 123 or 93)
+                if bitstream[i] == (0x30004000 | self.FrameSize):
+                    #CRC check goes after the frame data
+                    if bitstream[i+self.FrameSize+1] == 0x30002001 and bitstream[i+self.FrameSize+3]==0x30000001:
+                        #extract FAR and data for the located data frame
+                        FAR = bitstream[i+self.FrameSize+2]
+                        frame = FrameDesc(FAR, self.Series, IDcode)
+                        frame.data = bitstream[i+1:i+self.FrameSize+1]
+                        #frame.update_stat()
+                        self.put_frame(frame)
+                        i += (self.FrameSize+4)
+                    else:
+                        i += 1
+                else:
+                    i += 1
+            #export FAR List
+            farlistfile = os.path.join(self.moduledir, 'FFI/DeviceSupport/FARLIST_{0}.txt'.format(self.DevicePart))
+            with open(farlistfile, 'w') as f:
+                for id in self.SLR_ID_LIST:
+                    for far in self.FragmentDict[id].FarList:
+                        f.write('0x{0:08x} 0x{1:08x}\n'.format(id, far))
+
+        #In a regular bitstream data are written as one big packet
+        elif filetype == BitfileType.Regular:
+            os.chdir(os.path.join(self.moduledir, 'FFI/DeviceSupport'))
+            farlistfile = glob.glob('FARLIST*{0:s}*.txt'.format(self.DevicePart))
+            if len(farlistfile) > 0:
+                print('Using cached FarList: {0:s}'.format(farlistfile[0]))
+                with open(farlistfile[0],'r') as f:
+                    for line in f:
+                        t = line.split(' ')
+                        SLR_ID = int(t[0], 16)
+                        FAR = int(t[1], 16)
+                        if SLR_ID not in self.FragmentDict.keys():
+                            fragment = SuperLogicRegion(SLR_ID, self.Series)
+                            self.FragmentDict[SLR_ID] = fragment
+                            self.SLR_ID_LIST.append(SLR_ID)
+                        else:
+                            fragment = self.FragmentDict[SLR_ID]
+                        fragment.FarList.append(FAR)
+
+            else:
+                print('load_bitstream: FAR list file not found for device part: {0}'.format(self.DevicePart))
+                return
+            i, FrameIndex, fragment = 0, 0, None
+            fragment_found = False
+            while i < len(bitstream)-5:
+                if [ bitstream[i], bitstream[i+1], bitstream[i+2], bitstream[i+3], bitstream[i+4] ] == [0x000000BB, 0x11220044, 0xFFFFFFFF, 0xFFFFFFFF, 0xAA995566] :
+                    #extract Device_ID from ICcode register
+                    while(bitstream[i] != 0x30018001): i += 1
+                    IDcode = bitstream[i+1]
+                    fragment = self.FragmentDict[IDcode]
+                    FrameIndex = 0
+                    fragment_found = True
+
+                # Find command: write FAR register
+                if fragment_found and bitstream[i] == 0x30002001:  # write FAR register 1 word
+                    i += 1
+                    FAR = bitstream[i]
+                    while FrameIndex < len(fragment.FarList) and fragment.FarList[FrameIndex] != FAR:
+                        FrameIndex += 1
+                    # look ahead: Command register --> WCFG command (write config data)
+                    while i < len(bitstream) and not (bitstream[i] == 0x30008001 and bitstream[i+1] == 0x00000001) :
+                        i += 1
+                    # look ahead: FDRI register
+                    while i < len(bitstream) and (bitstream[i] & 0xFFFFF800 != 0x30004000):
+                        i += 1
+                    if i >= len(bitstream): break
+                    WordCount = bitstream[i] & 0x7FF
+                    if WordCount == 0:
+                        # big data packet: WordCount in following Type2Packet
+                        i += 1
+                        WordCount = bitstream[i] & 0x7FFFFFF
+                    i += 1
+                    FrameCnt = 0
+                    PadIndex = 0
+                    while FrameCnt < (WordCount / self.FrameSize):
+                        if FrameIndex + FrameCnt - PadIndex < len(fragment.FarList):
+                            FAR = fragment.FarList[FrameIndex + FrameCnt - PadIndex]
+                            frame = FrameDesc(FAR, self.Series, IDcode)
+                            frame.data = bitstream[i:i + self.FrameSize]
+                            fragment.Frames[frame.FAR] = frame
+                        else:
+                            print("load_bitstream: Skipping extra (pad) frames idx: {0:d}".format(FrameIndex+FrameCnt-PadIndex))
+                            fragment_found = False
+                        i += self.FrameSize
+                        FrameCnt += 1
+                        if FrameIndex+FrameCnt-PadIndex < len(fragment.FarList)-1:
+                            f1 = FarFields.from_FAR(fragment.FarList[FrameIndex+FrameCnt-PadIndex], self.Series)
+                            f2 = FarFields.from_FAR(fragment.FarList[FrameIndex+FrameCnt-PadIndex+1], self.Series)
+                            if f1.Row != f2.Row:
+                                PadIndex += 2
+                                FrameCnt += 2
+                                i += self.FrameSize * 2
+                    FrameIndex += (FrameCnt - PadIndex)
+                    fragment_found = False
+                else:
+                    i += 1
+        self.update_stat()
+        for id in self.SLR_ID_LIST:
+            fragment = self.FragmentDict[id]
+            for far in range(len(fragment.FarList)):
+                f = FarFields.from_FAR(fragment.FarList[far], self.Series)
+                if (f.Top == 0) and (f.Row >= fragment.layout.TopRows):
+                    fragment.layout.TopRows = f.Row+1
+                elif (f.Top == 1) and (f.Row >= fragment.layout.BottomRows):
+                    fragment.layout.BottomRows = f.Row + 1
+                if f.Major >= fragment.layout.Columns:
+                    fragment.layout.Columns = f.Major + 1
+                if self.Series == FPGASeries.S7:
+                    fragment.layout.RowHeight = 50
+                elif self.Series == FPGASeries.US or self.Series == FPGASeries.USP:
+                    fragment.layout.RowHeight = 60
+
+
+        print('Bitstream parsed: {0:s}\n\tVivado Version: {1:s}\n\tDevice part: {2:s}'.format(
+            self.BitstreamFile, self.VivadoVersion, self.DevicePart))
+
+
+
+    def load_essential_bits(self, filename, file_type, slr_id):
+        if slr_id not in self.FragmentDict.keys():
+            print("load_essential_bits: invalid slr_id: {0:08x}".format(slr_id))
+            return
+        fragment = self.FragmentDict[slr_id]
+        header_parsed = False
+        words = []
+        with open(filename, 'r') as f:
+            for line in f:
+                if not header_parsed:
+                    buf = re.findall("Part:\s*?([0-9a-zA-Z\\-]+)", line)
+                    if len(buf) > 0:
+                        self.DevicePart = buf[0]
+                        continue
+                    buf = re.findall("Bits:\s*?([0-9]+)", line)
+                    if len(buf) > 0:
+                        wordnum = int(buf[0]) / 32
+                        header_parsed = True
+                        continue
+                else:
+                    words.append(int(line, 2))
+        if self.Series == FPGASeries.S7:
+            w = self.FrameSize
+        elif self.Series == FPGASeries.USP:
+            w = self.FrameSize+25
+        for frame_id in range(fragment.stat.Type0Frames):
+            frame = fragment.get_frame_by_index(frame_id)
+            if file_type == FileTypes.EBC:
+                frame.ebc_data = words[w:w+self.FrameSize]
+            elif file_type == FileTypes.EBD:
+                frame.mask = words[w:w+self.FrameSize]
+            w += self.FrameSize
+            #skip pad frame between clock rows
+            next_frame = fragment.get_frame_by_index(frame_id+1)
+            if frame.coord.Row != next_frame.coord.Row:
+                w += self.FrameSize * 2
+        print('Essential bits loaded: {0:s} into SLR: {1:08x}'.format(filename, slr_id))        
+
+
+    def print_stat(self):
+        print('Bitstream statistics:')
+        for id in self.SLR_ID_LIST:
+            fragment = self.FragmentDict[id]
+            fragment.update_stat()
+            print(fragment.to_string())
+
+
+    def log(self, fname, skipEmptyFrames, log_data, log_mask, log_word_indexes):
+        with open(fname, 'w') as f:
+            for chip_id, fragment in self.FragmentDict.iteritems():
+                for i in fragment.FarList:
+                    frame = fragment.Frames[i]
+                    if (not skipEmptyFrames) or (not frame.stat.Empty):
+                        f.write(frame.to_string(log_data, log_mask, log_word_indexes)+'\n')
+        print('CM logged into: {0:s}'.format(fname))
+
+
+
+
+
+
+
+
+
 
 class CLB_LUTS:
     EA, EB, EC, ED, OA, OB, OC, OD  = range(8)
@@ -23,73 +468,7 @@ class CLB_LUTS:
             res = CLB_LUTS.OA if ABCD=='A' else CLB_LUTS.OB if ABCD=='B' else CLB_LUTS.OC if ABCD=='C' else CLB_LUTS.OD
         return(res)
 
-class FrameDesc:
-    def __init__(self, FAR=None):
-        if FAR != None:
-            self.SetFar(FAR)
-        else:
-            self.BlockType, self.Top, self.Row, self.Major, self.Minor = 0, 0, 0, 0, 0
-        self.data = []
-        self.mask = []
-        self.custom_mask = []
-        self.flags = 0x00000000
-        self.EssentialBitsCount = 0
-        self.type = 'Unknown'
 
-    def SetFar(self, FAR):
-        self.BlockType = (FAR >> 23) & 0x00000007
-        self.Top =       (FAR >> 22) & 0x00000001
-        self.Row =       (FAR >> 17) & 0x0000001F
-        self.Major =     (FAR >>  7) & 0x000003FF
-        self.Minor =      FAR  	     & 0x0000007F
-
-    def GetFar(self):
-        return( (self.BlockType << 23) |(self.Top << 22) | (self.Row << 17) | (self.Major << 7) | self.Minor )
-
-    def UpdateFlags(self):
-        #flag[0] - not_empty - when at least one word is not masked-out
-        self.EssentialBitsCount = sum([bin(i).count("1") for i in self.mask])
-        if self.EssentialBitsCount > 0:
-            self.flags = self.flags | 0x1        
-
-    def get_stat(self):        
-        stat={'TotalBits': sum([bin(i).count("1") for i in self.mask]),
-              'CustomBits': sum([bin(i).count("1") for i in self.custom_mask])}
-        return(stat)
-        
-        
-
-        
-
-    def MatchedWords(self, Pattern):
-        res = 0
-        for i in self.data:
-            if i == Pattern:
-                res+=1
-        return(res)
-        
-
-    def to_string(self, verbosity=0):
-        res = "Frame[{0:08x}]: Block={1:5d}, Top={2:5d}, Row={3:5d}, Major={4:5d}, Minor={5:5d}".format(self.GetFar(), self.BlockType, self.Top, self.Row, self.Major, self.Minor)
-        if verbosity > 1:
-            res += '\nIndex: ' + ' '.join(['{0:8d}'.format(i) for i in range(len(self.data))])
-            res += '\nData : ' + ' '.join(['{0:08x}'.format(i) for i in self.data])
-            res += '\nMask : ' + ' '.join(['{0:08x}'.format(i) for i in self.mask])   
-            res += '\nCMask: ' + ' '.join(['{0:08x}'.format(i) for i in self.custom_mask])                        
-        return(res)
-
-
-
-
-def binary_file_to_u32_list(fname, e):
-    res = []
-    specificator = '>I' if e==ByteOrder.BigEndian else '<I'
-    with open(fname, 'rb') as f:
-        while True:
-            data = f.read(4)
-            if not data: break
-            res.append(struct.unpack(specificator, data)[0])
-    return(res)
 
 
 def get_index_of_1(data):
@@ -105,128 +484,15 @@ def get_bitindex(num, val):
 
 
 
-def getFarListForTile(TileName):
-    match = re.search('(BRAM|CLB).*?X([0-9]+)Y([0-9]+)', TileName)
-    res = []
-    T_rows, B_rows = 1, 2
-    if match:
-        X = int(match.group(2))
-        Y = int(match.group(3))
-        if Y/50 > B_rows-1:
-            top, row = 0, Y/50 - B_rows
-        else:
-            top, row = 1, B_rows - Y/50 - 1
-        major = X
-        if match.group(1) == 'BRAM':
-            for minor in range(28):
-                res.append((0x0 << 23) |(top << 22) | (row << 17) | (major << 7) | minor)
-    return(res)
-
-
-
-
-def LoadFarList(far_file):
-    FarSet = set()
-    with open(far_file, 'r') as f:
-        for line in f:
-            val = re.findall('[0-9abcdefABCDEF]+', line)
-            if len(val) > 0: 
-                FarSet.add(int('0x'+val[-1], 16))
-    FarList = list(FarSet)
-    FarList.sort()
-    #insert 2 pad frames after each HCLKROW and fix missed frames
-    FixFrames=[]
-    for i in range(len(FarList)-1):
-        F1 = FrameDesc(FarList[i])
-        F2 = FrameDesc(FarList[i+1])
-        if (F2.BlockType > F1.BlockType) or (F2.Top > F1.Top) or (F2.Row > F1.Row):
-            FixFrames.append(FrameDesc(F1.GetFar()+1))
-            FixFrames.append(FrameDesc(F1.GetFar()+2))
-        delta = F2.Minor - F1.Minor
-        if delta > 1:
-            for i in range(1,delta):
-                FixFrames.append(FrameDesc(F1.GetFar()+i))
-    for i in FixFrames:
-        FarList.append(i.GetFar())
-    FarList.sort()
-    return(FarList)    
-    
-
-def bitstream_to_FrameList(fname, FarList):
-    res = []
-    if fname.endswith('.bin'):
-        bitstream = binary_file_to_u32_list(fname, ByteOrder.LittleEndian)
-    elif fname.endswith('.bit'):
-        bitstream = binary_file_to_u32_list(fname, ByteOrder.BigEndian)
-    else:
-        raw_input('bitstream_to_FrameList: Unknown file format')
-        return(none)
-    i = 0
-    while not (bitstream[i] == 0xaa995566): i+=1
-    while i < len(bitstream):
-        #Find command: write FAR register
-        if bitstream[i]==0x30002001:                    #write FAR register 1 word
-            i+=1; FAR = bitstream[i]                    #FAR register value
-            startFrameIndex = 0
-            while FarList[startFrameIndex] != FAR: startFrameIndex+=1       
-            #WCFG command: Write config 
-            while not (bitstream[i] == 0x30008001 and bitstream[i+1]==0x00000001): i+=1     #Command register --> WCFG command (write config data)
-            while bitstream[i] & 0xFFFFF800 != 0x30004000: i+=1                             #Packet type 1: Write FDRI register
-            WordCount = bitstream[i] & 0x7FF; i+=1                                          #if 0 - word count in the next packet type 2
-             #big data packet: WordCount in following Type2Packet
-            if WordCount == 0: 
-                WordCount = bitstream[i] & 0x7FFFFFF; i+=1
-            for FrameCnt in range(WordCount/FrameSize):
-                if startFrameIndex+FrameCnt >= len(FarList):
-                    return(res)
-                Frame = FrameDesc(FarList[startFrameIndex+FrameCnt])
-                for k in range(FrameSize):
-                    Frame.data.append(bitstream[i])
-                    Frame.mask.append(0x00000000)
-                    i+=1    
-                res.append(Frame)
-        i+=1
-    return(res)
-
-
-#Parse EBC bitstream file (BlockType 0 only - no BRAM) and essential bits file (ebd)    
-def EBC_to_FrameList(ebc_fname, ebd_fname, FarList):
-    res = []
-    bitstream = []
-    maskstream = []
-    with open(ebc_fname, 'r') as f:
-        for line in f:
-            i = re.findall(r'^[01]+', line, flags=re.MULTILINE)
-            if len(i) > 0:
-                bitstream.append(int(i[0],2))
-    with open(ebd_fname, 'r') as f:
-        for line in f:
-            i = re.findall(r'^[01]+', line, flags=re.MULTILINE)
-            if len(i) > 0:
-                maskstream.append(int(i[0],2))
-    for i in range(len(FarList)):
-        F = FrameDesc(FarList[i])
-        if F.BlockType > 0: 
-            return(res)
-        F.data = bitstream[FrameSize + FrameSize*i : FrameSize + FrameSize*(i+1)]
-        F.mask = maskstream[FrameSize + FrameSize*i : FrameSize + FrameSize*(i+1)]
-        F.UpdateFlags()
-        res.append(F)
-    return(res)
 
 
 
 
 
-def ParseBitstream(bitstream_file, far_file):
-    FarList = LoadFarList(far_file)
-    BIN_FrameList = bitstream_to_FrameList(bitstream_file, FarList)
-    print("[               ] : {5}\n\n".format(0, 0, 0, 0, 0, " ".join(["{0:8d}".format(i) for i in range(FrameSize)])))
-    for frame in BIN_FrameList: 
-        if frame.CountNullWords() != FrameSize:
-            print("[{0:2d},{1:2d},{2:2d},{3:2d},{4:3d}] : {5}".format(frame.BlockType, frame.Top, frame.Row, frame.Major, frame.Minor, " ".join(["{0:08x}".format(frame.data[i]) for i in range(FrameSize)])))
-        
-    
+
+
+
+
 
     
     
@@ -255,7 +521,8 @@ def ExtractLUT_INIT(SwBox_top, SwBox_row, SwBox_major, SwBox_minor, LUTCOORD, BI
             
                 
 
-def SetCustomLutMask(SwBox_top, SwBox_row, SwBox_major, SwBox_minor, LUTCOORD, BIN_FrameList, lutmap, skip_mask=False):
+def SetCustomLutMask(SwBox_top, SwBox_row, SwBox_major, SwBox_minor, LUTCOORD, BIN_FrameList, lutmap, skip_mask=False, series = FPGASeries.S7):
+    FrameSize = FrameSizeDict[series]
     for i in range(len(BIN_FrameList)):
         f = BIN_FrameList[i]
         if f.BlockType == 0 and f.Top == SwBox_top and f.Row == SwBox_row and f.Major == SwBox_major:
@@ -294,40 +561,10 @@ def get_lut_to_bel_map(cellType, BelEquation):
         if len(vardict) == inputnum:
             return( OrderedDict(zip(['I{0:d}'.format(i) for i in range(inputnum)], vardict.keys())) )
 
-def VivadoParseTableToLutList(LutDescTab, ClockRows = 3):
-    res=[]
-    TopRows, BottomRows = ClockRows/2, ClockRows/2 +  ClockRows%2
-    for i in range(LutDescTab.rownum()):
-        item = {'name':     LutDescTab.getByLabel('Node', i),
-                'celltype': re.findall('(LUT[0-9]+)', LutDescTab.getByLabel('CellType', i))[0],
-                'cellloc':  map(int, re.findall('X([0-9]+)Y([0-9]+)', LutDescTab.getByLabel('CellLocation',i))[0]),
-                'abcd' :    re.findall('([A-Z]+)[0-9]+', LutDescTab.getByLabel('BEL',i))[0],
-                'beltype':  LutDescTab.getByLabel('BellType',i),
-                'clkrow':   int(re.findall('Y([0-9]+)', LutDescTab.getByLabel('ClockRegion',i))[0]),
-                'tileloc':  map(int, re.findall('X([0-9]+)Y([0-9]+)', LutDescTab.getByLabel('Tile',i))[0]),
-                'init':     LutDescTab.getByLabel('INIT',i)
-                }
-        item['connections'] = dict()
-        for c in re.findall('([I0-9]+):([A0-9]+)', LutDescTab.getByLabel('CellConnections',i)):
-            item['connections'][c[0]]=c[1]
-        if item['clkrow']+1 > BottomRows : #Top part of device
-            item['top'], item['row'] = 0, (item['clkrow']-BottomRows)
-        else:
-            item['top'], item['row'] = 1, (BottomRows-item['clkrow']-1)
-        item['major'], item['minor'] = int(item['tileloc'][0]), int(item['tileloc'][1])%50
-        item['lutindex'] = CLB_LUTS.from_coord(int(item['cellloc'][0]), item['abcd'])
-        item['combcell'] = None
-        item['cbelinputs']=[]
-        item['Actime'] = []
-        item['SwitchCount'] = []
-        item['globalmap'] = []
-        item['Label']=''
-        item['node_main'], item['node_compl'] = None, None
-        item['FailureModeEmul'] = []
-        item['FailureModeSim']  = []
 
-        res.append(item)
-    return(res)
+
+
+
 
 
 def LutListToTable(LutList, expand = False, no_duplicate_sim_cases = False):
@@ -458,6 +695,8 @@ def MapLutToBitstream(LutDescTab, BIN_FrameList, DutScope=''):
 
 
 
+
+
 if __name__ == "__main__":
 
     proj_path = 'C:/Projects/Profiling/Models/MC8051_ZC/'
@@ -477,11 +716,11 @@ if __name__ == "__main__":
 
     FarList = LoadFarList(FARARRAY_FILE)
     EBC_FrameList = EBC_to_FrameList(Input_EBCFile, Input_EBDFile, FarList)
-    BIN_FrameList = bitstream_to_FrameList(BITSTREAM_FILE, FarList)
+    BIN_FrameList = parse_bitstream(BITSTREAM_FILE, FarList)
 
     mismatches = 0
     for i in range(len(EBC_FrameList)):
-        for k in range(FrameSize):
+        for k in range(FrameSizeDict[FPGASeries.S7]):
             if EBC_FrameList[i].data[k] != BIN_FrameList[i].data[k]:
                 if self.verbosity > 0:
                     logfile.write('Check EBC vs BIT: mismatch at Frame[{0:08x}]: Block={1:5d}, Top={2:5d}, Row={3:5d}, Major={4:5d}, Minor={5:5d}\n'.format(BIN_FrameList[i].GetFar(), BIN_FrameList[i].BlockType, BIN_FrameList[i].Top, BIN_FrameList[i].Row, self.Major, BIN_FrameList[i].Minor))

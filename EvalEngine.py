@@ -17,7 +17,7 @@ from sys import platform
 from Datamanager import *
 import ImplementationTool
 #from XilinxInjector import InjHostLib
-from FFI.FFI_HostLib import *
+from FFI.Host_Zynq import *
 
 class EvalEngineParameters:
     FIT_DEVICE = (75.0/float(1000000))

@@ -441,8 +441,8 @@ class Table:
                 for c in range(0, len(self.columns), 1):
                     self.columns[c].append(idata[c])
             else:
-                pass
-                # print "Warning: Building Table - line not complete at add_row(): " + str(len(idata)) + " <> " + str(self.colnum())
+                #pass
+                print "Warning: Table.add_row(): data items less than labels" + str(len(idata)) + " <> " + str(self.colnum())
         else:
             for c in self.columns:
                 c.append("")

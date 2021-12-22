@@ -13,7 +13,7 @@ import time
 from Davos_Generic import Table
 from BitstreamParser import *
 from Datamanager import *
-from FFI.FFI_HostLib import *
+from FFI.Host_Zynq import *
 from Reportbuilder import *
 #                                   Exp_Index   FAR        word       bit       Inj_Time      FailureMode        ActivityTime  
 injlog_item_ptn = re.compile('>>.*?([0-9]+).*?([0-9]+).*?([0-9]+).*?([0-9]+).*?([0-9\.]+).*?:([a-zA-Z]+)([:\s]+([0-9\.]+))?')

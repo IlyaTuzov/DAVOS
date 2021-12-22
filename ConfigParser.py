@@ -753,65 +753,72 @@ class DecisionSupportConfiguration:
             self.MCDM.append(McdmScenario(i))
 
 
+class Injectors:
+    Microblaze, Zynq = range(2)
 
 class FFIConfiguration:
     def __init__(self, xnode):
+        self.injector = Injectors.Microblaze
         self.injector_phase = False
         self.reportbuilder_phase = False
+        self.dut_scope=''
         self.target_logic = ""
+        self.custom_lut_mask = False
+        self.profiling = False
+        self.mode = 101
+        self.sample_size_goal = 100
+        self.seed = 1
+        self.error_margin_goal = 0.1
+        self.fault_multiplicity = 1
+        self.injection_time = 0
         self.post_injection_recovery_nodes = []
         self.hdf_path = ""
         self.init_tcl_path = ""
         self.injectorapp_path = ""
         self.memory_buffer_address = 0x3E000000
-        self.custom_lut_mask = False
-        self.profiling = False
         self.platformconf = []
-        self.dut_scope=''
-        self.mode = 101
-        self.error_margin_goal = 0.1
-        self.fault_multiplicity = 1
-        self.injection_time = 0
-        self.sample_size_goal = 100
-        self.workload_duration = 1
-        self.detect_latent_errors = 0
-        self.log_timeout = 10
-        self.update_bitstream = 1    
+        self.pblock = None
+        self.grmon_script = ""
+        self.grmon_uart = ""
         if xnode != None:
             self.build_from_xml(xnode)
 
 
     def build_from_xml(self, xnode):
+        self.injector = Injectors.Microblaze if xnode.get('injector', '').lower() == 'microblaze' else Injectors.Zynq
         self.injector_phase = True if xnode.get('injector_phase', '') == 'on' else False
         self.reportbuilder_phase = True if xnode.get('reportbuilder_phase', '') == 'on' else False
-        self.target_logic = xnode.get('target_logic', '')
-        cp = xnode.get('post_injection_recovery_nodes','')
+        self.device_part = xnode.get('device_part', '').lower()
+        self.dut_scope = xnode.get('dut_scope','')
+        matchDesc = re.search('([0-9a-zA-Z]+)\s*?:\s*?X([0-9]+)Y([0-9]+)\s*?:\s*?X([0-9]+)Y([0-9]+)', xnode.get('pblock','').upper().replace(' ',''))
+        if matchDesc:
+            self.pblock = {
+                'name': matchDesc.group(1),
+                'X1': int(matchDesc.group(2)),
+                'Y1': int(matchDesc.group(3)),
+                'X2': int(matchDesc.group(4)),
+                'Y2': int(matchDesc.group(5))
+            }
+        self.target_logic = xnode.get('target_logic', '').lower()
+        self.custom_lut_mask = True if xnode.get('custom_lut_mask', '') == 'on' else False
+        self.profiling = True if xnode.get('profiling', '') == 'on' else False
+        self.mode = int(xnode.get('mode', '101'))
+        self.sample_size_goal = int(xnode.get('sample_size_goal','100'))
+        self.seed = int(xnode.get('seed','1'))        
+        self.error_margin_goal = float(xnode.get('error_margin_goal', '0.5'))
+        self.fault_multiplicity = int(xnode.get('fault_multiplicity', '1'))
+        self.injection_time = int(xnode.get('injection_time', '0'))
+        self.grmon_script = xnode.get('grmon_script', '')
+        self.grmon_uart = xnode.get('grmon_uart', '')
+
+        cp = xnode.get('post_injection_recovery_nodes', '')
         if cp != '': self.post_injection_recovery_nodes = ast.literal_eval(cp)
         self.hdf_path = xnode.get('hdf_path', '')
         self.init_tcl_path = xnode.get('init_tcl_path', '')
         self.injectorapp_path = xnode.get('injectorapp_path', '')
         self.memory_buffer_address = int(xnode.get('memory_buffer_address', '0x3E000000'), 16)
-        self.custom_lut_mask = True if xnode.get('custom_lut_mask', '') == 'on' else False
-        self.profiling = True if xnode.get('profiling', '') == 'on' else False
-        self.dut_scope = xnode.get('dut_scope','')
-        self.mode = int(xnode.get('mode','101'))
-        self.error_margin_goal = float(xnode.get('error_margin_goal','0.1'))
-        self.fault_multiplicity = int(xnode.get('fault_multiplicity','1'))
-        self.injection_time = int(xnode.get('injection_time','0'))
-        cp = xnode.get('platformconf','')
+        cp = xnode.get('platformconf', '[]')
         if cp != '': self.platformconf = ast.literal_eval(cp)
-        self.sample_size_goal = int(xnode.get('sample_size_goal','100'))
-        self.workload_duration = int(xnode.get('workload_duration','1'))
-        self.detect_latent_errors = 1 if xnode.get('detect_latent_errors','').lower() == 'on' else 0
-        self.log_timeout =  int(xnode.get('log_timeout','10'))
-        self.update_bitstream =  1 if xnode.get('update_bitstream','').lower() == 'on' else 0
-        matchDesc = re.search('X([0-9]+)Y([0-9]+):X([0-9]+)Y([0-9]+)', xnode.get('pblock_coodrinates','').upper().replace(' ',''))
-        if matchDesc:
-            self.pblock_coodrinates = ( int(matchDesc.group(1)), int(matchDesc.group(2)), int(matchDesc.group(3)), int(matchDesc.group(4)) )
-        else:
-            self.pblock_coodrinates = None
-        self.device_part = xnode.get('device_part','').lower()
-        self.extra_xsct_commands = xnode.get('extra_xsct_commands','').replace(';','\n')
 
 
 

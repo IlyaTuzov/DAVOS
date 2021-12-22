@@ -101,7 +101,7 @@ def GenerateFaultload(targetDir, DAVOS_Config, logfile, verbosity, Input_FarList
     EBC_FrameList = EBC_to_FrameList(Input_EBCFile, Input_EBDFile, FarList)
                
     #Step 3: Build the list of frame discriptors for complete bitstream (*.bit or *.bin)
-    BIN_FrameList = bitstream_to_FrameList(Input_BinstreamFile, FarList)
+    BIN_FrameList = parse_bitstream(Input_BinstreamFile, FarList)
 
     #Step 4: Compare BIN to EBC and If no mismatches found
     #        copy essential bits (mask from) to BIN (all descriptors will be collected there)
