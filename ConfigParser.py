@@ -1,5 +1,9 @@
-﻿# Parses input configuration (XML formatted) into internal data sctructure
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+﻿# Defines a data model for configuring DAVOS toolkit (project configuration)
+# Hierarchical data structure is obtained by parsing an input XML file
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET
@@ -778,8 +782,7 @@ class FFIConfiguration:
         self.memory_buffer_address = 0x3E000000
         self.platformconf = []
         self.pblock = None
-        self.grmon_script = ""
-        self.grmon_uart = ""
+        self.dut_script = ""
         if xnode != None:
             self.build_from_xml(xnode)
 
@@ -808,8 +811,7 @@ class FFIConfiguration:
         self.error_margin_goal = float(xnode.get('error_margin_goal', '0.5'))
         self.fault_multiplicity = int(xnode.get('fault_multiplicity', '1'))
         self.injection_time = int(xnode.get('injection_time', '0'))
-        self.grmon_script = xnode.get('grmon_script', '')
-        self.grmon_uart = xnode.get('grmon_uart', '')
+        self.dut_script = xnode.get('dut_script', '')
 
         cp = xnode.get('post_injection_recovery_nodes', '')
         if cp != '': self.post_injection_recovery_nodes = ast.literal_eval(cp)

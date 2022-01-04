@@ -1,18 +1,26 @@
+variable micapp ""
 
 
-
-proc restart {bitstream elf} {
+proc restart {bitstream} {
     connect 
     target 1
     fpga -file $bitstream
-    after 1000
-    target 3
-    rst -system
-    after 3000
-    if {[catch {dow $elf} er]} { }
-    if {[catch {target 3} er]} { }
-    if {[catch {con} er]} { }
 }
+
+
+proc run_kernel { } {
+    global micapp
+    after 2000
+    target 3
+    rst -processor
+    after 2000
+    if {[catch {dow $micapp} er]} { }
+    if {[catch {target 3} er]} { }
+    if {[catch {con} er]} { }  
+    if {[catch {con} er]} { }      
+    return "Status: {ok $micapp}"    
+}
+
 
 proc loadfaultlist { fname } {
     dow -data $fname 0x20200
@@ -21,6 +29,9 @@ proc loadfaultlist { fname } {
     puts "Loaded faultlist: $fname"
     return "Status: {ok $fname}"
 }
+
+
+
 
 
 
@@ -46,10 +57,12 @@ proc accept {chan addr port} {
     
     if { $arg1 == "10" } {
         set res [loadfaultlist $arg2]
+    } elseif { $arg1 == "11" } {
+        set res [run_kernel]
     } else {    
         set res [excmd $arg1 $arg2]
     }
-    puts "$addr:$port says $res"
+    #puts "$addr:$port says $res"
     puts $chan "Test result : $res"
     close $chan                          
 }   
@@ -64,7 +77,8 @@ set micapp      [lindex $argv 2]
 puts "Microblaze host script started at port=$port\n\tbitfile=$bitfile\n\tmicapp=$micapp"
 
 
-restart $bitfile $micapp
+restart $bitfile 
+run_kernel
 
 puts "XSCT Connected"
 

@@ -1,9 +1,10 @@
 ﻿#!python
 # Host-side standalone application to support Xilinx SEU emulation tool
 # Requires python 2.x and pyserial library 
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
-# MIT license
-# Latest version available at: https://github.com/IlyaTuzov/DAVOS/tree/master/XilinxInjector
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 
 import os
 import sys
@@ -94,24 +95,37 @@ def run_zynq_injector(davosconf, modelconf):
 
 
 def run_microblaze_injector(davosconf, modelconf):
-    Injector = NOELV_FFI_App(modelconf.work_dir, FPGASeries.S7, davosconf.FFI.device_part)
-    Injector.initialize()
-    pb = Pblock(davosconf.FFI.pblock['X1'], davosconf.FFI.pblock['Y1'], davosconf.FFI.pblock['X2'], davosconf.FFI.pblock['Y2'], davosconf.FFI.pblock['name'])
-    if davosconf.FFI.target_logic == 'type0':
-        Injector.sample_SEU(pb, CellTypes.EssentialBits, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
-    elif davosconf.FFI.target_logic == 'lut':
-        Injector.design.map_luts(davosconf.FFI.dut_scope, pb)
-        Injector.sample_SEU(pb, CellTypes.LUT, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
-    Injector.export_fault_list_bin(1000)
-    Injector.export_fault_list_csv()
+    Injector = NOELV_FFI_App(modelconf.work_dir, FPGASeries.S7, davosconf.FFI.device_part, davosconf.FFI.dut_script)
     random.seed(davosconf.FFI.seed)
+    if davosconf.FFI.injector_phase:
+        Injector.initialize("")
+        if davosconf.FFI.pblock is not None:
+            pb = Pblock(davosconf.FFI.pblock['X1'], davosconf.FFI.pblock['Y1'], davosconf.FFI.pblock['X2'], davosconf.FFI.pblock['Y2'], davosconf.FFI.pblock['name'])
+        else:
+            pb = None
+        if davosconf.FFI.target_logic == 'type0':
+            Injector.sample_SEU(pb, CellTypes.EssentialBits, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
+        elif davosconf.FFI.target_logic == 'lut':
+            Injector.design.map_luts(davosconf.FFI.dut_scope, pb)
+            Injector.sample_SEU(pb, CellTypes.LUT, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
+        Injector.export_fault_list_bin(1000)
+        Injector.export_fault_list_csv()
 
-    raw_input('Injector configured, Press any key to run the experiment...')
-    Injector.connect_microblaze()
-    Injector.connect_grmon(davosconf.FFI.grmon_script, davosconf.FFI.grmon_uart)
-    Injector.run()
 
+        #raw_input('Injector configured, Press any key to run the experiment...')
+        #Injector.connect_microblaze()
+        #status = Injector.connect_dut(3, 30)
+        #if status != 0:
+        Injector.restart_all('DAVOS started')
+        Injector.run()
 
+    if davosconf.FFI.reportbuilder_phase:
+        if not davosconf.FFI.injector_phase:
+            #restore Injector state from most recent log file
+            logfiles = sorted(glob.glob(os.path.join(Injector.design.generatedFilesDir, 'LOG*.csv')))
+            restore_file = logfiles[-1]
+            Injector.initialize(restore_file)
+            #print('Test successful')
 
 
 if __name__ == "__main__":

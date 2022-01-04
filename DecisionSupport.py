@@ -1,10 +1,13 @@
-﻿# Automation of multicriteria decision making (module under active refactoring - functionality from previous version in ./DesicionSupport folder)
+﻿# Automation of multicriteria decision making
 # 1. Computation of custom benchmarking metric (derived in the basis of raw PPA and Dependability attributes)
 # 2. Ranking of configurations under study by weighted sum method (Dependability benchmarking)
 # 3. Inference of regression models - currently requries matlab
 # 4. Optimization (Design space exploration) - WSM and Pareto,
 #    uses embedded logic under small set of significant factors, otherwise CUDA-based tool to accelerate the process
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 
 import sys
 import os

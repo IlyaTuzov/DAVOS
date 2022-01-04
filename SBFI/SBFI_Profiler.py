@@ -1,8 +1,10 @@
 ﻿# Pre-injection Profiling
-# Measures switching activity on the inputs of macrocells
-# Identifies the used/unused memory cells
-# Any other metric that can improve the fault injection in any way
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# Measures switching activity on macrocells interface
+# Identifies unused memory cells
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET

@@ -1,7 +1,9 @@
-# Exports an HTML-formatted report for the fault injection results stored in the database
-# TODO: custom grouping conditions, detailed summary page (refactor the functionality from ./obsolete/analyzer.py)
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
-
+# Exports HTML-formatted fault injection reports
+# Exports web-based interface to query and visualize fault injection results
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 import sys
 import xml.etree.ElementTree as ET
 import re

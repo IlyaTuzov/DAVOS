@@ -1,8 +1,8 @@
-﻿# Multithreaded analysis of observation dumps (from toolconf.result_dir)
-# Interacts with datamodel
-# With respect to SQL database - fills the table 'Injections'
-# Renames dumps according to global unique key, stores them into zip package
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+﻿# Multi-threaded analysis of observation dumps
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET

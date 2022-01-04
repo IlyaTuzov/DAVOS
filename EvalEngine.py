@@ -1,4 +1,11 @@
-﻿import sys
+﻿# DAVOS PPAD evaluation engine used for dependability-driven design space exploration
+# Automates parallelized implementation and robustness assessment of multiple design configurations
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
+
+import sys
 import xml.etree.ElementTree as ET
 import re
 import os

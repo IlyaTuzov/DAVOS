@@ -1,4 +1,11 @@
-﻿import sys
+﻿# Manages regression models
+# Parses matlab-generated models
+# Compiles and interprets loaded models
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
+import sys
 import os
 import xml.etree.ElementTree as ET
 import re

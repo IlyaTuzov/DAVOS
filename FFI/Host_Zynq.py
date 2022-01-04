@@ -1,9 +1,9 @@
 ﻿#!python
-# Host-side application to support Xilinx SEU emulation tool
-# Requires python 2.x and pyserial library 
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
-# MIT license
-# Latest version available at: https://github.com/IlyaTuzov/DAVOS/tree/master/XilinxInjector
+# Host application to control FPGA-based fault injection via Zynq SoC
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 
 import os
 import sys

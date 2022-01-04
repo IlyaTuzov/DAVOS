@@ -1,3 +1,10 @@
+# Host application to control FPGA-based fault injection via Xilinx Microblaze IP
+# Includes adaptation to Gaisler NOELV/grmon designs under test
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
+
 import os
 import sys
 import subprocess
@@ -11,6 +18,7 @@ import time
 import math
 import socket
 import pexpect
+import commands
 davos_dir = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 sys.path.insert(1, davos_dir)
 from Davos_Generic import Table
@@ -143,17 +151,28 @@ class InjectorMicroblazeManager(object):
         self.faultload_files = []
         self.moduledir = os.path.dirname(os.path.realpath(__file__))
         self.mic_script = os.path.join(self.moduledir, 'FFI_Microblaze/microblaze_server.do')
-        self.mic_app    = os.path.join(self.moduledir, 'FFI_Microblaze/InjApp_build/InjApp.elf')
+        self.mic_app    = os.path.join(self.moduledir, 'FFI_Microblaze/InjApp_build/InjAppRelease.elf')
         self.mic_port   = 12346
         self.InjStat = InjectionStatistics()
         self.LastFmode = None
         self.PartIdx = -1
-        self.logfilename = os.path.join(self.generatedFilesDir, 'LOG_{0:s}.csv'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
-        self.logfile = open(self.logfilename, 'a')
-        self.logfile.write('sep = ;\n'+';'.join(self.get_fdesc_labels()))
-        print('Injector Micriblaze Host Controller instantiated from {0}'.format(self.moduledir))
+        self.proc_xsct = None
+        self.restart_period = 100
 
-    def initialize(self):
+
+
+    def initialize(self, logifle_to_restore = ""):
+        if logifle_to_restore == "":
+            self.logfilename = os.path.join(self.generatedFilesDir, 'LOG_{0:s}.csv'.format(
+                datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
+            self.logfile = open(self.logfilename, 'a')
+            self.logfile.write('sep = ;\n'+';'.join(self.get_fdesc_labels()))
+            print('Injector Micriblaze Host Controller instantiated from {0}'.format(self.moduledir))
+        else:
+            self.logfilename = logifle_to_restore
+            self.load_fault_list_csv(self.logfilename)
+            self.logfile = open(self.logfilename, 'a')
+            print('Injector Micriblaze Host Controller Restored from logfile {0}'.format(self.logfilename))
         self.design.initialize()
 
     def sample_SEU(self, pb, cell_type, sample_size, multiplicity):
@@ -248,6 +267,32 @@ class InjectorMicroblazeManager(object):
         FdescTable.to_csv(';', True, self.FdescFile)
         print('Fault List exported to: {0}'.format(self.FdescFile))
 
+    def load_fault_list_csv(self, infile):
+        Fdesctab = Table('Fdesc')
+        Fdesctab.build_from_csv(infile)
+        fdesc, idx, i, MaxRows = None, -1, 0, Fdesctab.rownum()
+        while i < MaxRows:
+            fdesc = FaultDescriptor(
+                int(Fdesctab.getByLabel('Id', i)),
+                int(Fdesctab.getByLabel('CellType', i)),
+                int(Fdesctab.getByLabel('Multiplicity', i)))
+            fdesc.PartIdx = int(Fdesctab.getByLabel('PartIdx', i))
+            fdesc.FailureMode = Fdesctab.getByLabel('FailureMode', i)
+            for seu_idx in range(fdesc.Multiplicity):
+                seu = SEU_item()
+                seu.Offset = int(Fdesctab.getByLabel('Offset', i))
+                seu.DesignNode = Fdesctab.getByLabel('DesignNode', i)
+                seu.SLR = int(Fdesctab.getByLabel('SLR', i), 16)
+                seu.FAR = int(Fdesctab.getByLabel('FAR', i), 16)
+                seu.Word = int(Fdesctab.getByLabel('Word', i))
+                seu.Bit = int(Fdesctab.getByLabel('Bit', i))
+                seu.Mask = int(Fdesctab.getByLabel('Mask', i), 16)
+                seu.Time = int(Fdesctab.getByLabel('Time', i))
+                fdesc.SeuItems.append(seu)
+                i += 1
+            self.fault_list.append(fdesc)
+        print('Fault descriptors restored from {0:s} : {1:d} items'.format(infile, len(self.fault_list)))
+
 
     def serv_communicate(self, host, port, in_cmd, timeout = 10):
         try:
@@ -255,22 +300,28 @@ class InjectorMicroblazeManager(object):
             sct.connect((host, port))
             sct.settimeout(timeout)
             sct.send(in_cmd)
-            s = re.search(st_pattern, sct.recv(1024))
+            buf = sct.recv(1024)
+            s = re.search(st_pattern, buf)
             if s: 
                 return(s.group(1))
             else:
+                print('serv_communicate(): return status: {0:s}'.format(str(buf)))
                 return(None)
         except socket.timeout as e:
             return(None)
         
     def connect_microblaze(self):
+        if self.proc_xsct is not None:
+            self.proc_xsct.close(force=True)
         #terminate any process that blocks microblaze port (if any)
-        os.system('fuser -k %d/tcp' %(self.mic_port))
+        for i in range(2):
+            commands.getoutput('fuser -k %d/tcp' %(self.mic_port))    
+        time.sleep(1)
         #launch microblaze host app (xsct server at localhost:self.mic_port) 
         cmd = 'xsct {0:s} {1:d} {2:s} {3:s}'.format(self.mic_script, self.mic_port, self.design.files['BIT'], self.mic_app)
         print('Running: {0:s}'.format(cmd))
-        self.proc_xsct = pexpect.spawn(cmd)
-        self.proc_xsct.expect('XSCT Connected')
+        self.proc_xsct = pexpect.spawn(cmd, timeout=60)
+        self.proc_xsct.expect('XSCT Connected', timeout=60)
         print('XSCT started at localhost:{0:d}'.format(self.mic_port))        
         
     def load_faultlist(self, part_idx):
@@ -285,6 +336,21 @@ class InjectorMicroblazeManager(object):
         if not MIC_OK:
             print('Load faultlist: error')
             self.restart_all('')
+            
+            
+    def restart_kernel(self):
+        cmd = "{0:d} {1:s}\n".format(11, self.mic_app)
+        res = self.serv_communicate('localhost', self.mic_port, cmd)
+        MIC_OK = False
+        if res is not None:
+            status = res.split()
+            if status[0] == 'ok':
+                print('Microblaze kernel restarted: {0:s}'.format(status[1]))
+                MIC_OK = True
+        if not MIC_OK:
+            print('restart_kernel: error')
+            self.restart_all('')
+            
 
     def restart_all(self, message):
         print('Restarting XSCT and GRMON: '+message)
@@ -304,7 +370,7 @@ class InjectorMicroblazeManager(object):
         else:
             print("Microblaze connection error")               
         if not MIC_OK:
-            print('Relaunching microblaze')
+            print('inject_fault() failure: Relaunching microblaze')
             self.restart_all('')
 
 
@@ -320,7 +386,7 @@ class InjectorMicroblazeManager(object):
         else:
             print("Microblaze connection error")        
         if not MIC_OK:
-            print('\n\tRelaunching microblaze')
+            print('remove_fault() failure: Relaunching microblaze')
             self.restart_all('')
         
     def run_workload(self):
@@ -338,7 +404,11 @@ class InjectorMicroblazeManager(object):
         for idx in range(len(self.fault_list)):
             start_time = time.time()
             faultdesc = self.fault_list[idx]
-            if faultdesc.PartIdx > self.PartIdx:
+            reloaded = False
+            if (idx > 0) and (idx % self.restart_period == 0):
+                self.restart_kernel()
+                reloaded = True
+            if (faultdesc.PartIdx > self.PartIdx) or reloaded:
                 self.load_faultlist(faultdesc.PartIdx)
                 self.PartIdx = faultdesc.PartIdx
             self.inject_fault(idx)
@@ -347,7 +417,7 @@ class InjectorMicroblazeManager(object):
             self.dut_recover()       
             self.InjStat.append(self.LastFmode)  
             faultdesc.FailureMode = FailureModes.to_string(self.LastFmode)            
-            print("\t{0:20s}: {1:.1f} seconds, Statistics: {2:s}\n".format('Exp. Time', float(time.time() - start_time), self.InjStat.to_string()))
+            print("\t{0:20s}: {1:.1f} seconds (Total: {2:.1f} seconds), Statistics: {3:s}\n".format('Exp. Time', float(time.time() - start_time), float(time.time() - exp_start_time), self.InjStat.to_string()))
             for row in self.faultdesc_format_str(idx):
                 self.logfile.write('\n'+';'.join(row))
             self.logfile.flush()
@@ -368,43 +438,70 @@ class InjectorMicroblazeManager(object):
 
        
 class NOELV_FFI_App(InjectorMicroblazeManager):
-    def __init__(self, targetDir, series, DevicePart):
+    def __init__(self, targetDir, series, DevicePart, dut_script):
         super(NOELV_FFI_App, self).__init__(targetDir, series, DevicePart)
         print('NOELV_FFI_App object as subclass')
+        self.proc_grmon = None
+        self.dut_script = dut_script
+        self.dut_port = 12345
 
-    def connect_grmon(self, grmon_script, uart='/dev/ttyUSB1', grmon_port=12345):
-        self.grmon_script = grmon_script
-        self.uart = uart
-        self.grmon_port = grmon_port
-        #terminate any process that blocks grmon port (if any)
-        os.system('fuser -k %d/tcp' %(self.grmon_port))
-        #launch grmon host app (xsct server at localhost:self.grmon_port) 
-        cmd = 'grmon -u -ucli -uart {0:s} -c {1:s}'.format(uart, self.grmon_script)
-        print('Running: {0:s}'.format(cmd))
-        self.proc_grmon = pexpect.spawn(cmd)        
-        self.proc_grmon.expect('DUT has been initialized')
-        print('GRMON started at localhost:{0:d}'.format(self.grmon_port))        
+    def connect_dut(self, attempts=1, maxtimeout=60):
+        for i in range(attempts):
+            if self.proc_grmon is not None:
+                self.proc_grmon.close(force=True)
+            #terminate any process that blocks grmon port (if any)
+            for k in range(2):
+                commands.getoutput('fuser -k %d/tcp' %(self.dut_port))
+            time.sleep(1)
+            print('Running: {0:s} : attempt {1:d}'.format(self.dut_script, i))
+            try:
+                self.proc_grmon = pexpect.spawn(self.dut_script, timeout=maxtimeout)
+                self.proc_grmon.expect('DUT has been initialized', timeout=maxtimeout)
+                print('GRMON started at localhost:{0:d}'.format(self.dut_port))
+                return(0)
+            except Exception as e:
+                print('connect_dut() failure')
+        return(1)
 
     def restart_all(self, message):
-        print('Restarting XSCT and GRMON: '+message)
-        self.connect_microblaze()
-        self.connect_grmon(self.grmon_script, self.uart, self.grmon_port)
-        self.load_faultlist(self.PartIdx)
-
+        try:
+            self.proc_grmon.close(force=True)
+        except Exception as e:
+            pass
+        try:
+            self.proc_xsct.close(force=True)
+        except Exception as e:
+            pass
+        commands.getoutput('fuser -k %d/tcp' %(self.dut_port))
+        commands.getoutput('fuser -k %d/tcp' %(self.mic_port))
+        i = 0
+        while True:
+            i+=1
+            print('Restarting XSCT and GRMON {0:s}: attempt {1:d}'.format(message, i))
+            self.connect_microblaze()
+            status = self.connect_dut(2, 60)
+            if status == 0:            
+                if self.PartIdx >= 0:
+                    self.load_faultlist(self.PartIdx)
+                print("XSCT and GRMON restarted")
+                return(0)        
+        print("restart_all(): failure, exiting")
+        sys.exit(0)
     
     def run_workload(self):
-        res = self.serv_communicate('localhost', self.grmon_port, "1\n")
+        res = self.serv_communicate('localhost', self.dut_port, "1\n", 1)
         if res is not None: 
             self.LastFmode = InjectionStatistics.get_failure_mode(res)
             print("\t{0:20s}: {1:s}".format('Injection result', res))
         else:
             self.LastFmode = FailureModes.Hang
-            self.restart_all('GRMON Hang')
+            print("\t{0:20s}: {1:s}".format('Injection result', 'Hang'))
+            #self.restart_all('GRMON Hang')
         return(res)
         
     def dut_recover(self):
         if self.LastFmode != FailureModes.Masked:
-            res = self.serv_communicate('localhost', self.grmon_port, "1\n")
+            res = self.serv_communicate('localhost', self.dut_port, "1\n", 1)
             if res is not None: 
                 if 'pass' in res.lower():
                     print "\tDUT recovery check (post-SEU-remove): Ok"
@@ -412,28 +509,37 @@ class NOELV_FFI_App(InjectorMicroblazeManager):
                     self.LastFmode = FailureModes.Hang
                     print "\tDUT recovery check (post-SEU-remove): Fail"
                     #try to reset the DUT
-                    res = self.serv_communicate('localhost', self.grmon_port, "2\n")
-                    if res is not None: 
-                        print("\tDUT has been reset")
-                    else:
-                        print "\tDUT recovery check (post-SEU-remove): GRMON Hang"
+                    #res = self.serv_communicate('localhost', self.dut_port, "2\n", 10)
+                    #if res is not None: 
+                    #    print("\tDUT has been reset")
+                    #else:
+                    #    print "\tDUT recovery check (post-SEU-remove): DUT Hang"
+                    status = self.connect_dut(1,15)
+                    if status > 0:
                         self.restart_all('GRMON hang')
                         return
                     #run workload after reset
-                    res = self.serv_communicate('localhost', self.grmon_port, "1\n")
+                    res = self.serv_communicate('localhost', self.dut_port, "1\n", 1)
                     if res is not None: 
                         if 'pass' in res.lower():
                             print "\tDUT recovery check (post-Reset): Ok"
                         else:
                             print "\tDUT recovery check (post-Reset): Fail"
-                            self.restart_all('GRMON hang')
+                            status = self.connect_dut(1, 15)
+                            if status > 0:
+                                self.restart_all('GRMON hang')
                             return
                     else:
                         print "\tDUT recovery check (post-Reset): GRMON Hang"
-                        self.restart_all('GRMON hang')
+                        status = self.connect_dut(1,15)
+                        if status > 0:
+                            self.restart_all('GRMON hang')
                         return
             else:
-                self.restart_all('GRMON hang')
+                print "\tDUT recovery check (post-SEU-remove): Hang"
+                status = self.connect_dut(1, 15)
+                if status > 0:
+                    self.restart_all('GRMON hang')
                 self.LastFmode = FailureModes.Hang
 
     def cleanup(self):
@@ -454,8 +560,7 @@ if __name__ == "__main__":
     sample_size = 245
     multiplicity = 1
     fault_part_size = 50
-    grmon_script = "/home/tuil/FFI/NOELV/host_grmon.do"
-    grmon_uart = '/dev/ttyUSB2'
+    grmon_script = "grmon -u -ucli -uart /dev/ttyUSB2 -c /tmp/FFI/FFIMIC/host_grmon_1.do"
     random.seed(1000)
     
     
@@ -466,9 +571,12 @@ if __name__ == "__main__":
     Injector.sample_SEU(pb, CellTypes.EssentialBits, sample_size, multiplicity)
     Injector.export_fault_list_bin(fault_part_size)
     Injector.export_fault_list_csv()
-    
+
+    Injector.dut_script = grmon_script
+    Injector.dut_port = 12345
+
     Injector.connect_microblaze()
-    Injector.connect_grmon(grmon_script, grmon_uart)
+    Injector.connect_dut()
     Injector.run()
     
     print("Completed")

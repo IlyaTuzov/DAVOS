@@ -1,4 +1,9 @@
-﻿import sys
+﻿# Custom implementation of genetic algorithms for dependability-driven design space exploration
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
+import sys
 import xml.etree.ElementTree as ET
 import re
 import os

@@ -1,6 +1,10 @@
 /*
- * Fault injector application for Microblaze
- *
+ Fault injector application for Microblaze
+
+ --------------------------------------------------------------------------------------------
+ Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+ Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+ --------------------------------------------------------------------------------------------
  */
 
 #include "platform.h"

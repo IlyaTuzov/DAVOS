@@ -1,7 +1,8 @@
 # Runs fault injection scripts either on GRID (SGE) or Multicore PC
-# Monitoring implemented
-# TODO: Connect to generator via queue of injection descriptors
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET

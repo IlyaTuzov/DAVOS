@@ -1,6 +1,10 @@
 ﻿# Module running analysis as a Job at Grid
-# Input agruments: (1) - configuration file (xml), (2) - label of configuration to analyze/if omitted - processes the results for all configurations 
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# Input agruments: (1) - configuration file (xml), (2) - label of configuration to analyze/if omitted - processes the results for all configurations
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
+
 
 import sys
 import xml.etree.ElementTree as ET

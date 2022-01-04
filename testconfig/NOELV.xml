@@ -3,7 +3,7 @@
 
     <DAVOS
         report_dir = "C:/HTWEB/FFI/"
-        experiment_label = "FFI"
+        experiment_label = "NOELV"
         platform = "Multicore"
         maxproc = "2" >
 
@@ -145,15 +145,16 @@
 		mode = 1XX: using essential bits: 101 - sampling, 102 - exhaustive
 			   2XX: using external fault list
 		injection_time = 0-random, > 0 - inject after that number of clock cycles, e.g. ==1 - inject at the workload start, ==10 - inject after 9 clock cycles
+		pblock: name: Bottom-Left : Top-Right  (NOELV : X77Y2:X151Y147)
 	-->
 		<FFI
 			injector 						= "MICROBLAZE"
             injector_phase 					= "on"
-            reportbuilder_phase 			= "on"
+            reportbuilder_phase 			= "off"
 			device_part 					= "7vx485tffg1761"
 
 			dut_scope 						= "noelv0/cpuloop[0].core/u0/iu0"
-			pblock 							= "NOELV: X77Y2:X151Y147"
+			pblock 							= ""
 			target_logic 					= "LUT"
 			custom_lut_mask 				= "on"
 
@@ -163,8 +164,7 @@
 			fault_multiplicity				= "1"
 			injection_time 					= "1"
 
-			grmon_script 					= "C:/Projects/FFIMIC/host_grmon.do"
-			grmon_uart						= "/dev/ttyUSB2"
+			dut_script 					    = "grmon -u -ucli -uart /dev/ttyUSB2 -c /tmp/FFI/FFIMIC/host_grmon_1.do"
 		>
 
 

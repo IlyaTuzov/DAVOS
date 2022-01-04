@@ -1,9 +1,10 @@
-﻿# Library defining data structes/classes and related logic, used by DAVOS modules
-# Covers:
-# 1. Configuration management (parsing/exporting of XML formatted confgirations),
-# 2. Observation dumps (pasring, tracing, etc.)
-# 3. Internal Data Model to manage fault injection and derived analysys metrics (SQLite reflection provided)
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+﻿# Defines internal datamodel of DAVOS toolkit
+# Used to manage fault injection process and store injection results
+# Implements bidirectional Object-Relational Mapping between datamodel and SQLite database
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET

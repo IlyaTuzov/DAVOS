@@ -1,7 +1,10 @@
 #!python
-# Produces the set of factorial implementations (defined by models argument) from input RT-level model
+# Produces the set of factorial implementations (defined by models argument) from input RTL model
 # for given configuration of implementation flow (config.flow in the input configuration argument)
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET

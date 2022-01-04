@@ -1,11 +1,12 @@
-﻿# Library defining generic data structures and procedures used by DAVOS
+﻿# Library defining generic data structures and procedures used by DAVOS modules
 # Covers:
 # 1. Management of Grid Jobs (submission, monitoring, etc.)
-# 2. Custom HTML-formatted logs
-# 3. Auxiliary functions (process management, string manipulation, robust implementation of filesystem access, etc.)
-# 4. Fault Dictionary Model (to be moved to Datamanager.py)
-# 5. Fault Specification Model (to be moved to Datamanager.py)
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# 2. Custom Tables with csv and html reflection
+# 3. Auxiliary functions (process management, log manament, robust implementation of filesystem access, etc.)
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET

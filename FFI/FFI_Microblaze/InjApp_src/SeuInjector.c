@@ -1,3 +1,12 @@
+ /*
+ FPGA-based fault injection library for ICAP-based applications
+
+ --------------------------------------------------------------------------------------------
+ Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+ Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+ --------------------------------------------------------------------------------------------
+*/
+
 #include "platform.h"
 #include <xil_types.h>
 #include <xil_assert.h>

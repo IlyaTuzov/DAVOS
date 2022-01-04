@@ -1,7 +1,9 @@
 ﻿# Generates a set of fault simulation scripts (currently for ModelSim)
-# using fault dictionary and configuration of fault models from XML config file
-# TODO: reimplement profiling of switching activity
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# using fault dictionaries from ./FaultDictionaries
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET

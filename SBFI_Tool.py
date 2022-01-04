@@ -1,8 +1,11 @@
-﻿# Fault injector top-level script: launches and monitors all SBFI phases)
-# Launch format: python SBFI_Tool.py config.xml
+﻿# Simulation-based fault injection tool (top-level module)
+# Launch format: DAVOS/> python SBFI_Tool.py config.xml
 # Where config.xml - configuration of fault injection campaign (XML-formatted)
 # Refer to documentation for more information
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET

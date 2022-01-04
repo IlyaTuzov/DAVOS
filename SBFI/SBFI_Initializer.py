@@ -6,7 +6,10 @@
 #    Exports following files: 
 #       1. Simulation nodes with/without matching (XML formatted)
 #       2. Script to set-up the observation process (observation targets: existing or virtually reconstructed signals)
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET
