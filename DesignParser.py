@@ -202,6 +202,18 @@ class VivadoDesignModel:
                 res.append(r[0])
         return res
 
+    @staticmethod
+    def get_matching_devices(ptn):
+        res = []
+        with open(os.path.join(DAVOSPATH, 'FFI', 'devicelist.txt'), 'r') as f:
+            devicelist = f.read().splitlines()
+        for i in devicelist:
+            if ptn in i:
+                res.append(i)
+        return(res)
+
+
+
     def load_layout(self, devicepart):
         os.chdir(os.path.join(self.moduledir, 'FFI/DeviceSupport'))
         layoutfile = glob.glob('LAYOUT*{0:s}*.xml'.format(devicepart))
@@ -424,6 +436,8 @@ class VivadoDesignModel:
 #python DesignParser.py op=addlayout part=xc7a100tcsg324-1
 
 
+
+
 if __name__ == "__main__":
 
     options = dict( (key.strip(), val.strip())
@@ -465,8 +479,15 @@ if __name__ == "__main__":
         print 'Parsing FPGA layout'
         if 'part' not in options:
             print 'Error: FPGA part not specified'
-        part = options['part']
-        VivadoDesignModel.parse_fpga_layout(part)
+        parts = VivadoDesignModel.get_matching_devices(options['part'])
+        if len(parts) == 1:
+            VivadoDesignModel.parse_fpga_layout(parts[0])
+        elif len(parts) == 0:
+            print 'No matching devices found for {0:s}'.format(options['part'])
+        else:
+            print 'Ambiguous part parameter {0:s}, please select one of the following matching parts: \n\t{1:s}'.format(
+                options['part'], '\n\t'.join(parts))
+
 
     if options['op'].lower() == 'list_parts':
         print 'Available FPGA descriptors:\n\t{0}'.format('\n\t'.join(VivadoDesignModel.get_parts()) )
