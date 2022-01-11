@@ -12,13 +12,30 @@ import ast
 from collections import OrderedDict
 import copy
 
+DAVOSPATH = os.path.dirname(os.path.realpath(__file__))
+
 class ByteOrder:
     LittleEndian, BigEndian = range(2)
 
 class FPGASeries:
     S7, US, USP = range(3)
 
+    @staticmethod
+    def to_string(val):
+        d = {0:'7-Series', 1:'Ultra Scale', 2:'Ultra Scale Plus'}
+        if val in d.keys():
+            return d[val]
+        else:
+            return 'Unknown'
+
 FrameSizeDict = {FPGASeries.S7 : 101, FPGASeries.US : 123, FPGASeries.USP : 93}
+map_L = [63, 47, 62, 46, 61, 45, 60, 44, 15, 31, 14, 30, 13, 29, 12, 28, 59, 43, 58, 42, 57, 41, 56, 40, 11, 27, 10, 26,
+         9, 25, 8, 24, 55, 39, 54, 38, 53, 37, 52, 36, 7, 23, 6, 22, 5, 21, 4, 20, 51, 35, 50, 34, 49, 33, 48, 32, 3,
+         19, 2, 18, 1, 17, 0, 16]
+map_M = [31, 15, 30, 14, 29, 13, 28, 12, 63, 47, 62, 46, 61, 45, 60, 44, 27, 11, 26, 10, 25, 9, 24, 8, 59, 43, 58, 42,
+         57, 41, 56, 40, 23, 7, 22, 6, 21, 5, 20, 4, 55, 39, 54, 38, 53, 37, 52, 36, 19, 3, 18, 2, 17, 1, 16, 0, 51, 35,
+         50, 34, 49, 33, 48, 32]
+
 
 
 class FarFields:
@@ -201,6 +218,41 @@ class SuperLogicRegion:
         return res
 
 
+class DevicePartDetails:
+    def __init__(self, name=''):
+        self.series = None      #S7, US, USP
+        self.family = ''        #virtex, kintex, spartan, artix
+        self.size = ''          #e.g. 485 (thousands of cells)
+        self.package = ''       #e.g. flga2104
+        self.speed_grade = ''   #e.g. -2e
+        if name != '':
+            self.parse(name)
+
+    def parse(self, name):
+        s7_devices = {'7s':'spartan', '7a':'artix', '7k':'kintex', '7vx':'virtex', '7vh':'virtex-hpc'}
+        us_devices = {'vu':'virtex', 'ku':'kintex', 'ka':'artix'}
+        ptn = 'xc({0:s})([0-9]+)(p|t)\-?([a-z0-9]+)(\-[a-z0-9])?'.format('|'.join(s7_devices.keys() + us_devices.keys()))
+        match = re.match(ptn, name)
+        if match:
+            if match.group(1) in s7_devices.keys():
+                self.series = FPGASeries.S7
+                self.family = s7_devices[match.group(1)]
+            elif match.group(1) in us_devices.keys():
+                if match.group(3) == 'p':
+                    self.series = FPGASeries.USP
+                else:
+                    self.series = FPGASeries.US
+                self.family = us_devices[match.group(1)]
+            self.size = match.group(2)
+            self.package = match.group(4)
+            self.speed_grade = 'not specified' if (len(match.groups())<5 or match.group(5) is None) else match.group(5)
+
+    def to_string(self):
+        return 'Device Part Details: Series={0:s}, family={1:s}, size = {2:s}, package={3:s}, speed grade={4:s}'.format(
+            FPGASeries.to_string(self.series), self.family, self.size, self.package, self.speed_grade)
+
+
+
 class ConfigMemory:
     def __init__(self, series = FPGASeries.S7):
         self.set_series(series)
@@ -209,7 +261,8 @@ class ConfigMemory:
         self.BitstreamFile = ""
         self.SLR_ID_LIST = []
         self.FragmentDict = dict()
-        self.moduledir = os.path.dirname(os.path.realpath(__file__))
+        self.moduledir = DAVOSPATH #os.path.dirname(os.path.realpath(__file__))
+        self.DeviceDetails = DevicePartDetails()
         print('Config Memory Model instantiated from: {0}'.format(self.moduledir))
 
     def set_series(self, series):
@@ -261,6 +314,11 @@ class ConfigMemory:
             if matchDesc:
                 self.VivadoVersion = matchDesc.group(1)
                 self.DevicePart = matchDesc.group(2)
+                if not self.DevicePart.startswith('xc'):
+                    self.DevicePart = 'xc'+self.DevicePart
+                self.DeviceDetails = DevicePartDetails(self.DevicePart)
+                print 'Parse bitstream: device part detected: {0:s}'.format(self.DeviceDetails.to_string())
+                self.set_series(self.DeviceDetails.series)
             else:
                 print "load_bitstream: device part is not found in the bitstream header"
             bitstream = [0x000000BB, 0x11220044]
@@ -322,6 +380,8 @@ class ConfigMemory:
 
             else:
                 print('load_bitstream: FAR list file not found for device part: {0}'.format(self.DevicePart))
+                print('Device layout can be added to DAVOS by running: python DesignParser.py op=addlayout part={0:s}'.format(
+                        self.DevicePart))
                 return
             i, FrameIndex, fragment = 0, 0, None
             fragment_found = False
@@ -636,8 +696,6 @@ def MapLutToBitstream(LutDescTab, BIN_FrameList, DutScope=''):
 
     #Bitstream mapping for complete 6-input LUT
     vars = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6']
-    map_L = [63,47,62,46,61,45,60,44,15,31,14,30,13,29,12,28,59,43,58,42,57,41,56,40,11,27,10,26, 9,25, 8,24,55,39,54,38,53,37,52,36, 7,23, 6,22, 5,21, 4,20,51,35,50,34,49,33,48,32, 3,19, 2,18, 1,17, 0,16]
-    map_M = [31,15,30,14,29,13,28,12,63,47,62,46,61,45,60,44,27,11,26,10,25, 9,24, 8,59,43,58,42,57,41,56,40,23, 7,22, 6,21, 5,20, 4,55,39,54,38,53,37,52,36,19, 3,18, 2,17, 1,16, 0,51,35,50,34,49,33,48,32]
     T_L = Table('LUT_L', vars)
     for i in range(2**len(vars)):
         T_L.add_row( [(i>>j)&0x1 for j in range(len(vars))] )

@@ -21,7 +21,7 @@ import math
 #sys.path.insert(0, os.path.abspath(".."))
 from Davos_Generic import Table
 from BitstreamParser import *
-from VivadoDesignModel import *
+from DesignParser import *
 from SBFI.SBFI_Profiler import *
 
 class OperatingModes:

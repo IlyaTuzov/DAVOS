@@ -106,7 +106,7 @@ def run_microblaze_injector(davosconf, modelconf):
         if davosconf.FFI.target_logic == 'type0':
             Injector.sample_SEU(pb, CellTypes.EssentialBits, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
         elif davosconf.FFI.target_logic == 'lut':
-            Injector.design.map_luts(davosconf.FFI.dut_scope, pb)
+            Injector.design.map_lut_cells(davosconf.FFI.dut_scope, pb)
             Injector.sample_SEU(pb, CellTypes.LUT, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
         Injector.export_fault_list_bin(1000)
         Injector.export_fault_list_csv()

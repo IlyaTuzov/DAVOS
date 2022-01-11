@@ -12,3 +12,5 @@ DecisionSupport/Pareto/Debug
 DecisionSupport/Python/Logs
 /testconfig/obsolete
 *.suo
+venv
+FFI/DeviceSupport

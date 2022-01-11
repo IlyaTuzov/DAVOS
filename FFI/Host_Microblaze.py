@@ -22,7 +22,7 @@ import commands
 davos_dir = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 sys.path.insert(1, davos_dir)
 from Davos_Generic import Table
-from VivadoDesignModel import *
+from DesignParser import *
 
 
 class SEU_item:
@@ -44,13 +44,7 @@ class FaultDescriptor:
         self.FailureMode = '-'
 
 
-class Pblock:
-    def __init__(self, X1, Y1, X2, Y2, name):
-        self.X1, self.Y1, self.X2, self.Y2 = X1, Y1, X2, Y2
-        self.name = name
 
-    def to_string(self):
-        return('Pblock: name={0:s}, X{1:d}Y{2:d} : X{3:d}Y{4:d}'.format(self.name, self.X1, self.Y1, self.X2, self.Y2))
 
 class CellTypes:
     EssentialBits, LUT, FF, BRAM, LUTRAM = range(5)
@@ -149,7 +143,7 @@ class InjectorMicroblazeManager(object):
         self.faultload_files = []
         self.fault_list = []
         self.faultload_files = []
-        self.moduledir = os.path.dirname(os.path.realpath(__file__))
+        self.moduledir = davos_dir #os.path.dirname(os.path.realpath(__file__))
         self.mic_script = os.path.join(self.moduledir, 'FFI_Microblaze/microblaze_server.do')
         self.mic_app    = os.path.join(self.moduledir, 'FFI_Microblaze/InjApp_build/InjAppRelease.elf')
         self.mic_port   = 12346
@@ -485,9 +479,9 @@ class NOELV_FFI_App(InjectorMicroblazeManager):
                     self.load_faultlist(self.PartIdx)
                 print("XSCT and GRMON restarted")
                 return(0)        
-        print("restart_all(): failure, exiting")
-        sys.exit(0)
-    
+        #print("restart_all(): failure, exiting")
+        #sys.exit(0)
+
     def run_workload(self):
         res = self.serv_communicate('localhost', self.dut_port, "1\n", 1)
         if res is not None: 
