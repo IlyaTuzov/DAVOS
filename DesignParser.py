@@ -380,7 +380,7 @@ class VivadoDesignModel:
                         if reorder:
                             bitmap = map_M if lut.beltype == 'LUT_OR_MEM6' else map_L
                             for bit in range(64):
-                                lut.init = (lut.init << 1) | ((lut_content >> bitmap[bit]) & 0x1)
+                                lut.init = lut.init | (((lut_content >> bitmap[bit]) & 0x1) << bit)
                         else:
                             lut.init = lut_content
                         res.append(lut)
