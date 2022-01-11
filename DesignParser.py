@@ -480,7 +480,7 @@ if __name__ == "__main__":
         if 'part' not in options:
             print 'Error: FPGA part not specified'
         parts = VivadoDesignModel.get_matching_devices(options['part'])
-        if len(parts) == 1:
+        if (len(parts) == 1) or (len(parts) > 1 and options['part'] in parts):
             VivadoDesignModel.parse_fpga_layout(parts[0])
         elif len(parts) == 0:
             print 'No matching devices found for {0:s}'.format(options['part'])
