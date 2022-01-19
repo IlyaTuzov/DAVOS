@@ -8,8 +8,9 @@
 
 import os
 import sys
-from FFI.Host_Microblaze import *
-from FFI.FFI_ReportBuilder import *
+from FFI.FFI_Host_Microblaze import *
+from FFI.Host_Zynq import *
+#from FFI.FFI_ReportBuilder import *
 import xml.etree.ElementTree as ET
 from Davos_Generic import *
 from Datamanager import *
@@ -57,13 +58,14 @@ def run_zynq_injector(davosconf, modelconf):
             # raw_input("Preconditions fixed, press any key to run the injector >")
             jdesc = JobDescriptor(1)
             jdesc.UpdateBitstream = davosconf.FFI.update_bitstream
-            jdesc.Celltype = 1 if davosconf.FFI.target_logic.lower() in ['ff',
-                                                                         'ff+lutram'] else 2 if davosconf.FFI.target_logic.lower() in [
-                'lut',
-                'lutram'] else 3 if davosconf.FFI.target_logic.lower() == 'bram' else 2 if davosconf.FFI.target_logic.lower() == 'type0' else 0
-            jdesc.Blocktype = 0 if davosconf.FFI.target_logic.lower() in ['lut', 'ff', 'type0', 'ff+lutram',
-                                                                          'lutram'] else 1 if davosconf.FFI.target_logic.lower() in [
-                'bram'] else 2
+            jdesc.Celltype = 1 if davosconf.FFI.target_logic.lower() in ['ff', 'ff+lutram'] \
+                else 2 if davosconf.FFI.target_logic.lower() in ['lut','lutram'] \
+                else 3 if davosconf.FFI.target_logic.lower() == 'bram' \
+                else 2 if davosconf.FFI.target_logic.lower() == 'type0' \
+                else 0
+            jdesc.Blocktype = 0 if davosconf.FFI.target_logic.lower() in ['lut', 'ff', 'type0', 'ff+lutram', 'lutram'] \
+                else 1 if davosconf.FFI.target_logic.lower() in ['bram'] \
+                else 2
             jdesc.Essential_bits = 1
             jdesc.CheckRecovery = 1
             jdesc.LogTimeout = davosconf.FFI.log_timeout
@@ -90,32 +92,32 @@ def run_zynq_injector(davosconf, modelconf):
             raw_input("Preconditions fix failed, check the logfile for details, press any key to exit >")
 
     if davosconf.FFI.reportbuilder_phase:
-        build_FFI_report(davosconf)
+        pass
+        #build_FFI_report(davosconf)
 
 
 
 def run_microblaze_injector(davosconf, modelconf):
-    Injector = NOELV_FFI_App(modelconf.work_dir, FPGASeries.S7, davosconf.FFI.device_part, davosconf.FFI.dut_script)
+    Injector = FFIHostNOELV(modelconf.work_dir, FPGASeries.S7, davosconf.FFI.device_part, davosconf.FFI.dut_script)
     random.seed(davosconf.FFI.seed)
     if davosconf.FFI.injector_phase:
-        Injector.initialize("")
         if davosconf.FFI.pblock is not None:
             pb = Pblock(davosconf.FFI.pblock['X1'], davosconf.FFI.pblock['Y1'], davosconf.FFI.pblock['X2'], davosconf.FFI.pblock['Y2'], davosconf.FFI.pblock['name'])
         else:
             pb = None
+        Injector.initialize("", davosconf.FFI.dut_scope, pb)
         if davosconf.FFI.target_logic == 'type0':
             Injector.sample_SEU(pb, CellTypes.EssentialBits, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
         elif davosconf.FFI.target_logic == 'lut':
             Injector.design.map_lut_cells(davosconf.FFI.dut_scope, pb)
             Injector.sample_SEU(pb, CellTypes.LUT, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
+        elif davosconf.FFI.target_logic == 'ff':
+            Injector.design.load_cell_descriptors(NetlistCellGroups.FF, davosconf.FFI.dut_scope)
+        elif davosconf.FFI.target_logic == 'bram':
+            Injector.design.load_cell_descriptors(NetlistCellGroups.Bram, davosconf.FFI.dut_scope)
         Injector.export_fault_list_bin(1000)
         Injector.export_fault_list_csv()
-
-
-        #raw_input('Injector configured, Press any key to run the experiment...')
-        #Injector.connect_microblaze()
-        #status = Injector.connect_dut(3, 30)
-        #if status != 0:
+        raw_input('Injector configured, Press any key to run the experiment...')
         Injector.restart_all('DAVOS started')
         Injector.run()
 

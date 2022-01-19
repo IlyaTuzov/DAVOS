@@ -14,8 +14,10 @@ import copy
 
 DAVOSPATH = os.path.dirname(os.path.realpath(__file__))
 
+
 class ByteOrder:
     LittleEndian, BigEndian = range(2)
+
 
 class FPGASeries:
     S7, US, USP = range(3)
@@ -28,14 +30,15 @@ class FPGASeries:
         else:
             return 'Unknown'
 
-FrameSizeDict = {FPGASeries.S7 : 101, FPGASeries.US : 123, FPGASeries.USP : 93}
+
+FrameSizeDict = {FPGASeries.S7: 101, FPGASeries.US: 123, FPGASeries.USP: 93}
+
 map_L = [63, 47, 62, 46, 61, 45, 60, 44, 15, 31, 14, 30, 13, 29, 12, 28, 59, 43, 58, 42, 57, 41, 56, 40, 11, 27, 10, 26,
          9, 25, 8, 24, 55, 39, 54, 38, 53, 37, 52, 36, 7, 23, 6, 22, 5, 21, 4, 20, 51, 35, 50, 34, 49, 33, 48, 32, 3,
          19, 2, 18, 1, 17, 0, 16]
 map_M = [31, 15, 30, 14, 29, 13, 28, 12, 63, 47, 62, 46, 61, 45, 60, 44, 27, 11, 26, 10, 25, 9, 24, 8, 59, 43, 58, 42,
          57, 41, 56, 40, 23, 7, 22, 6, 21, 5, 20, 4, 55, 39, 54, 38, 53, 37, 52, 36, 19, 3, 18, 2, 17, 1, 16, 0, 51, 35,
          50, 34, 49, 33, 48, 32]
-
 
 
 class FarFields:
@@ -58,7 +61,6 @@ class FarFields:
     def to_string(self):
         return("Block={0:3d}, Top={1:3d}, Row={2:3d}, Column={3:3d}, Minor={4:3d}".format(self.BlockType, self.Top, self.Row, self.Major, self.Minor))
 
-
     def get_far(self):
         if self.series == FPGASeries.S7:
             return (self.BlockType<<23) | (self.Top<<22) | (self.Row<<17) | (self.Major<<7) | (self.Minor)
@@ -69,7 +71,6 @@ class FarFields:
         else:
             print "get_far() : unknown FPGA series"
             return 0x0
-
 
 
 class FrameStatistics:
@@ -109,7 +110,6 @@ class FrameDesc:
                 self.stat.Empty=False
                 break
 
-
     def to_string(self, log_data, log_mask, log_word_indexes):
         res = "\nFAR : {0:08x} ({1:s})\tSLR: {2:08x}".format(self.FAR, self.coord.to_string(), self.SLR_ID)
         if log_word_indexes:
@@ -142,9 +142,9 @@ class ConfMemLayout:
 class BitfileType:
     Debug, Regular = range(2)
 
+
 class FileTypes:
     EBC, EBD, BIT, BIN, LL = range (5)
-
 
 
 class BitstreamStatistics:
@@ -250,7 +250,6 @@ class DevicePartDetails:
     def to_string(self):
         return 'Device Part Details: Series={0:s}, family={1:s}, size = {2:s}, package={3:s}, speed grade={4:s}'.format(
             FPGASeries.to_string(self.series), self.family, self.size, self.package, self.speed_grade)
-
 
 
 class ConfigMemory:
@@ -452,11 +451,8 @@ class ConfigMemory:
                     fragment.layout.RowHeight = 50
                 elif self.Series == FPGASeries.US or self.Series == FPGASeries.USP:
                     fragment.layout.RowHeight = 60
-
-
         print('Bitstream parsed: {0:s}\n\tVivado Version: {1:s}\n\tDevice part: {2:s}'.format(
             self.BitstreamFile, self.VivadoVersion, self.DevicePart))
-
 
 
     def load_essential_bits(self, filename, file_type, slr_id):
@@ -776,8 +772,8 @@ if __name__ == "__main__":
     Input_EBCFile = os.path.join(proj_path,'Bitstream.ebc')
     Input_EBDFile = os.path.join(proj_path,'Bitstream.ebd')
 
-    LutDescTab = Table('LutMap')
-    LutDescTab.build_from_csv(LUTMAP_FILE)
+    CellDescTab = Table('LutMap')
+    CellDescTab.build_from_csv(LUTMAP_FILE)
 
     FarList = LoadFarList(FARARRAY_FILE)
     EBC_FrameList = EBC_to_FrameList(Input_EBCFile, Input_EBDFile, FarList)
@@ -797,7 +793,7 @@ if __name__ == "__main__":
             BIN_FrameList[i].mask = EBC_FrameList[i].mask
             BIN_FrameList[i].UpdateFlags()
 
-    LutMapList = MapLutToBitstream(LutDescTab, BIN_FrameList)
+    LutMapList = MapLutToBitstream(CellDescTab, BIN_FrameList)
 
     with open(os.path.join(proj_path, 'ResT.csv'),'w') as f:
         f.write(LutListToTable(LutMapList).to_csv())

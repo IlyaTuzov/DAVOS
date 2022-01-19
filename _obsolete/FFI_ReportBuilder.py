@@ -1,4 +1,9 @@
-﻿import os
+﻿# ---------------------------------------------------------------------------------------------
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
+# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
+# ---------------------------------------------------------------------------------------------
+
+import os
 import sys
 from serial import Serial
 import subprocess

@@ -32,9 +32,7 @@ res_ptn  = re.compile(r'Tag.*?([0-9]+).*?Injection Result.*?Injections.*?([0-9]+
 stat_ptn = re.compile(r'Tag.*?([0-9]+).*?Injection.*?([0-9]+).*?([0-9]+).*?Masked.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+).*?Failures.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+).*?Latent.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+)(.*?Signaled.*?([0-9]+).*?Rate.*?([0-9\.]+).*?([0-9\.]+))?', re.M)
 recovery_ptn = re.compile(r'([0-9]+).*?seconds.*?Experiments.*?([0-9]+).*?([0-9]+).*?Masked.*?([0-9]+).*?([0-9\.]+).*?([0-9\.]+).*?Failures.*?([0-9]+).*?([0-9\.]+).*?([0-9\.]+)')
 
-ram_search_ptn = re.compile(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-Z_]+)\s+Ram=B:(BIT|PARBIT)([0-9]+)', re.M)
-ff_search_ptn = re.compile(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-Z_]+)\s+Latch=([0-9a-zA-Z\.]+)\s+Net=(.*)', re.M)
-lutram_search_ptn = re.compile(r'([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=([0-9a-zA-Z_]+)\s+Ram=(A|B|C|D):([0-9]+)', re.M)
+
 
 #Row heigth (CLB tiles per row) : Rows in top part : Rows in bottom part
 DeviceLayout = { 'xc7z020':(50, 1, 2) }
@@ -73,7 +71,7 @@ class JobDescriptor:
         self.SamplingWithouRepetition = 0
         self.DetailedLog = 1
         self.DetectLatentErrors = 1
-        self.InjectionTime = 0;     # 0-random, > 0 - inject before clock cycle 'InjectionTime', e.g. InjectionTime==1 - inject at the workload start 
+        self.InjectionTime = 0     # 0-random, > 0 - inject before clock cycle 'InjectionTime', e.g. InjectionTime==1 - inject at the workload start
         #these fields are not exported to device (for internal use)
         self.failure_rate = float(0.0)
         self.failure_error = float(50.0)

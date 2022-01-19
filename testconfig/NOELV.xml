@@ -153,7 +153,7 @@
             reportbuilder_phase 			= "off"
 			device_part 					= "7vx485tffg1761"
 
-			dut_scope 						= "noelv0/cpuloop[0].core/u0/iu0"
+			dut_scope 						= "noelv0/cpuloop[0].core/u0"
 			pblock 							= ""
 			target_logic 					= "LUT"
 			custom_lut_mask 				= "on"

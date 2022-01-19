@@ -123,19 +123,208 @@ class Pblock:
         return('Pblock: name={0:s}, X{1:d}Y{2:d} : X{3:d}Y{4:d}'.format(self.name, self.X1, self.Y1, self.X2, self.Y2))
 
 
-class LutCellDescritor:
-    def __init__(self):
-        self.name = ""
+class NetlistCellGroups:
+    LUT, FF, Bram, Lutram, Other = range(5)
+
+    @staticmethod
+    def to_string(celltype):
+        lbl = {0: 'LUT', 1: 'Register', 2: 'BRAM', 3: 'LUTRAM', 4: 'Other'}
+        return lbl[celltype]
+
+
+class NetlistCellDescriptor(object):
+    def __init__(self, name="", group=NetlistCellGroups.Other):
+        self.name = name
+        self.group = group
         self.celltype = ""
-        self.sliceX, self.SliceY = 0, 0
-        self.label = ""
         self.beltype = ""
-        self.clkregionX, self.clkregionY = 0, 0
+        self.label = ""
+        self.sliceX, self.sliceY = 0, 0
         self.tileX, self.tileY = 0, 0
-        self.init = 0x0
+        self.clkregionX, self.clkregionY = 0, 0
         self.connections = {}
         self.slr = None
-        self.bitmap = []
+        self.bitmap = dict()    # key: bit_index, value: (FAR, word, bit)
+
+
+class LutCellDescritor(NetlistCellDescriptor):
+    def __init__(self, name="", group=NetlistCellGroups.Other):
+        super(LutCellDescritor, self).__init__(name, group)
+        self.init = 0x0
+
+
+ff_match_ptn = re.compile(r'Bit\s+([0-9]+)\s+0x([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=SLICE_X([0-9]+)Y([0-9]+)\s+Latch=([0-9a-zA-Z\.]+)\s+Net=(.*)', re.M)
+class RegCellDescriptor(NetlistCellDescriptor):
+    def __init__(self, name="", group=NetlistCellGroups.FF):
+        super(RegCellDescriptor, self).__init__(name, group)
+        self.init = 0x0
+
+    @staticmethod
+    def from_ll_string(ll_string):
+        m = re.match(ff_match_ptn, ll_string)
+        if m is not None:
+            res = RegCellDescriptor(m.group(7))
+            res.sliceX, res.sliceY = int(m.group(4)), int(m.group(5))
+            res.label = m.group(6).replace('FF.', '').replace('Q', 'FF')
+            FAR, offset = int(m.group(2), 16), int(m.group(3))
+            word, bit = offset/32, offset%32
+            res.bitmap[0] = (FAR, word, bit)
+            return res
+        return None
+
+
+bramram_match_ptn = re.compile(r'Bit\s+([0-9]+)\s+0x([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=(RAMB18|RAMB36)_X([0-9]+)Y([0-9]+)\s+Ram=B:(BIT|PARBIT)([0-9]+)', re.M)
+class BramCellDescriptor(NetlistCellDescriptor):
+    def __init__(self, name="", group=NetlistCellGroups.Bram):
+        super(BramCellDescriptor, self).__init__(name, group)
+        self.bitmap_ecc = dict()
+
+    @staticmethod
+    def from_ll_string(ll_string):
+        m = re.match(bramram_match_ptn, ll_string)
+        if m is not None:
+            res = BramCellDescriptor()
+            res.sliceX, res.sliceY = int(m.group(5)), int(m.group(6))
+            res.label = m.group(4)
+            FAR, offset = int(m.group(2), 16), int(m.group(3))
+            word, bit = offset/32, offset%32
+            if m.group(7) == 'BIT':
+                res.bitmap[int(m.group(8))] = (FAR, word, bit)
+            elif m.group(7) == 'PARBIT':
+                res.bitmap_ecc[int(m.group(8))] = (FAR, word, bit)
+            return res
+        return None
+
+
+lutram_match_ptn = re.compile(r'Bit\s+([0-9]+)\s+0x([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=SLICE_X([0-9]+)Y([0-9]+)\s+Ram=(A|B|C|D):([0-9]+)', re.M)
+class LutramCellDescriptor(NetlistCellDescriptor):
+    def __init__(self, name="", group=NetlistCellGroups.Lutram):
+        super(LutramCellDescriptor, self).__init__(name, group)
+
+    @staticmethod
+    def from_ll_string(ll_string):
+        m = re.match(lutram_match_ptn, ll_string)
+        if m is not None:
+            res = LutramCellDescriptor()
+            res.sliceX, res.sliceY = int(m.group(4)), int(m.group(5))
+            res.label = m.group(6)
+            FAR, offset = int(m.group(2), 16), int(m.group(3))
+            word, bit = offset/32, offset%32
+            res.bitmap[int(m.group(7))] = (FAR, word, bit)
+            return res
+        return None
+
+
+
+class Netlist:
+    def __init__(self):
+        self.CellsDict = {
+            NetlistCellGroups.LUT:    [],
+            NetlistCellGroups.FF:     [],
+            NetlistCellGroups.Bram:   [],
+            NetlistCellGroups.Lutram: [],
+            NetlistCellGroups.Other:  [] }
+        self.statistics = dict()
+
+    def load_netlist_cells(self, CellDescFile, unit_path="", pb=None):
+        CellDescTab = Table('LutMap')
+        CellDescTab.build_from_csv(CellDescFile)
+        for i in range(CellDescTab.rownum()):
+            label = CellDescTab.getByLabel('BEL', i).split('.')[-1].upper()
+            celltype = CellDescTab.getByLabel('CellType', i).upper()
+            name = CellDescTab.getByLabel('Node', i)
+            if label in ['AFF', 'A5FF', 'BFF', 'B5FF', 'CFF', 'C5FF', 'DFF', 'D5FF']:
+                item = RegCellDescriptor(name, NetlistCellGroups.FF)
+                item.label = label
+            elif label in ['A5LUT', 'A6LUT', 'B5LUT', 'B6LUT', 'C5LUT', 'C6LUT', 'D5LUT', 'D6LUT']:
+                if celltype.startswith('DMEM'):
+                    item = LutramCellDescriptor(name, NetlistCellGroups.Lutram)
+                    item.label = label[0]
+                else:
+                    item = LutCellDescritor(name, NetlistCellGroups.LUT)
+                    item.label = label
+            elif label in ['RAMB18E1', 'RAMB36E1']:
+                item = BramCellDescriptor(name, NetlistCellGroups.Bram)
+                item.label = label[:6]
+            else:
+                item = NetlistCellDescriptor(name, NetlistCellGroups.Other)
+                item.label = label
+            item.celltype = celltype.split('.')[-1]
+            item.sliceX = int(re.findall('X([0-9]+)', CellDescTab.getByLabel('CellLocation', i))[0])
+            item.sliceY = int(re.findall('Y([0-9]+)', CellDescTab.getByLabel('CellLocation', i))[0])
+            item.beltype = CellDescTab.getByLabel('BellType', i)
+            item.clkregionX = int(re.findall('X([0-9]+)', CellDescTab.getByLabel('ClockRegion', i))[0])
+            item.clkregionY = int(re.findall('Y([0-9]+)', CellDescTab.getByLabel('ClockRegion', i))[0])
+            item.tileX = int(re.findall('X([0-9]+)', CellDescTab.getByLabel('Tile', i))[0])
+            item.tileY = int(re.findall('Y([0-9]+)', CellDescTab.getByLabel('Tile', i))[0])
+            #INIT attributes are present in LUT, LUTRAM and FF
+            if item.group in [NetlistCellGroups.LUT, NetlistCellGroups.FF, NetlistCellGroups.Lutram]:
+                match = re.search('h([0-9a-f]+)', CellDescTab.getByLabel('INIT', i).lower())
+                item.init = 0x0 if not match else int(match.group(1), 16)
+            for c in re.findall('([I0-9]+):([A0-9]+)', CellDescTab.getByLabel('CellConnections', i)):
+                item.connections[c[0]] = c[1]
+            if unit_path != "":
+                if not item.name.startswith(unit_path):
+                    continue
+            if pb is not None:
+                if not (item.tileX >= pb.X1) and (item.tileX <= pb.X2) and (item.tileY >= pb.Y1) and (item.tileY <= pb.Y2):
+                    continue
+            self.CellsDict[item.group].append(item)
+        print("\n\nLoaded netlist cells in Unit path=\"{0:s}\", Pblock={1:s}\n{2:s}\n\n".format(
+            unit_path, "None" if pb is None else pb.to_string(), self.update_statistics()))
+
+    def get_cells(self, group):
+        return self.CellsDict[group]
+
+    def update_statistics(self):
+        for group, cellst in self.CellsDict.iteritems():
+            self.statistics[group] = dict()
+            for cell in cellst:
+                if cell.celltype not in self.statistics[group]:
+                    self.statistics[group][cell.celltype] = 0
+                self.statistics[group][cell.celltype] += 1
+        return '\n'.join(['Group {0} : \n\t{1}'.format(NetlistCellGroups.to_string(group), '\n\t'.join(
+            ['{0:16s} : {1:d}'.format(celltype, num) for celltype, num in celltypes.iteritems()]))
+                          for group, celltypes in self.statistics.iteritems()])
+
+    def load_logic_location_file(self, fname, match_cell_list=True):
+        print('Parsing Logic Location File: {0:s}'.format(fname))
+        start_time = time.time()
+        cells_by_coordinates = {}
+        matched_ll_items_per_type = {NetlistCellGroups.FF: 0, NetlistCellGroups.Bram: 0, NetlistCellGroups.Lutram: 0}
+        if match_cell_list:
+            for cellgroup, cells in self.CellsDict.iteritems():
+                for cell in cells:
+                    cells_by_coordinates[(cell.sliceX, cell.sliceY, cell.label)] = cell
+        num_items = sum(1 for line in open(fname))
+        with open(fname, 'r') as f:
+            cnt = 0
+            for line in f:
+                item = RegCellDescriptor.from_ll_string(line)
+                if item is None:
+                    item = BramCellDescriptor.from_ll_string(line)
+                if item is None:
+                    item = LutramCellDescriptor.from_ll_string(line)
+                if item is None:
+                    continue
+                if match_cell_list:
+                    if (item.sliceX, item.sliceY, item.label) in cells_by_coordinates:
+                        refcell = cells_by_coordinates[(item.sliceX, item.sliceY, item.label)]
+                        for bit in item.bitmap.keys():
+                            refcell.bitmap[bit] = item.bitmap[bit]
+                        matched_ll_items_per_type[item.group] += 1
+                else:
+                    self.CellsDict[item.group].append(item)
+                if cnt%1000 == 0:
+                    console_message('LL items processed {0:d} ({1:3.1f}%)'.format(cnt, 100.0*float(cnt)/num_items),
+                                    ConsoleColors.Green, True)
+                cnt+=1
+        print('LL file parsed in {0:.1f} seconds'.format(time.time()-start_time))
+        print('Matched LL file items: \n\t{0:s}'.format('\n\t'.join(['{0:10s}: {1:8d}'.format(
+            NetlistCellGroups.to_string(k), v) for k, v in matched_ll_items_per_type.iteritems()])))
+
+
+
 
 
 class VivadoDesignModel:
@@ -152,12 +341,11 @@ class VivadoDesignModel:
             'EBC' : os.path.join(self.generatedFilesDir, 'Bitstream.ebc'),
             'EBD' : os.path.join(self.generatedFilesDir, 'Bitstream.ebd'),
             'LL'  : os.path.join(self.generatedFilesDir, 'Bitstream.ll'),
-            'BELS': os.path.join(self.generatedFilesDir, 'Bels.csv'),
-            'LUTS': os.path.join(self.generatedFilesDir, 'LUTMAP.csv')
+            'CELLS': os.path.join(self.generatedFilesDir, 'CELLS.csv')
         }
         self.series = series
         self.CM = ConfigMemory(self.series)
-        self.LutCellList = []
+        self.netlist = Netlist()
         self.dev_layout = None
         self.moduledir = DAVOSPATH
         print('Vivado Design Module instantiated from: {0}'.format(self.moduledir))
@@ -212,8 +400,6 @@ class VivadoDesignModel:
                 res.append(i)
         return(res)
 
-
-
     def load_layout(self, devicepart):
         os.chdir(os.path.join(self.moduledir, 'FFI/DeviceSupport'))
         layoutfile = glob.glob('LAYOUT*{0:s}*.xml'.format(devicepart))
@@ -238,17 +424,14 @@ class VivadoDesignModel:
         os.chdir(self.targetDir)
         if not self.check_preconditions():
             print('Running Vivado to obtain input files')
-            self.parse_netlist('cells')
-
-    def parse_netlist(self, mode='bels'):
-        parser_path = os.path.join(DAVOSPATH, 'SupportScripts', 'VivadoParseNetlist.do')
-        script = "vivado -mode batch -source {0} -tclargs {1} \"{2}\" {3} {4} ".format(
-            parser_path, self.VivadoProjectFile, self.ImplementationRun, mode, self.generatedFilesDir).replace("\\", "/")
-        with open(os.path.join(self.generatedFilesDir, '_NetlistParser.log'), 'w') as logfile, \
-                open(os.path.join(self.generatedFilesDir, '_NetlistParser.err'), 'w') as errfile:
-            proc = subprocess.Popen(script, stdin=subprocess.PIPE, stdout=logfile, stderr=errfile, shell=True)
-            proc.wait()
-        return 0
+            parser_path = os.path.join(DAVOSPATH, 'SupportScripts', 'VivadoParseNetlist.do')
+            script = "vivado -mode batch -source {0} -tclargs {1} \"{2}\" {3} {4} ".format(
+                parser_path, self.VivadoProjectFile, self.ImplementationRun, 'cells',
+                self.generatedFilesDir).replace("\\", "/")
+            with open(os.path.join(self.generatedFilesDir, '_NetlistParser.log'), 'w') as logfile, \
+                    open(os.path.join(self.generatedFilesDir, '_NetlistParser.err'), 'w') as errfile:
+                proc = subprocess.Popen(script, stdin=subprocess.PIPE, stdout=logfile, stderr=errfile, shell=True)
+                proc.wait()
 
     def getFarList_for_Pblock(self, X1, Y1, X2, Y2):
         res = []
@@ -274,34 +457,6 @@ class VivadoDesignModel:
         #     print(i.to_string(False, False, False))
         return(res)
 
-    def load_lut_descriptors(self, LutDescTab, unit_path="", pb=None):
-        for i in range(LutDescTab.rownum()):
-            item = LutCellDescritor()
-            item.name = LutDescTab.getByLabel('Node', i)
-            #match only LUTs used as logic/routing (ignore LUTs as RAM)
-            match = re.findall('(LUT[0-9]+)', LutDescTab.getByLabel('CellType', i))
-            if len(match) == 0:
-                continue
-            item.celltype = match[0]
-            item.sliceX = int(re.findall('X([0-9]+)', LutDescTab.getByLabel('CellLocation', i))[0])
-            item.sliceY = int(re.findall('Y([0-9]+)', LutDescTab.getByLabel('CellLocation', i))[0])
-            item.label = re.findall('([A-Z]+[0-9]+)', LutDescTab.getByLabel('BEL', i))[0]
-            item.beltype = LutDescTab.getByLabel('BellType', i)
-            item.clkregionX = int(re.findall('X([0-9]+)', LutDescTab.getByLabel('ClockRegion', i))[0])
-            item.clkregionY = int(re.findall('Y([0-9]+)', LutDescTab.getByLabel('ClockRegion', i))[0])
-            item.tileX = int(re.findall('X([0-9]+)', LutDescTab.getByLabel('Tile', i))[0])
-            item.tileY = int(re.findall('Y([0-9]+)', LutDescTab.getByLabel('Tile', i))[0])
-            match = re.search('h([0-9a-f]+)', LutDescTab.getByLabel('INIT', i).lower())
-            item.init = 0x0 if not match else int(match.group(1), 16)
-            for c in re.findall('([I0-9]+):([A0-9]+)', LutDescTab.getByLabel('CellConnections', i)):
-                item.connections[c[0]] = c[1]
-            if unit_path != "":
-                if not item.name.startswith(unit_path):
-                    continue
-            if pb is not None:
-                if not ( (item.tileX >= pb.X1) and (item.tileX <= pb.X2) and (item.tileY >= pb.Y1) and (item.tileY <= pb.Y2) ):
-                    continue
-            self.LutCellList.append(item)
 
     #tileX to localize column
     #tileY to localize slr, top, row, word offset
@@ -325,13 +480,13 @@ class VivadoDesignModel:
             #skip word 50 (reserved for frame CRC)
             if offset >= 50:
                 offset += 1
-            if label in ['A5', 'A6']:
+            if label in ['A5LUT', 'A6LUT']:
                 offset, shift = offset, 0
-            elif label in ['B5', 'B6']:
+            elif label in ['B5LUT', 'B6LUT']:
                 offset, shift = offset, 16
-            elif label in ['C5', 'C6']:
+            elif label in ['C5LUT', 'C6LUT']:
                 offset, shift = offset+1, 0
-            elif label in ['D5', 'D6']:
+            elif label in ['D5LUT', 'D6LUT']:
                 offset, shift = offset+1, 16
             else:
                 print('get_lut_bel_fragment(): unknown bel label {0:s}'.format(label))
@@ -342,24 +497,22 @@ class VivadoDesignModel:
                 q2.append( (FarFields(self.series, 0, Top, Row, Column, m2).get_far(), offset, i+shift) )
                 q3.append( (FarFields(self.series, 0, Top, Row, Column, m3).get_far(), offset, i+shift) )
                 q4.append( (FarFields(self.series, 0, Top, Row, Column, m4).get_far(), offset, i+shift) )
-            res = q4 + q3 + q2 + q1
+            coordlist = q4 + q3 + q2 + q1
+            res = {k: v for k, v in enumerate(coordlist)}
             return (slr, res)
         else:
             print 'get_lut_bel_fragment() : lut mapping is not supported for this FPGA series: {0:s}'.format(str(self.series))
 
     def map_lut_cells(self, unit_path="", pb=None):
-        LutDescTab = Table('LutMap')
-        LutDescTab.build_from_csv(self.files['LUTS'])
-        self.load_lut_descriptors(LutDescTab, unit_path, pb)
         if self.series == FPGASeries.S7:
-            for item in self.LutCellList:
+            for item in self.netlist.get_cells(NetlistCellGroups.LUT):
                 item.slr, item.bitmap = self.get_lut_bel_fragment(item.tileX, item.tileY, item.sliceX, item.label)
         else:
             print 'map_luts() : lut mapping is not supported for this FPGA series: {0:s}'.format(str(self.series))
         print('Mapped LUTS in dut_scope = \"{0:s}\", pblock = {1:s}: {2:d}'.format(
             unit_path,
             pb.to_string() if pb is not None else "None",
-            len(self.LutCellList)))
+            len(self.netlist.get_cells(NetlistCellGroups.LUT))))
 
     def map_lut_bels_from_layout(self, pb, reorder=False, skip_empty=False):
         res = []
@@ -384,7 +537,8 @@ class VivadoDesignModel:
                         lut.tileX, lut.tileY = tile[1], tile[2]
                         slr, lut.bitmap = self.get_lut_bel_fragment(lut.tileX, lut.tileY, even_odd, label)
                         lut_content = 0x0
-                        for (far, word, bit) in reversed(lut.bitmap):
+                        for bit_idx in range(63, -1, -1):
+                            (far, word, bit) = lut.bitmap[bit_idx]
                             frame = self.CM.get_frame_by_FAR(far, slr.ID)
                             lut_content = (lut_content << 1) | ((frame.data[word] >> bit) & 0x1)
                         if skip_empty and lut_content == 0x0:
@@ -401,23 +555,19 @@ class VivadoDesignModel:
                 return None
         return res
 
-    def lutdesc_to_table(self, lutdesclist, labels):
-        res = Table('Luts', labels)
-        for lut in lutdesclist:
-            data = ['0x{0:016x}'.format(getattr(lut, item)) if item in ['init'] else str(getattr(lut, item))
+    def cells_to_table(self, celldesclist, labels):
+        res = Table('Cells', labels)
+        for cell in celldesclist:
+            data = ['0x{0:016x}'.format(getattr(cell, item)) if item in ['init'] else str(getattr(cell, item))
                     for item in labels]
             res.add_row(data)
         return res
 
-
-
-
-
-
-
-    def initialize(self, skip_files = False):
+    def initialize(self, skip_files=False, unit_path="", pb=None):
         if not skip_files:
             self.fix_preconditions()
+            self.netlist.load_netlist_cells(self.files['CELLS'], unit_path, pb)
+            self.netlist.load_logic_location_file(self.files['LL'], True)
             self.CM.set_series(self.series)
             self.load_layout(self.DevicePart)
             self.CM.load_bitstream(self.files['BIT'], BitfileType.Regular)
@@ -468,7 +618,7 @@ if __name__ == "__main__":
                 skipempty = True
         lutbels = design.map_lut_bels_from_layout(pb, bitorder, skipempty)
         lutbels = sorted(lutbels, key = lambda item: (item.clkregionX, item.clkregionY, item.name))
-        desctable = design.lutdesc_to_table(lutbels, ['name', 'beltype', 'clkregionX', 'clkregionY', 'init'])
+        desctable = design.cells_to_table(lutbels, ['name', 'beltype', 'clkregionX', 'clkregionY', 'init'])
         resfile = os.path.join(design.generatedFilesDir, 'LUTS.csv')
         with open(resfile, 'w') as f:
             f.write(desctable.to_csv())
