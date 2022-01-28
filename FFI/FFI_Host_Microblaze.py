@@ -4,7 +4,7 @@
 # Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
 # ---------------------------------------------------------------------------------------------
 
-from FFI_Host_Base import *
+from FFI_Host_Controlled import *
 from DesignParser import *
 import pexpect
 import commands
@@ -224,7 +224,7 @@ if __name__ == "__main__":
     grmon_script = "grmon -u -ucli -uart /dev/ttyUSB2 -c /tmp/FFI/FFIMIC/host_grmon_1.do"
     random.seed(1000)
 
-    Injector = FFIHostNOELV(project_dir, FPGASeries.S7, device_part)
+    Injector = FFIHostNOELV(project_dir, FPGASeries.S7, device_part, dut_script)
     Injector.initialize()
     Injector.sample_SEU(pb, CellTypes.EssentialBits, sample_size, multiplicity)
     Injector.export_fault_list_bin(fault_part_size)

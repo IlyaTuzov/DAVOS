@@ -1,6 +1,6 @@
 #NETLIST PARSE SCRIPT FOR VIVADO
 #Run example: 
-#    vivado -mode batch -source C:/GitHub/DAVOS/SupportScripts/VivadoParseNetlist.do -tclargs C:/Projects/FFIMIC/FFIMIC.xpr * cells C:/Projects/FFIMIC/DavosGenerated
+#    vivado -mode batch -source C:/GitHub/DAVOS/SupportScripts/VivadoParseNetlist.do -tclargs C:/Projects/FFIMIC/FFIMIC.xpr * cells C:/Projects/FFIMIC/DavosGenerated 1 1
 
 if {$argc < 3} {
     puts "not enough arguments"
@@ -10,7 +10,10 @@ if {$argc < 3} {
 set proj        [lindex $argv 0]
 set run         [lindex $argv 1]
 set mode        [lindex $argv 2]   
-set exportdir   [lindex $argv 3] 
+set exportdir   [lindex $argv 3]
+set ebc         [lindex $argv 4]
+set ll          [lindex $argv 5]
+
 puts "proj=$proj, run=$run, mode=$mode, exportdir=$exportdir"
 
 open_project $proj
@@ -118,8 +121,14 @@ close $fout
 
 
 # bit/bin/edc/ebd/ll: Write bitstream files
-set_property BITSTREAM.SEU.ESSENTIALBITS YES [current_design]
-write_bitstream -force -logic_location_file $exportdir/Bitstream.bit 
+if {$ebc == 1} {
+    set_property BITSTREAM.SEU.ESSENTIALBITS YES [current_design]
+}
+if {$ll == 1} {
+    write_bitstream -force -logic_location_file $exportdir/Bitstream.bit
+} else {
+    write_bitstream -force $exportdir/Bitstream.bit
+}
 #write_cfgmem -force -format BIN -interface SMAPx32 -disablebitswap -loadbit  \"up 0x0 $exportdir/Bitstream.bit\" -file $exportdir/Bitstream.bin
 #write_vhdl $exportdir/netlist.vhd
 

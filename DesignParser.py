@@ -425,7 +425,7 @@ class VivadoDesignModel:
         if not self.check_preconditions():
             print('Running Vivado to obtain input files')
             parser_path = os.path.join(DAVOSPATH, 'SupportScripts', 'VivadoParseNetlist.do')
-            script = "vivado -mode batch -source {0} -tclargs {1} \"{2}\" {3} {4} ".format(
+            script = "vivado -mode batch -source {0} -tclargs {1} \"{2}\" {3} {4} 1 1".format(
                 parser_path, self.VivadoProjectFile, self.ImplementationRun, 'cells',
                 self.generatedFilesDir).replace("\\", "/")
             with open(os.path.join(self.generatedFilesDir, '_NetlistParser.log'), 'w') as logfile, \
@@ -480,13 +480,13 @@ class VivadoDesignModel:
             #skip word 50 (reserved for frame CRC)
             if offset >= 50:
                 offset += 1
-            if label in ['A5LUT', 'A6LUT']:
+            if label in ['A5', 'A6']:
                 offset, shift = offset, 0
-            elif label in ['B5LUT', 'B6LUT']:
+            elif label in ['B5', 'B6']:
                 offset, shift = offset, 16
-            elif label in ['C5LUT', 'C6LUT']:
+            elif label in ['C5', 'C6']:
                 offset, shift = offset+1, 0
-            elif label in ['D5LUT', 'D6LUT']:
+            elif label in ['D5', 'D6']:
                 offset, shift = offset+1, 16
             else:
                 print('get_lut_bel_fragment(): unknown bel label {0:s}'.format(label))
@@ -582,7 +582,8 @@ class VivadoDesignModel:
 
 
 
-#python DesignParser.py op=parse_luts bitfile=C:/Projects/FFIMIC/bitstream/Top.bit area=X77Y2:X151Y147 skipempty=true bitorder=true
+#python DesignParser.py op=parse_bitstream bitfile=C:/Projects/FFIMIC/bitstream/Top.bit area=X77Y2:X151Y147 skipempty=true bitorder=true
+#python DesignParser.py op=parse_netlist project=/Projects/FFIMIC unitpath=noelv0/cpuloop[0].core/u0 area=X77Y2:X151Y147 skipempty=true bitorder=true
 #python DesignParser.py op=addlayout part=xc7a100tcsg324-1
 
 
@@ -593,7 +594,18 @@ if __name__ == "__main__":
     options = dict( (key.strip(), val.strip())
                     for key, val in (item.split('=') for item in sys.argv[1:]))
 
-    if options['op'].lower() == 'parse_luts':
+    pb = None
+    if 'area' in options:
+        matchDesc = re.search('X([0-9]+)Y([0-9]+)\s*?:\s*?X([0-9]+)Y([0-9]+)', options['area'])
+        if matchDesc:
+            pb = Pblock(int(matchDesc.group(1)), int(matchDesc.group(2)), int(matchDesc.group(3)),
+                        int(matchDesc.group(4)), '')
+
+
+    if options['op'].lower() == 'parse_bitstream':
+        if 'bitfile' not in options:
+            print('Error: bitfile paramater not specified, exiting')
+            exit()
         CM = ConfigMemory()
         options['bitfile'] = options['bitfile'].replace('\\', '/')
         targetDir = '/'.join(options['bitfile'].split('/')[:-1])
@@ -602,12 +614,6 @@ if __name__ == "__main__":
         design.CM = CM
         design.load_layout(design.DevicePart)
         design.initialize(True)
-        pb = None
-        if 'area' in options:
-            matchDesc = re.search('X([0-9]+)Y([0-9]+)\s*?:\s*?X([0-9]+)Y([0-9]+)', options['area'])
-            if matchDesc:
-                pb = Pblock(int(matchDesc.group(1)), int(matchDesc.group(2)), int(matchDesc.group(3)),
-                            int(matchDesc.group(4)), '')
         bitorder = False
         if 'bitorder' in options:
             if options['bitorder'].lower() == 'true':
@@ -623,6 +629,12 @@ if __name__ == "__main__":
         with open(resfile, 'w') as f:
             f.write(desctable.to_csv())
         print('Result exported to: {0}'.format(resfile))
+
+    if options['op'].lower() == 'parse_netlist':
+        if 'project' not in options:
+            print('Error: project paramater not specified, exiting')
+            exit()
+        #design = VivadoDesignModel(os.path.normpath(options['project']), series, DevicePart)
 
 
     if options['op'].lower() == 'addlayout':
