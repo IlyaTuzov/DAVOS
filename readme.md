@@ -1,41 +1,49 @@
 # DAVOS - a toolkit for Dependability assessment, verification, optimization and selection of hardware models. #
 
+## Branches
+- "master" branch contains the latest version that integrates all recently added features;
+- "DSE" branch contains the stable version of the toolkit as presented in the thesis https://doi.org/10.4995/Thesis/10251/159883. 
+
 ## Overview 
 
-DAVOS provides the support for dependability-driven processes along the semicustom design flow. It comprises a set of independent modules implemented in python, which support the customizable data model (ORM managed by custom data manager), and can be launched on PC and/or Grid (SGE) under any OS supporting python.  It's basic use cases (application scenarios) include:
+DAVOS toolkit automates different dependability-driven processes of the semicustom design flow, that are based on the fault injection testing.
+Supports following use cases:
 - *Robustness evaluation of HDL models* at any representation level (RTL, gate-level, implementation-level) by means of simulation-based fault injection. This scenario is managed by Fault injection module. VHDL, Verilog, SystemVerilog are supported. Injection procedures take into account the requirement of each representation level. Customizable fault dictionary by-default includes most common fault models (bit-flips, stuck-at, delays, etc.) for RTL models, and Xilinx's simprim macrocells (VITAL-compliant). 
 -  *Dependabilty Benchmarking* used for selection of alternative IP cores, EDA tools, and implementation technologies. Selection is based on MCDM techniques: Pareto-optimization, and/or ranking by means of weighted sum models. Score may take into account any properties stored into the project database for each model. Custom metrics can be defined in configuration file.
-- *Design space exploration* used to optimally configure the parameters of HDL model and/or EDA tools, thus to obtain the best possible implementation. Two DSE approaches are currently implemented: i) statistical method relying on design of experiments (fractional factorial designs), and ii) method based on genetic algorithms. 
+- *Dependability-aware design space exploration (DSE)* used to optimally configure the parameters of HDL model and/or EDA tools, thus to obtain the most robust implementation. Two DSE approaches are currently implemented: i) statistical method relying on design of experiments (fractional factorial designs), and ii) method based on genetic algorithms. 
 
  **Main features:** 
- - Seamlessly integrates into any semisuctom design flow (define your custom implementation process);
- - Compatible with different HDL, EDA tools and implementation technologies;
+ - Simulation-based fault injection at implementation-level (technology-specific post-place-route netlsits),
+ - Bit-accurate FPGA-based fault injection for Xilinx 7-series FPGAs,
+ - Implements multiple SBFI/FFI speed-up techniques for accelerated robustness assessment: iterative statitical injeciton, filtering of FPGA essential bits, LUT profiling, multi-level fault injection, checkpointing, multiprocessing;
+ - PPAD evaluation engine for parallelized evaluation of multiple design alternatives, using multicore / GRID systems, and stacks of FPGA boards;
+ - Provides a python-based framework for the definition of custom fault injectors,
+ - Compatible with different HDL, EDA tools, and technology-specific libraries;
  - Multiplatform (any OS, diverse computing platforms);
- - Web-based interactive reporting and analysis interface;
- - Self-contained format for interchange of experimental datasets, with lightweight web-based interface attached, to effectively share the experimental results;
- - ...
+ - Compact yet flexible format of experimental datasets, coupled with a lightweight web-based interface for the analysis and visualization of such datasets.
+
 
 **Basic workflow:**
 1. Define custom project configuration (or customize one of provided templates)
-    *config.xml*, including following sections (none of them is mandatory):
+    *config.xml*, include several sections (none of them is mandatory) to configure the corresponding DAVOS proceses:
         - *Implementation flow* describes how off-the-shelf EDA tools are configured and launched at each phase of custom implementation chain, so as to obtain the implementation (and estimate it's static properties) with respect to any configuration of design/EDA parameters. 
         - *Factorial Design* defines the factors in the design space under study with the EDA/dsign parameters and their selected treatment levels;
         - *Design Under Study* defines all the required parameters of HDL model to be implemented, assessed, and optimized
-        - *Robustness Assessement* defines the parameters of fault injection experiments such as fault models, targeted macrocells, injection modes, distributions, etc.
-        - *Project Configuration* defines the project's parameters: operating and reporting directories, database formats, etc.        
+        - *SBFI* defines parameters of simulation-based fault injection experiments, including fault models, fault targets, observation traces, etc.
+        - *FFI* defines parameters of FPGA-based fault injection experiments, including voard-side injection controller, injection modes, fault models, fault targets, etc.         
     >Refer to application scenarios for detailed information.
     
-2. Invoke the required DAVOS tools with this file on the input
+2. Invoke the selected DAVOS tool, supplying this configuration file as input argument.
 
 
 ## Requirements
-DAVOS itself can be launched on PC and SGE (Grid) platforms under any OS, supporting python. Both versions 2.x and  3.x are supported. Current implementation can be run on standard python distribution (no dependencies on third-partly modules). Additionally depending on use case are required following tools:
-- Robustness assessement requires a ModelSim-like simulator;
-- Design Space Exploration based on statistical techniques, requires Matlab (statistical toolkit), while for GA-based DSE Matlab is not required.
-- Scenarios involving implementation process require EDA tools of custom selection (e.g. Xilinx Vivado Suite).
+DAVOS itself can be launched on PC and SGE (Grid) platforms under any OS, supporting python. Currently only python version 2 is supported. No third-party python modules are required. Depending on use case following tools are required:
+- Robustness assessement requires a ModelSim/ simulator;
+- Design Space Exploration based on statistical techniques (DoE) requires Matlab statistical toolkit.
+- Scenarios involving automated design implementation require corresponding EDA tools (e.g. Xilinx Vivado, ISE, etc).
 
 ## Installation
-Unpack the contents of DAVOS package to any directory. 
+Clone DAVOS to the working directory.
 For interactive web-based reports configure the web-server (Apache preferred). Ensure that Web-server is configured to execute CGI scripts, particularly python-scripts. In the 'httpd.conf' file (XAMMP control panel – button config in front of apache module):
 – search for line Options Indexes FollowSymLinks and add ExecCGI, so the resulting line looks like this: 
 *Options Indexes FollowSymLinks ExecCGI*
