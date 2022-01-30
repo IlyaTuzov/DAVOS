@@ -1,10 +1,14 @@
-﻿# Manages regression models
-# Parses matlab-generated models
-# Compiles and interprets loaded models
-# ---------------------------------------------------------------------------------------------
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
-# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
-# ---------------------------------------------------------------------------------------------
+﻿# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       Builder and interpreter of Matlab-genetared regression models
+#
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
+
 import sys
 import os
 import xml.etree.ElementTree as ET

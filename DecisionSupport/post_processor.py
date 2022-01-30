@@ -1,5 +1,14 @@
-#Exp[orts a design-space-exploration report (HTML-formatted)
+# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       Exports a design-space exploration report
+#
 # Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
+
 import sys
 import xml.etree.ElementTree as ET
 import re

@@ -1,8 +1,13 @@
-# Implements multicriteria decision making procedures, used in DSE experiments
-# ---------------------------------------------------------------------------------------------
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
-# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
-# ---------------------------------------------------------------------------------------------
+# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#      Implements multicriteria decision making procedures, used in DSE experiments
+#
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
 
 import sys
 import os

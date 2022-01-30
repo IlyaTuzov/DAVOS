@@ -1,9 +1,15 @@
-﻿# Generates a set of fault simulation scripts (currently for ModelSim)
-# using fault dictionaries from ./FaultDictionaries
-# ---------------------------------------------------------------------------------------------
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
-# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
-# ---------------------------------------------------------------------------------------------
+﻿# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       A fault-load builder for the RT-level and implementation-level SBFI experiements.
+#       Generates a set of fault simulation scripts (for the QuestaSim/ModelSim simulator)
+#       using fault dictionaries from the ./FaultDictionaries folder.
+#
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET

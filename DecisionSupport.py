@@ -1,13 +1,18 @@
-﻿# Automation of multicriteria decision making
-# 1. Computation of custom benchmarking metric (derived in the basis of raw PPA and Dependability attributes)
-# 2. Ranking of configurations under study by weighted sum method (Dependability benchmarking)
-# 3. Inference of regression models - currently requries matlab
-# 4. Optimization (Design space exploration) - WSM and Pareto,
-#    uses embedded logic under small set of significant factors, otherwise CUDA-based tool to accelerate the process
-# ---------------------------------------------------------------------------------------------
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
-# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
-# ---------------------------------------------------------------------------------------------
+﻿# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       Automation of multicriteria decision making:
+#           1. Computation of custom benchmarking metric (derived in the basis of raw PPA and Dependability attributes)
+#           2. Ranking of configurations under study by weighted sum method (Dependability benchmarking)
+#           3. Inference of regression models
+#           4. Dependability-driven optimization (Design space exploration)
+#
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
+
 
 import sys
 import os

@@ -1,15 +1,16 @@
-/*
- *  SeuInjector.c
- *
- *  SEU emulation library for Zynq SoC and 7-Series
- *
- *  Created on: 2 Oct 2018
- *      Author: Ilya Tuzov
- *              Universidad Politecnica de Valencia
- *
- *  MIT license
- *  Latest version available at: https://github.com/IlyaTuzov/DAVOS/tree/master/XilinxInjector
- */
+ /*
+   Copyright (c) 2018 by Universitat Politecnica de Valencia.
+   This file is a part of the DAVOS toolkit
+   and is released under the "MIT license agreement".
+   Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+   ------------------------------------------------------------------------------------------------------
+   Description:
+      An library for implementing FPGA-based fault injection tools
+      that access Configuration memory through the PCAP interface
+
+   Author: Ilya Tuzov, Universitat Politecnica de Valencia
+   ------------------------------------------------------------------------------------------------------
+*/
 
 #include "xparameters.h"	// SDK generated parameters
 #include "xsdps.h"

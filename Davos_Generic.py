@@ -1,12 +1,16 @@
-﻿# Library defining generic data structures and procedures used by DAVOS modules
-# Covers:
-# 1. Management of Grid Jobs (submission, monitoring, etc.)
-# 2. Custom Tables with csv and html reflection
-# 3. Auxiliary functions (process management, log manament, robust implementation of filesystem access, etc.)
-# ---------------------------------------------------------------------------------------------
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
-# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
-# ---------------------------------------------------------------------------------------------
+﻿# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       A library of generic data structures and procedures used by DAVOS modules for:
+#           1. Management of Grid Jobs (submission, monitoring, etc.)
+#           2. Processing and quierying of custom Tables with csv and html reflection
+#           3. Auxiliary functions to manage multiprocessing jobs, robust filesystem IO, console interaction, etc.
+#
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET

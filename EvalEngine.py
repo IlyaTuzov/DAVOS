@@ -1,9 +1,16 @@
-﻿# DAVOS PPAD evaluation engine used for dependability-driven design space exploration
-# Automates parallelized implementation and robustness assessment of multiple design configurations
-# ---------------------------------------------------------------------------------------------
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
-# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
-# ---------------------------------------------------------------------------------------------
+﻿# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       DAVOS PPAD evaluation engine used for dependability-driven design space exploration
+#       Automates implementation and robustness assessment of multiple parameterized designs
+#       by processing several designs in parallel,
+#       using multicore and GRID systems, as well as clusters of FPGA evaluation boards
+#
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET

@@ -1,8 +1,15 @@
-# Adaptation of Base FFI to the Microblaze-based injector, and its application to the NOELV (DUT)
-# ---------------------------------------------------------------------------------------------
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
-# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
-# ---------------------------------------------------------------------------------------------
+# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       Adaptation of Host-controlled FFI to the Microblaze-based injectors,
+#       and its application to the NOEL-V processor (DUT)
+#
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
+
 
 from FFI_Host_Controlled import *
 from DesignParser import *

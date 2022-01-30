@@ -1,4 +1,15 @@
-#DEVICE LAYOUT PARSE SCRIPT FOR VIVADO
+# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       A Vivado script to parse the layout of Xilinx FPGAs
+#
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
+
+
 #Run example: 
 #    vivado -mode batch -source C:/GitHub/DAVOS/SupportScripts/VivadoParseLayout.do -tclargs C:/Projects/FFIMIC/FFIMIC.xpr "*" "*" C:/GitHub/DAVOS/FFI/DeviceSupport
 #    vivado -mode batch -source C:/GitHub/DAVOS/SupportScripts/VivadoParseLayout.do -tclargs "*" "xc7a100tcsg324-1" "*" C:/GitHub/DAVOS/FFI/DeviceSupport

@@ -1,10 +1,15 @@
-﻿# Defines a datamodel and related methods to parse bitstreams of Xilinx FPGAs
-# Currently supported FPGAs: 7-series, Ultrascale, Ultrascale+
-# ---------------------------------------------------------------------------------------------
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
-# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
-# ---------------------------------------------------------------------------------------------
-
+﻿# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       A datamodel representing the bitstream of Xilinx FPGAs.
+#       Implements an API to parse and manipulate FPGA bitstreams.
+#       Supported FPGAs: Xilinx 7-series, Ultrascale, Ultrascale+
+#
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
 
 from Davos_Generic import *
 import struct

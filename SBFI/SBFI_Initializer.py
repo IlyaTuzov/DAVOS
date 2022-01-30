@@ -1,15 +1,17 @@
-﻿# Initialization module requried to set-up the fault injection experiments
-# 1. Extracts the fault injection taregets from the set of input models
-#    according to fault dictionary and parameters from <Initializatio> tag of config.xml
-# 2. Accomplished Model Matching, both Implementation-to-Implementation and Implementation-to-RTL
-# 3. Configures the post-injection observation process
-#    Exports following files: 
-#       1. Simulation nodes with/without matching (XML formatted)
-#       2. Script to set-up the observation process (observation targets: existing or virtually reconstructed signals)
-# ---------------------------------------------------------------------------------------------
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
-# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
-# ---------------------------------------------------------------------------------------------
+﻿# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       A module managing set-up of SBFI experiments
+#       1. Extracts the fault injection taregets from the set of input models
+#       2. Performs matching of Implementation-to-Implementation and Implementation-to-RTL models
+#       3. Configures SBFI observation traces
+#
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
+
 
 import sys
 import xml.etree.ElementTree as ET

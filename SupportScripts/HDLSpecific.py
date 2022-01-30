@@ -1,12 +1,22 @@
-# Fucntions and data structures specific for HDL models (VHDL/Verilog)
+# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       Functions and data structures specific for HDL models (VHDL/Verilog)
+#       derived from raw PPA and dependability attrubutes stored in database
+#       invoked by DesicionSupport module, linked DerivedMetric tag in config.xml
+#
 # Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
+
 
 import re
 import os
 import shutil
 import glob
-#Functions in this file use configuration of HDL model and generics
-#But have no access to implementation flow
+
 
 class SignalDim:
     def __init__(self, LeftD=int(0), RightD=int(0), Dir='downto'):

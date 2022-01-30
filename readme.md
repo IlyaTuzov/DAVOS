@@ -1,63 +1,121 @@
-# DAVOS - a toolkit for Dependability assessment, verification, optimization and selection of hardware models. #
+# DAVOS - a fault Injection toolkit for dependability assessment, verification, optimization and selection of hardware desings. #
 
 ## Branches
-- "master" branch contains the latest version that integrates all recently added features;
-- "DSE" branch contains the stable version of the toolkit as presented in the thesis https://doi.org/10.4995/Thesis/10251/159883. 
+- "master" branch contains the latest DAVOS version that integrates all recently added features;
+- "DSE" branch contains the stable version of the DAVOS toolkit as it has been presented in the thesis https://doi.org/10.4995/Thesis/10251/159883. 
 
 ## Overview 
 
-DAVOS toolkit automates different dependability-driven processes of the semicustom design flow, that are based on the fault injection testing.
-Supports following use cases:
-- *Robustness evaluation of HDL models* at any representation level (RTL, gate-level, implementation-level) by means of simulation-based fault injection. This scenario is managed by Fault injection module. VHDL, Verilog, SystemVerilog are supported. Injection procedures take into account the requirement of each representation level. Customizable fault dictionary by-default includes most common fault models (bit-flips, stuck-at, delays, etc.) for RTL models, and Xilinx's simprim macrocells (VITAL-compliant). 
--  *Dependabilty Benchmarking* used for selection of alternative IP cores, EDA tools, and implementation technologies. Selection is based on MCDM techniques: Pareto-optimization, and/or ranking by means of weighted sum models. Score may take into account any properties stored into the project database for each model. Custom metrics can be defined in configuration file.
-- *Dependability-aware design space exploration (DSE)* used to optimally configure the parameters of HDL model and/or EDA tools, thus to obtain the most robust implementation. Two DSE approaches are currently implemented: i) statistical method relying on design of experiments (fractional factorial designs), and ii) method based on genetic algorithms. 
+DAVOS is an open-source fault injection toolkit that automates dependability-driven processes of the semicustom design flow, including:
+- *Robustness evaluation of HW designs* :
+    - At the level of HDL model (RTL and gate-level) by means of Simulation-based fault injection (*SBFI*);
+    - At the level of FPGA prototype by means of FPGA-based fault injection (*FFI*).
+- *Dependabilty Benchmarking* of IP cores, EDA tools, and implementation technologies for the selection of most suitable (robust) alternatives.
+- *Dependability-driven design space exploration (DSE)* for optimally tuning/configuring IP cores and EDA tools, in order to reach the best possible robustness features of HW implementations. 
+
 
  **Main features:** 
- - Simulation-based fault injection at implementation-level (technology-specific post-place-route netlsits),
- - Bit-accurate FPGA-based fault injection for Xilinx 7-series FPGAs,
- - Implements multiple SBFI/FFI speed-up techniques for accelerated robustness assessment: iterative statitical injeciton, filtering of FPGA essential bits, LUT profiling, multi-level fault injection, checkpointing, multiprocessing;
- - PPAD evaluation engine for parallelized evaluation of multiple design alternatives, using multicore / GRID systems, and stacks of FPGA boards;
- - Provides a python-based framework for the definition of custom fault injectors,
+ - Bit-accurate FPGA-based fault injection (FFI) for Xilinx 7-series FPGAs,
+ - Simulation-based fault injection (SBFI) at RTL and implementation-level (technology-specific netlsits),
+ - Provides a python-based framework for implementing custom bit-accurate fault injectors for Xilinx 7-series FPGAs,
+ - Accelerated robustness assessment using FI speed-up techniques: iterative statistical FI, filtering of FPGA essential bits, LUT profiling, multi-level FI, checkpointing, multiprocessing;
+ - Parallelized evaluation of PPAD features (Performance, Power consumption, Area and Dependability) of multiple parameterized design alternatives, using multicore / GRID systems, and clusters of FPGA boards;
  - Compatible with different HDL, EDA tools, and technology-specific libraries;
  - Multiplatform (any OS, diverse computing platforms);
  - Compact yet flexible format of experimental datasets, coupled with a lightweight web-based interface for the analysis and visualization of such datasets.
 
-
-**Basic workflow:**
-1. Define custom project configuration (or customize one of provided templates)
-    *config.xml*, include several sections (none of them is mandatory) to configure the corresponding DAVOS proceses:
-        - *Implementation flow* describes how off-the-shelf EDA tools are configured and launched at each phase of custom implementation chain, so as to obtain the implementation (and estimate it's static properties) with respect to any configuration of design/EDA parameters. 
-        - *Factorial Design* defines the factors in the design space under study with the EDA/dsign parameters and their selected treatment levels;
-        - *Design Under Study* defines all the required parameters of HDL model to be implemented, assessed, and optimized
-        - *SBFI* defines parameters of simulation-based fault injection experiments, including fault models, fault targets, observation traces, etc.
-        - *FFI* defines parameters of FPGA-based fault injection experiments, including voard-side injection controller, injection modes, fault models, fault targets, etc.         
-    >Refer to application scenarios for detailed information.
+##DAVOS tools:
+1. *FPGA-based fault injection tool (DAVOS-FFI)*: automates robustness evaluation of FPGA implementations against SEUs in configuration memory (CM), user memories (BRAM, LUTRAM) and Registers.
+   Implements a bit-accurate FFI methodology described in chapter 5 of https://doi.org/10.4995/Thesis/10251/159883. Supports Xilinx 7-series FPGAs and Zynq SoC FPGAs. 
+   Implements such speed-up techniques as iterative statistical fault injection, and multiprocessing on the stacks of FPGA evaluation boards.
+  Provides a framework for implementation of custom FPGA-based fault injection tools, comprising:
+    - C/C++ FFI library for implementing embedded FFI applications, targeting Xilinx Microblaze and Zynq processors used as board-side FFI controllers;
+    - Python library for implementing custom bit-accurate FFI tools, that setup, control and monitor an FFI workflow on the host side.
     
-2. Invoke the selected DAVOS tool, supplying this configuration file as input argument.
+
+2. *Simulation-based fault injection tool (DAVOS-SBFI)*: automates robustness evaluation of HDL models at RTL and gate-level (post-synthesis / post-place-route) 
+  after the new SBFI methodolofy described in chapter 4 of https://doi.org/10.4995/Thesis/10251/159883. 
+    Preconfigured for Mentor Graphics' ModelSim/QuestaSim simulator.
+    Supports custom fault dictionaries for any third-party library of technology-specific macrocells.
+    Implements such speed-up techniques as iterative statistical fault injeciton, checkpointing, multi-level fault injection, multi-core and GRID-based multiprocessing.
+    
+  
+3. *Implementation support tool*: automates translation of RTL designs into the target implementation technology (e.g. FPGA bitstream) by running any custom implementation flow defined by the designer.
+  For each obtained implementation it retrieves the performance, power consumption, and area/utilization (PPA) features.
 
 
-## Requirements
-DAVOS itself can be launched on PC and SGE (Grid) platforms under any OS, supporting python. Currently only python version 2 is supported. No third-party python modules are required. Depending on use case following tools are required:
-- Robustness assessement requires a ModelSim/ simulator;
-- Design Space Exploration based on statistical techniques (DoE) requires Matlab statistical toolkit.
-- Scenarios involving automated design implementation require corresponding EDA tools (e.g. Xilinx Vivado, ISE, etc).
+4. *PPAD evaluation engine automates evaluation*: automates evaluation of PPA and dependability features of multiple parameterized HW design alternatives.
+  Provides customizable PPAD evalution pipeline, based on DAVOS-FFI, DAVOS-SBFI and implementation support tools.
+  Multiple designs are evaluated in parallel using multicore/GRID systems, and clusters of FPGA evaluation boards.
+
+  
+5. *Decision support tool*: automates dependability-driven processes that evaluate multiple design alternatives, such as 
+dependability benchmarking and dependability-driven design space exploration (DSE). 
+  Implements new DSE approaches describes in chapter 7 of https://doi.org/10.4995/Thesis/10251/159883, that include:
+    - DSE based on genetic algorithms (GA/NSGA), accelerated by means of a new iterative dependability-driven selection approach;
+    - DSE based on the design of experiments (DoE), accelerated by means of a new approach of iteratove refinement of D-optimal designs.
+
+    
+6. *Data Controller*: manages internal data model of the DAVOS toolkit, being in charge of:
+    - Synchronizing the dataflow between DAVOS modules;
+    - Collecting experimental results; 
+    - performing object-relational mapping (ORM) between the internal data model and an SQLite datasets; 
+    - Providing an interface for querying experimental results from the datasets attending to a set of filters.
+
+
+7.  *DAVOS Web-interface*: it is a collection of HTML5 and Javascript files (front-end) as well as python scripts (at the back-end). 
+    It implements an interactive user interface for:
+    - monitoring the status of each task executed by DAVOS, 
+    - querying the results from the dataset, collected by DAVOS during SBFI/FFI experiments, attending to a set of filters configured by user;
+    - visualizing obtained SBFI/FFI results within interactive web-based widgets that:
+      - highight the distribution of failure modes along the design tree;
+      - indicate the weak points of the design (from the robustness viewpoint);
+      - visualize the detailed FI traces, allowing to analyze the fault propagation path in the design.  
+
+## Compatibility and System Requirements
+DAVOS has been verified to work properly under the Linux and Windows OS.
+
+All DAVOS tools require basic python 2.x distribution. Note: DAVOS is currently not completely compatible with python 3.x. 
+
+Depending on use case following third-party tools are required:
+- Simulation-based fault injection tool requires ModelSim/Questa simulator;
+- Bit-accurate FPGA-based fault injection tool requires Xilinx Vivado suite; 
+- Design Space Exploration based on statistical techniques (DoE) requires a Matlab statistical toolkit;
+- Scenarios involving automated design implementation require corresponding EDA tools (e.g. Xilinx Vivado, ISE, etc);
+- FPGA-based fault injection tool has been verified to work properly on a wide range of Xilinx 7-series FPGAs and Zynq SoC FPGAs;   
 
 ## Installation
-Clone DAVOS to the working directory.
-For interactive web-based reports configure the web-server (Apache preferred). Ensure that Web-server is configured to execute CGI scripts, particularly python-scripts. In the 'httpd.conf' file (XAMMP control panel – button config in front of apache module):
-– search for line Options Indexes FollowSymLinks and add ExecCGI, so the resulting line looks like this: 
-*Options Indexes FollowSymLinks ExecCGI*
+Clone DAVOS repository to the working directory.
+Interactive web-based DAVOS reports require to configure a web-server (Apache preferred). 
+Ensure that Web-server is configured to execute CGI scripts, particularly python-scripts. In the 'httpd.conf' file (XAMMP control panel – button config in front of apache module):
+
+– search for line Options Indexes FollowSymLinks and add ExecCGI, so the resulting line looks like this: *Options Indexes FollowSymLinks ExecCGI*
+
 – search for #AddHandler cgi-script .cgi, uncomment (remove #), and append “.py” to this line, so the results looks like: *AddHandler cgi-script .cgi .pl .asp .py*
 
-For more details refer to user manual.
+For more details refer to the user manual.
 >User manual will be published soon
+
+## Copyright
+Copyright (c) 2018 Universitat Politecnica de Valencia
+
+Author / Developer: Ilya Tuzov (Universitat Politecnica de Valencia)
+
+DAVOS is released under the "MIT license agreement". 
+Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+
 
 
 ## References
-Dataset illustrating the basic application scenarios:   https://doi.org/10.5281/zenodo.891316
+
+1. A PhD thesis describing the new fault injection methods used in the DAVOS toolkit, as well as the toolkit itself: https://doi.org/10.4995/Thesis/10251/159883
+
+2. A tool description paper presented at the 48th Annual IEEE/IFIP International Conference on Dependable Systems and Networks (DSN'2018): https://doi.org/10.1109/DSN.2018.00042
+
+3. A dataset illustrating the basic DAVOS use cases:   https://doi.org/10.5281/zenodo.891316
 
 
 ## Acknowledgement
 
-This work has been performed under the support of the "Programa de Ayudas de Investigación y Desarrollo" (PAID) de la Universitat Politécnica de Valéncia.
-Adaptation to the NOEL-V RISCV platform is currently supported by the H2020 SELENE project (www.selene-project.eu). 
+- This work has been carried-out under the support of the "Programa de Ayudas de Investigación y Desarrollo" (PAID) de la Universitat Politécnica de Valéncia.
+- Adaptation to the NOEL-V RISCV platform is currently supported by the H2020 SELENE project (www.selene-project.eu). 

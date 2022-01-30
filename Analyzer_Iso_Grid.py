@@ -1,10 +1,16 @@
-﻿# Module running analysis as a Job at Grid
-# Input agruments: (1) - configuration file (xml), (2) - label of configuration to analyze/if omitted - processes the results for all configurations
-# ---------------------------------------------------------------------------------------------
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
-# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
-# ---------------------------------------------------------------------------------------------
-
+﻿# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       Analyser of SBFI traces for SGE-based clusters
+#       Input agruments:
+#           (1) - configuration file (xml),
+#           (2) - label of the configuration to be processed (if omitted - all configurations are processed)
+#
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET

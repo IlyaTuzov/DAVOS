@@ -1,5 +1,15 @@
-#NETLIST PARSE SCRIPT FOR VIVADO
-#Run example: 
+# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       A script to extract the details of the netlist cells of Vivado designs
+#
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
+
+#Run example:
 #    vivado -mode batch -source C:/GitHub/DAVOS/SupportScripts/VivadoParseNetlist.do -tclargs C:/Projects/FFIMIC/FFIMIC.xpr * cells C:/Projects/FFIMIC/DavosGenerated 1 1
 
 if {$argc < 3} {

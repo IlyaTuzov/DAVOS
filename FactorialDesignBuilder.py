@@ -1,11 +1,16 @@
-# Miscellaneous procedures to generate factorial designs for design space exploration
-# 1. Infers balanced and orthogonal fractional factorial design
-# 2. Builds internal data model and database descriptors for HDL models to be implemented
-# 3. Exports template configurations for fault injection tool
-# ---------------------------------------------------------------------------------------------
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia                                     |
-# Licensed under the MIT license (https://github.com/IlyaTuzov/DAVOS/blob/master/LICENSE.txt) |
-# ---------------------------------------------------------------------------------------------
+# Copyright (c) 2018 by Universitat Politecnica de Valencia.
+# This file is a part of the DAVOS toolkit
+# and is released under the "MIT license agreement".
+# Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+# ------------------------------------------------------------------------------------------------------
+# Description:
+#       A builder and processor of factorial designs (DoE) used for design space exploration.
+#       1. Infers balanced and orthogonal fractional factorial design
+#       2. Builds internal data model and database descriptors for HDL models to be implemented
+#       3. Exports template configurations for fault injection tool
+#
+# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# ------------------------------------------------------------------------------------------------------
 
 import sys
 import xml.etree.ElementTree as ET
