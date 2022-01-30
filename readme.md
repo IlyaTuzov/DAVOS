@@ -24,7 +24,7 @@ DAVOS is an open-source fault injection toolkit that automates dependability-dri
  - Multiplatform (any OS, diverse computing platforms);
  - Compact yet flexible format of experimental datasets, coupled with a lightweight web-based interface for the analysis and visualization of such datasets.
 
-##DAVOS tools:
+## DAVOS tools:
 1. *FPGA-based fault injection tool (DAVOS-FFI)*: automates robustness evaluation of FPGA implementations against SEUs in configuration memory (CM), user memories (BRAM, LUTRAM) and Registers.
    Implements a bit-accurate FFI methodology described in chapter 5 of https://doi.org/10.4995/Thesis/10251/159883. Supports Xilinx 7-series FPGAs and Zynq SoC FPGAs. 
    Implements such speed-up techniques as iterative statistical fault injection, and multiprocessing on the stacks of FPGA evaluation boards.
