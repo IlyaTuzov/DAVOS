@@ -3,15 +3,15 @@
 
     <DAVOS
         report_dir = "C:/HTWEB/FFI/"
-        experiment_label = "NOELV"
+        experiment_label = "MicZynq"
         platform = "Multicore"
         maxproc = "2" >
 
 		<ModelConfig
-			work_dir = "C:/Projects/FFIMIC/"
+			work_dir = "C:/Projects/Zynq/Microblaze/"
             checkpoint = ""
             design_type = "RTL"
-			label = "NOELV"
+			label = "MicZynq"
 			clk_period = "5.0"
             simulation_time = "17500"
 		/>
@@ -35,18 +35,13 @@
             >
 
             <!-- unit path: withing the design scope-->
-            <InjectionScope unit_path = "/testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/iu0"
+            <InjectionScope unit_path = "BD_i/microblaze_0/U0/MicroBlaze_Core_I/"
                             node_filter = "r.*"
                             scope_filter = "-internal" />
 
 
-            <InjectionScope unit_path = "testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/dffrf/rf0/"
-                            node_filter = "r.*"
-                            scope_filter = "-internal"      />
 
-
-
-            <ObservationScope unit_path = "testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/dffrf/rf0/"
+            <ObservationScope unit_path = "BD_i/microblaze_0/U0/MicroBlaze_Core_I/"
                               node_filter = "r.*"
                               sampling_options = "-notrigger"
                               scope_filter = "-internal"
@@ -173,15 +168,15 @@
 			injector 						= "MICROBLAZE"
             injector_phase 					= "on"
             reportbuilder_phase 			= "off"
-			device_part 					= "7vx485tffg1761"
+			device_part 					= "xc7z020clg484"
 
-			dut_scope 						= "noelv0/cpuloop[0].core/u0"
+			dut_scope 						= "BD_i/microblaze_0/U0/MicroBlaze_Core_I"
 			pblock 							= ""
 			target_logic 					= "LUT"
 			custom_lut_mask 				= "on"
 
 			mode 							= "101"
-			sample_size_goal 				= "10000"
+			sample_size_goal 				= "1000"
 			error_margin_goal 				= "0.5"
 			fault_multiplicity				= "1"
 			injection_time 					= "1"

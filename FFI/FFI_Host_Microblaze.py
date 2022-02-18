@@ -164,13 +164,13 @@ class FFIHostNOELV(FFIHostMicroblaze):
     def run_workload(self):
         res = self.serv_communicate('localhost', self.dut_port, "1\n", 1)
         if res is not None:
-            self.LastFmode = InjectionStatistics.get_failure_mode(res)
+            self.LastFmode = self.InjStat.get_failure_mode(res)
             print("\t{0:20s}: {1:s}".format('Injection result', res))
         else:
             self.LastFmode = FailureModes.Hang
             print("\t{0:20s}: {1:s}".format('Injection result', 'Hang'))
             # self.restart_all('GRMON Hang')
-        return (res)
+        return res
 
     def dut_recover(self):
         if self.LastFmode != FailureModes.Masked:

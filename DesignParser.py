@@ -160,8 +160,8 @@ class LutCellDescritor(NetlistCellDescriptor):
         super(LutCellDescritor, self).__init__(name, group)
         self.init = 0x0
 
-
-ff_match_ptn = re.compile(r'Bit\s+([0-9]+)\s+0x([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=SLICE_X([0-9]+)Y([0-9]+)\s+Latch=([0-9a-zA-Z\.]+)\s+Net=(.*)', re.M)
+#                                   1           2                      3          4              5                        6        7                8                      9
+ff_match_ptn = re.compile(r'Bit\s+([0-9]+)\s+0x([0-9abcdefABCDEF]+)\s+([0-9]+)\s+(SLR[0-9]+)?\s*([0-9]+)?\s*Block=SLICE_X([0-9]+)Y([0-9]+)\s+Latch=([0-9a-zA-Z\.]+)\s+Net=(.*)', re.M)
 class RegCellDescriptor(NetlistCellDescriptor):
     def __init__(self, name="", group=NetlistCellGroups.FF):
         super(RegCellDescriptor, self).__init__(name, group)
@@ -171,17 +171,18 @@ class RegCellDescriptor(NetlistCellDescriptor):
     def from_ll_string(ll_string):
         m = re.match(ff_match_ptn, ll_string)
         if m is not None:
-            res = RegCellDescriptor(m.group(7))
-            res.sliceX, res.sliceY = int(m.group(4)), int(m.group(5))
+            res = RegCellDescriptor(m.group(9))
+            res.sliceX, res.sliceY = int(m.group(6)), int(m.group(7))
             res.label = m.group(6).replace('FF.', '').replace('Q', 'FF')
+            #res.slr=int(m.group(5))
             FAR, offset = int(m.group(2), 16), int(m.group(3))
             word, bit = offset/32, offset%32
             res.bitmap[0] = (FAR, word, bit)
             return res
         return None
 
-
-bramram_match_ptn = re.compile(r'Bit\s+([0-9]+)\s+0x([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=(RAMB18|RAMB36)_X([0-9]+)Y([0-9]+)\s+Ram=B:(BIT|PARBIT)([0-9]+)', re.M)
+#                                    1            2                      3          4              5                 6                7        8                9           10
+bram_match_ptn = re.compile(r'Bit\s+([0-9]+)\s+0x([0-9abcdefABCDEF]+)\s+([0-9]+)\s+(SLR[0-9]+)?\s*([0-9]+)?\s*Block=(RAMB18|RAMB36)_X([0-9]+)Y([0-9]+)\s+Ram=B:(BIT|PARBIT)([0-9]+)', re.M)
 class BramCellDescriptor(NetlistCellDescriptor):
     def __init__(self, name="", group=NetlistCellGroups.Bram):
         super(BramCellDescriptor, self).__init__(name, group)
@@ -189,22 +190,23 @@ class BramCellDescriptor(NetlistCellDescriptor):
 
     @staticmethod
     def from_ll_string(ll_string):
-        m = re.match(bramram_match_ptn, ll_string)
+        m = re.match(bram_match_ptn, ll_string)
         if m is not None:
             res = BramCellDescriptor()
-            res.sliceX, res.sliceY = int(m.group(5)), int(m.group(6))
-            res.label = m.group(4)
+            res.sliceX, res.sliceY = int(m.group(7)), int(m.group(8))
+            res.label = m.group(6)
             FAR, offset = int(m.group(2), 16), int(m.group(3))
             word, bit = offset/32, offset%32
-            if m.group(7) == 'BIT':
-                res.bitmap[int(m.group(8))] = (FAR, word, bit)
-            elif m.group(7) == 'PARBIT':
-                res.bitmap_ecc[int(m.group(8))] = (FAR, word, bit)
+            # res.slr=int(m.group(5))
+            if m.group(9) == 'BIT':
+                res.bitmap[int(m.group(10))] = (FAR, word, bit)
+            elif m.group(9) == 'PARBIT':
+                res.bitmap_ecc[int(m.group(10))] = (FAR, word, bit)
             return res
         return None
 
-
-lutram_match_ptn = re.compile(r'Bit\s+([0-9]+)\s+0x([0-9abcdefABCDEF]+)\s+([0-9]+)\s+Block=SLICE_X([0-9]+)Y([0-9]+)\s+Ram=(A|B|C|D):([0-9]+)', re.M)
+#                                      1            2                      3          4              5                        6        7              8         9
+lutram_match_ptn = re.compile(r'Bit\s+([0-9]+)\s+0x([0-9abcdefABCDEF]+)\s+([0-9]+)\s+(SLR[0-9]+)?\s*([0-9]+)?\s*Block=SLICE_X([0-9]+)Y([0-9]+)\s+Ram=(A|B|C|D):([0-9]+)', re.M)
 class LutramCellDescriptor(NetlistCellDescriptor):
     def __init__(self, name="", group=NetlistCellGroups.Lutram):
         super(LutramCellDescriptor, self).__init__(name, group)
@@ -214,11 +216,12 @@ class LutramCellDescriptor(NetlistCellDescriptor):
         m = re.match(lutram_match_ptn, ll_string)
         if m is not None:
             res = LutramCellDescriptor()
-            res.sliceX, res.sliceY = int(m.group(4)), int(m.group(5))
-            res.label = m.group(6)
+            res.sliceX, res.sliceY = int(m.group(6)), int(m.group(7))
+            res.label = m.group(8)
             FAR, offset = int(m.group(2), 16), int(m.group(3))
             word, bit = offset/32, offset%32
-            res.bitmap[int(m.group(7))] = (FAR, word, bit)
+            # res.slr=int(m.group(5))
+            res.bitmap[int(m.group(9))] = (FAR, word, bit)
             return res
         return None
 
@@ -250,7 +253,7 @@ class Netlist:
                     item.label = label[0]
                 else:
                     item = LutCellDescritor(name, NetlistCellGroups.LUT)
-                    item.label = label
+                    item.label = label[0:2]
             elif label in ['RAMB18E1', 'RAMB36E1']:
                 item = BramCellDescriptor(name, NetlistCellGroups.Bram)
                 item.label = label[:6]
@@ -336,13 +339,14 @@ class Netlist:
 
 
 class VivadoDesignModel:
-    def __init__(self, targetDir, series, DevicePart):
+    def __init__(self, targetDir, DevicePart=None):
         self.targetDir = targetDir
-        self.DevicePart = DevicePart
         self.generatedFilesDir = os.path.normpath(os.path.join(self.targetDir, 'DavosGenerated'))
         if not os.path.exists(self.generatedFilesDir):
             os.makedirs(self.generatedFilesDir)
         self.VivadoProjectFile = (lambda l: l[0] if l is not None and len(l)>0 else '')(glob.glob(os.path.join(self.targetDir,'*.xpr')))
+        if not os.path.exists(self.VivadoProjectFile):
+            print "Warning: Vivado project file not found in: {0}".format(self.targetDir)
         self.ImplementationRun = '*'
         self.files = {
             'BIT' : os.path.join(self.generatedFilesDir, 'Bitstream.bit'),
@@ -351,12 +355,28 @@ class VivadoDesignModel:
             'LL'  : os.path.join(self.generatedFilesDir, 'Bitstream.ll'),
             'CELLS': os.path.join(self.generatedFilesDir, 'CELLS.csv')
         }
-        self.series = series
+
+        if DevicePart is not None:
+            self.DevicePart = DevicePart
+        else:
+            tree = ET.parse(self.VivadoProjectFile).getroot()
+            vivado_config = tree.find('Configuration')
+            for tag in vivado_config.findall('Option'):
+                if tag.get("Name").lower() == "part":
+                    self.DevicePart = tag.get("Val")
+                    print("Extracted device part from the project file: {0} = {1}".format(self.VivadoProjectFile, self.DevicePart))
+                    break
+
+        details = DevicePartDetails(self.DevicePart)
+        self.series = details.series
+        print(details.to_string())
         self.CM = ConfigMemory(self.series)
         self.netlist = Netlist()
         self.dev_layout = None
         self.moduledir = DAVOSPATH
         print('Vivado Design Module instantiated from: {0}'.format(self.moduledir))
+
+
 
     @staticmethod
     def parse_fpga_layout(devicepart):
@@ -590,8 +610,8 @@ class VivadoDesignModel:
 
 
 
-#python DesignParser.py op=parse_bitstream bitfile=C:/Projects/FFIMIC/bitstream/Top.bit area=X77Y2:X151Y147 skipempty=true bitorder=true
-#python DesignParser.py op=parse_netlist project=/Projects/FFIMIC unitpath=noelv0/cpuloop[0].core/u0 area=X77Y2:X151Y147 skipempty=true bitorder=true
+#python DesignParser.py op=parse_bitstream bitfile=C:/Projects/FFIMIC/bitstream/Top.bit area=X77Y2:X151Y147 skipempty=true bitorder=false
+#python DesignParser.py op=parse_netlist project=C:/Projects/FFIMIC area=X77Y2:X151Y147
 #python DesignParser.py op=addlayout part=xc7a100tcsg324-1
 
 
@@ -618,7 +638,7 @@ if __name__ == "__main__":
         options['bitfile'] = options['bitfile'].replace('\\', '/')
         targetDir = '/'.join(options['bitfile'].split('/')[:-1])
         CM.load_bitstream(options['bitfile'], BitfileType.Regular)
-        design = VivadoDesignModel(os.path.normpath(targetDir), CM.Series, CM.DevicePart)
+        design = VivadoDesignModel(os.path.normpath(targetDir), CM.DevicePart)
         design.CM = CM
         design.load_layout(design.DevicePart)
         design.initialize(True)
@@ -642,7 +662,9 @@ if __name__ == "__main__":
         if 'project' not in options:
             print('Error: project paramater not specified, exiting')
             exit()
-        #design = VivadoDesignModel(os.path.normpath(options['project']), series, DevicePart)
+        design = VivadoDesignModel(os.path.normpath(options['project']))
+        design.initialize()
+
 
 
     if options['op'].lower() == 'addlayout':

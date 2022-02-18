@@ -433,7 +433,7 @@ class ConfigMemory:
                         if FrameIndex+FrameCnt-PadIndex < len(fragment.FarList)-1:
                             f1 = FarFields.from_FAR(fragment.FarList[FrameIndex+FrameCnt-PadIndex], self.Series)
                             f2 = FarFields.from_FAR(fragment.FarList[FrameIndex+FrameCnt-PadIndex+1], self.Series)
-                            if f1.Row != f2.Row:
+                            if (f1.Row != f2.Row) or (f1.Top != f2.Top):
                                 PadIndex += 2
                                 FrameCnt += 2
                                 i += self.FrameSize * 2
@@ -494,7 +494,7 @@ class ConfigMemory:
             w += self.FrameSize
             #skip pad frame between clock rows
             next_frame = fragment.get_frame_by_index(frame_id+1)
-            if frame.coord.Row != next_frame.coord.Row:
+            if (frame.coord.Row != next_frame.coord.Row) or (frame.coord.Top != next_frame.coord.Top):
                 w += self.FrameSize * 2
         print('Essential bits loaded: {0:s} into SLR: {1:08x}'.format(filename, slr_id))        
 

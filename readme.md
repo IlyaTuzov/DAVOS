@@ -37,14 +37,14 @@ DAVOS is an open-source fault injection toolkit that automates dependability-dri
   after the new SBFI methodolofy described in chapter 4 of https://doi.org/10.4995/Thesis/10251/159883. 
     Preconfigured for Mentor Graphics' ModelSim/QuestaSim simulator.
     Supports custom fault dictionaries for any third-party library of technology-specific macrocells.
-    Implements such speed-up techniques as iterative statistical fault injeciton, checkpointing, multi-level fault injection, multi-core and GRID-based multiprocessing.
+    Implements such speed-up techniques as iterative statistical fault injection, checkpointing, multi-level fault injection, multi-core and GRID-based multiprocessing.
     
   
 3. *Implementation support tool*: automates translation of RTL designs into the target implementation technology (e.g. FPGA bitstream) by running any custom implementation flow defined by the designer.
   For each obtained implementation it retrieves the performance, power consumption, and area/utilization (PPA) features.
 
 
-4. *PPAD evaluation engine automates evaluation*: automates evaluation of PPA and dependability features of multiple parameterized HW design alternatives.
+4. *PPAD evaluation engine*: automates evaluation of PPA and dependability features of multiple parameterized HW design alternatives.
   Provides customizable PPAD evalution pipeline, based on DAVOS-FFI, DAVOS-SBFI and implementation support tools.
   Multiple designs are evaluated in parallel using multicore/GRID systems, and clusters of FPGA evaluation boards.
 
@@ -52,8 +52,8 @@ DAVOS is an open-source fault injection toolkit that automates dependability-dri
 5. *Decision support tool*: automates dependability-driven processes that evaluate multiple design alternatives, such as 
 dependability benchmarking and dependability-driven design space exploration (DSE). 
   Implements new DSE approaches describes in chapter 7 of https://doi.org/10.4995/Thesis/10251/159883, that include:
-    - DSE based on genetic algorithms (GA/NSGA), accelerated by means of a new iterative dependability-driven selection approach;
-    - DSE based on the design of experiments (DoE), accelerated by means of a new approach of iteratove refinement of D-optimal designs.
+    - DSE based on genetic algorithms (GA/NSGA), accelerated by means of iterative dependability-driven selection;
+    - DSE based on the design of experiments (DoE), accelerated by means of iterative refinement of D-optimal designs.
 
     
 6. *Data Controller*: manages internal data model of the DAVOS toolkit, being in charge of:
@@ -75,7 +75,7 @@ dependability benchmarking and dependability-driven design space exploration (DS
 ## Compatibility and System Requirements
 DAVOS has been verified to work properly under the Linux and Windows OS.
 
-All DAVOS tools require basic python 2.x distribution. Note: DAVOS is currently not completely compatible with python 3.x. 
+All DAVOS tools require basic python 2.x distribution. Note: DAVOS is currently not compatible with python 3.x. 
 
 Depending on use case following third-party tools are required:
 - Simulation-based fault injection tool requires ModelSim/Questa simulator;
@@ -97,9 +97,9 @@ For more details refer to the user manual.
 >User manual will be published soon
 
 ## Copyright
-Copyright (c) 2018 Universitat Politecnica de Valencia
+Copyright (c) 2018 Universitat Politècnica de València
 
-Author / Developer: Ilya Tuzov (Universitat Politecnica de Valencia)
+Author / Developer: Ilya Tuzov (Universitat Politècnica de València)
 
 DAVOS is released under the "MIT license agreement". 
 Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
@@ -117,5 +117,5 @@ Please check the LICENSE.txt file (that is included as a part of this package) f
 
 ## Acknowledgement
 
-- This work has been carried-out under the support of the "Programa de Ayudas de Investigación y Desarrollo" (PAID) de la Universitat Politécnica de Valéncia.
+- This work has been carried-out under the support of the "Programa de Ayudas de Investigación y Desarrollo" (PAID) de la Universitat Politècnica de València.
 - Adaptation to the NOEL-V RISCV platform is currently supported by the H2020 SELENE project (www.selene-project.eu). 

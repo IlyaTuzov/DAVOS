@@ -103,7 +103,12 @@ def run_zynq_injector(davosconf, modelconf):
 
 def run_microblaze_injector(davosconf, modelconf):
     Injector = FFIHostNOELV(modelconf.work_dir, FPGASeries.S7, davosconf.FFI.device_part, davosconf.FFI.dut_script)
+    Injector.InjStat.register_failure_mode('pass', FailureModes.Masked)
+    Injector.InjStat.register_failure_mode('latent', FailureModes.Latent)
+    Injector.InjStat.register_failure_mode('sdc', FailureModes.SDC)
+    Injector.InjStat.register_failure_mode('hang', FailureModes.Hang)
     random.seed(davosconf.FFI.seed)
+
     if davosconf.FFI.injector_phase:
         if davosconf.FFI.pblock is not None:
             pb = Pblock(davosconf.FFI.pblock['X1'], davosconf.FFI.pblock['Y1'], davosconf.FFI.pblock['X2'], davosconf.FFI.pblock['Y2'], davosconf.FFI.pblock['name'])

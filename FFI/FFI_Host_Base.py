@@ -55,94 +55,59 @@ class FailureModes:
 
     @staticmethod
     def to_string(fmode):
-        if fmode == FailureModes.Masked:
-            return ('Masked')
-        elif fmode == FailureModes.Latent:
-            return ('Latent')
-        elif fmode == FailureModes.SDC:
-            return ('SDC')
-        elif fmode == FailureModes.Hang:
-            return ('Hang')
+        labels = ['Masked', 'Latent', 'SDC', 'Hang', 'Other']
+        if fmode <= len(labels):
+            return labels[fmode]
         else:
-            return ('Other')
+            return 'Other'
 
 
 class InjectionStatistics:
     def __init__(self):
         self.population_size = int(0)
         self.sample_size = int(0)
-        self.Masked_a = int(0)
-        self.Masked_p = float(0)
-        self.Masked_e = float(0)
-        self.Latent_a = int(0)
-        self.Latent_p = float(0)
-        self.Latent_e = float(0)
-        self.SDC_a = int(0)
-        self.SDC_p = float(0)
-        self.SDC_e = float(0)
-        self.Hang_a = int(0)
-        self.Hang_p = float(0)
-        self.Hang_e = float(0)
-        self.Other_a = int(0)
-        self.Other_p = float(0)
-        self.Other_e = float(0)
+        self.status_messages = {}   #status_message :  FailureModes
+        self.abs_stat = {}
+        self.per_stat = {}
+        self.err_stat = {}
 
-    @staticmethod
-    def get_failure_mode(msg):
-        if 'pass' in msg.lower():
-            return (FailureModes.Masked)
-        if 'latent' in msg.lower():
-            return (FailureModes.Latent)
-        elif 'sdc' in msg.lower():
-            return (FailureModes.SDC)
-        elif 'hang' in msg.lower():
-            return (FailureModes.Hang)
+    def register_failure_mode(self, status_msg, fmode=FailureModes.Other):
+        self.status_messages[status_msg] = fmode
+        if fmode not in self.abs_stat:
+            self.abs_stat[fmode] = 0
+        if fmode not in self.per_stat:
+            self.per_stat[fmode] = float(0)
+        if fmode not in self.err_stat:
+            self.err_stat[fmode] = float(0)
+
+    def get_failure_mode(self, status_msg):
+        if status_msg in self.status_messages:
+            return self.status_messages[status_msg]
         else:
-            return (FailureModes.Other)
+            return FailureModes.Other
 
     def append(self, fmode):
-        if fmode == FailureModes.Masked:
-            self.Masked_a += 1
-        elif fmode == FailureModes.Latent:
-            self.Latent_a += 1
-        elif fmode == FailureModes.SDC:
-            self.SDC_a += 1
-        elif fmode == FailureModes.Hang:
-            self.Hang_a += 1
+        if fmode in self.abs_stat:
+            self.abs_stat[fmode] += 1
         else:
-            self.Other_a += 1
+            self.abs_stat[fmode] = 1
         self.update_stat()
 
+    def get_error_margin(self, p, sample_size, population_size, t=1.96):
+        return t*math.sqrt(p*(1-p)*(population_size-sample_size) / (sample_size*(population_size-1)))
+
     def update_stat(self):
-        self.sample_size = self.Masked_a + self.Latent_a + self.SDC_a + self.Hang_a
-        self.Masked_p = self.Masked_a / float(self.sample_size)
-        self.Latent_p = self.Latent_a / float(self.sample_size)
-        self.SDC_p = self.SDC_a / float(self.sample_size)
-        self.Hang_p = self.Hang_a / float(self.sample_size)
-        self.Masked_e = 1.96 * math.sqrt(
-            self.Masked_p * (1 - self.Masked_p) * (self.population_size - self.sample_size) / (
-                        self.sample_size * (self.population_size - 1)))
-        self.Latent_e = 1.96 * math.sqrt(
-            self.Latent_p * (1 - self.Latent_p) * (self.population_size - self.sample_size) / (
-                        self.sample_size * (self.population_size - 1)))
-        self.SDC_e = 1.96 * math.sqrt(self.SDC_p * (1 - self.SDC_p) * (self.population_size - self.sample_size) / (
-                    self.sample_size * (self.population_size - 1)))
-        self.Hang_e = 1.96 * math.sqrt(self.Hang_p * (1 - self.Hang_p) * (self.population_size - self.sample_size) / (
-                    self.sample_size * (self.population_size - 1)))
-        self.Masked_p *= 100
-        self.Latent_p *= 100
-        self.SDC_p *= 100
-        self.Hang_p *= 100
-        self.Masked_e *= 100
-        self.Latent_e *= 100
-        self.SDC_e *= 100
-        self.Hang_e *= 100
+        self.sample_size = sum(self.abs_stat.values())
+        for fmode, val in self.abs_stat.iteritems():
+            self.per_stat[fmode] = self.abs_stat[fmode] / float(self.sample_size)
+            self.err_stat[fmode] = self.get_error_margin(self.per_stat[fmode], self.sample_size, self.population_size, 1.96)
+            self.per_stat[fmode] *= 100.0
+            self.err_stat[fmode] *= 100.0
 
     def to_string(self):
-        return (
-            u"Masked: {0:3d} ({1:2.2f}% \u00B1 {2:2.2f}%), Latent: {3:3d} ({4:2.2f}% \u00B1 {5:2.2f}%), SDC: {6:3d} ({7:2.2f}% \u00B1 {8:2.2f}%), Hang: {9:3d} ({10:2.2f}% \u00B1 {11:2.2f}%)".format(
-                self.Masked_a, self.Masked_p, self.Masked_e, self.Latent_a, self.Latent_p, self.Latent_e, self.SDC_a,
-                self.SDC_p, self.SDC_e, self.Hang_a, self.Hang_p, self.Hang_e).encode('utf-8'))
+        return (", ".join([u"{0:s}: {1:3d} ({2:2.2f}% \u00B1 {3:2.2f}%)".format(
+            FailureModes.to_string(k), self.abs_stat[k], self.per_stat[k], self.err_stat[k])
+            for k in sorted(self.abs_stat.keys())])).encode('utf-8')
 
 
 st_pattern = re.compile("Status:\s?{(.*?)}")
@@ -152,12 +117,9 @@ class LogFormats:
     csv, txt = range(2)
 
 
-
-
-
 class FFIHostBase(object):
     def __init__(self, targetDir, series, DevicePart):
-        self.design = VivadoDesignModel(os.path.normpath(targetDir), series, DevicePart)
+        self.design = VivadoDesignModel(os.path.normpath(targetDir), DevicePart)
         self.generatedFilesDir = os.path.normpath(os.path.join(targetDir, 'DavosGenerated'))
         self.faultload_files = []
         self.fault_list = []
@@ -225,20 +187,14 @@ class FFIHostBase(object):
                     for seu in fdesc.SeuItems:
                         seu.Offset = offset
                         offset += 1
-                        #Export SEU descriptor to file (7 words x 32-bit)
-                        f.write(struct.pack(specificator, fdesc.Id))
-                        f.write(struct.pack(specificator, seu.Offset))
-                        f.write(struct.pack(specificator, fdesc.CellType))
-                        f.write(struct.pack(specificator, seu.SLR))
-                        f.write(struct.pack(specificator, seu.FAR))
-                        f.write(struct.pack(specificator, seu.Word))
-                        f.write(struct.pack(specificator, seu.Mask))
-                        f.write(struct.pack(specificator, seu.Time))
+                        #Export SEU descriptor to the binary file (7 words x 32-bit)
+                        for atr in [fdesc.Id, seu.Offset, fdesc.CellType, seu.SLR,
+                                    seu.FAR, seu.Word, seu.Mask, seu.Time]:
+                            f.write(struct.pack(specificator, atr))
 
     def get_fdesc_labels(self):
-        return (
-        ['Id', 'PartIdx', 'CellType', 'Multiplicity', 'FailureMode', 'Offset', 'DesignNode', 'SLR', 'FAR', 'Word',
-         'Bit', 'Mask', 'Time'])
+        return ['Id', 'PartIdx', 'CellType', 'Multiplicity', 'FailureMode', 'Offset', 'DesignNode', 'SLR', 'FAR',
+                'Word', 'Bit', 'Mask', 'Time']
 
     def faultdesc_format_str(self, idx):
         res = []
@@ -247,9 +203,8 @@ class FFIHostBase(object):
             res.append(map(str, [
                 fdesc.Id, fdesc.PartIdx, fdesc.CellType, fdesc.Multiplicity, fdesc.FailureMode,
                 seu.Offset, seu.DesignNode, '0x{0:08x}'.format(seu.SLR), '0x{0:08x}'.format(seu.FAR), seu.Word, seu.Bit,
-                '0x{0:08x}'.format(seu.Mask), seu.Time,
-            ]))
-        return (res)
+                '0x{0:08x}'.format(seu.Mask), seu.Time, ]))
+        return res
 
     def export_fault_list_csv(self):
         self.FdescFile = os.path.join(self.generatedFilesDir, 'Faultlist.csv')
