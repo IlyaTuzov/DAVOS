@@ -356,7 +356,7 @@ class VivadoDesignModel:
             'CELLS': os.path.join(self.generatedFilesDir, 'CELLS.csv')
         }
 
-        if DevicePart is not None:
+        if DevicePart is not None and DevicePart != "":
             self.DevicePart = DevicePart
         else:
             tree = ET.parse(self.VivadoProjectFile).getroot()
@@ -432,12 +432,12 @@ class VivadoDesignModel:
         return(res)
 
     def load_layout(self, devicepart):
-        os.chdir(os.path.join(self.moduledir, 'FFI/DeviceSupport'))
-        layoutfile = glob.glob('LAYOUT*{0:s}*.xml'.format(devicepart))
+        #os.chdir(os.path.join(self.moduledir, 'FFI/DeviceSupport'))
+        layoutfile = glob.glob('{0:s}/LAYOUT*{1:s}*.xml'.format(os.path.join(self.moduledir, 'FFI/DeviceSupport'), devicepart))
         if len(layoutfile) == 0:
-            print('load_layout: device layout not found for device part: {0} in {1}'.format(devicepart, os.getcwd()))
+            print('Error: load_layout: device layout not found for device part: {0} in {1}'.format(devicepart, os.getcwd()))
             print('Device layout can be added to DAVOS by running: python DesignParser.py op=addlayout part={0:s}'.format(devicepart))
-            return
+            exit(1)
         tree = ET.parse(os.path.join(os.getcwd(), layoutfile[0])).getroot()
         self.dev_layout = DevLayout(tree)
 

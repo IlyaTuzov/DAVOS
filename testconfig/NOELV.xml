@@ -2,13 +2,13 @@
 <data>
 
     <DAVOS
-        report_dir = "C:/HTWEB/FFI/"
+        report_dir = "/home/tuil/HTWEB/NOELV/"
         experiment_label = "NOELV"
         platform = "Multicore"
         maxproc = "2" >
 
 		<ModelConfig
-			work_dir = "C:/Projects/FFIMIC/"
+			work_dir = "/home/tuil/FFIMIC/"
             checkpoint = ""
             design_type = "RTL"
 			label = "NOELV"
@@ -164,7 +164,7 @@
 			fault_multiplicity				= "1"
 			injection_time 					= "1"
 
-			dut_script 					    = "grmon -u -ucli -uart /dev/ttyUSB2 -c /tmp/FFI/FFIMIC/host_grmon_1.do"
+			dut_script 					    = "grmon -u -ucli -uart /dev/ttyUSB2 -c /home/tuil/DAVOS/testconfig/host_grmon.do"
 		>
 
 		</FFI>
