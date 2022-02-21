@@ -21,8 +21,8 @@ import commands
 class FFIHostMicroblaze(FFIHostControlled):
     def __init__(self, targetDir, DevicePart):
         super(FFIHostMicroblaze, self).__init__(targetDir, DevicePart)
-        self.mic_script = os.path.join(self.moduledir, 'FFI_Microblaze/microblaze_server.do')
-        self.mic_app    = os.path.join(self.moduledir, 'FFI_Microblaze/InjApp_build/InjAppRelease.elf')
+        self.mic_script = os.path.join(self.moduledir, 'FFI/FFI_Microblaze/microblaze_server.do')
+        self.mic_app    = os.path.join(self.moduledir, 'FFI/FFI_Microblaze/InjApp_build/InjAppRelease.elf')
         self.mic_port   = 12346
         self.proc_xsct = None
 
@@ -118,6 +118,7 @@ class FFIHostNOELV(FFIHostMicroblaze):
         self.proc_grmon = None
         self.dut_script = dut_script
         self.dut_port = 12345
+        self.consec_failures = 0        
 
     def connect_dut(self, attempts=1, maxtimeout=60):
         for i in range(attempts):
@@ -175,6 +176,16 @@ class FFIHostNOELV(FFIHostMicroblaze):
 
     def dut_recover(self):
         if self.LastFmode != FailureModes.Masked:
+            #detect hang loops (several consecutive hangs)
+            if self.LastFmode != FailureModes.Hang:
+                self.consec_failures = 0
+            else:
+                self.consec_failures += 1              
+            if self.consec_failures >= 3:
+                self.restart_all('Several consecutive GRMON hangs')
+                self.consec_failures = 0
+                return        
+            #If no hang loops detected - try to recover grmon without reloading a bitstream
             res = self.serv_communicate('localhost', self.dut_port, "1\n", 1)
             if res is not None:
                 if 'pass' in res.lower():

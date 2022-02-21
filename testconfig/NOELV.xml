@@ -151,10 +151,10 @@
 			injector 						= "MICROBLAZE"
             injector_phase 					= "on"
             reportbuilder_phase 			= "off"
-			device_part 					= "7vx485tffg1761"
+			device_part 					= "xc7vx485tffg1761"
 
 			dut_scope 						= "noelv0/cpuloop[0].core/u0"
-			pblock 							= ""
+			pblock 							= "NOELV:X77Y2:X151Y147"
 			target_logic 					= "LUT"
 			custom_lut_mask 				= "on"
 

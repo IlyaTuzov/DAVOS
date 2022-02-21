@@ -114,16 +114,20 @@ def run_microblaze_injector(davosconf, modelconf):
             pb = Pblock(davosconf.FFI.pblock['X1'], davosconf.FFI.pblock['Y1'], davosconf.FFI.pblock['X2'], davosconf.FFI.pblock['Y2'], davosconf.FFI.pblock['name'])
         else:
             pb = None
-        Injector.initialize("", davosconf.FFI.dut_scope, pb)
+
         if davosconf.FFI.target_logic == 'type0':
+            Injector.initialize("", davosconf.FFI.dut_scope, pb, False)
             Injector.sample_SEU(pb, CellTypes.EssentialBits, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
         elif davosconf.FFI.target_logic == 'lut':
+            Injector.initialize("", davosconf.FFI.dut_scope, pb, False)
             Injector.design.map_lut_cells(davosconf.FFI.dut_scope, pb)
             Injector.sample_SEU(pb, CellTypes.LUT, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
         elif davosconf.FFI.target_logic == 'ff':
-            Injector.design.load_cell_descriptors(NetlistCellGroups.FF, davosconf.FFI.dut_scope)
+            Injector.initialize("", davosconf.FFI.dut_scope, pb, True)
+            Injector.sample_SEU(pb, CellTypes.FF, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
         elif davosconf.FFI.target_logic == 'bram':
-            Injector.design.load_cell_descriptors(NetlistCellGroups.Bram, davosconf.FFI.dut_scope)
+            Injector.initialize("", davosconf.FFI.dut_scope, pb, True)
+            Injector.sample_SEU(pb, CellTypes.BRAM, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
         Injector.export_fault_list_bin(1000)
         Injector.export_fault_list_csv()
         raw_input('Injector configured, Press any key to run the experiment...')
@@ -135,7 +139,7 @@ def run_microblaze_injector(davosconf, modelconf):
             #restore Injector state from most recent log file
             logfiles = sorted(glob.glob(os.path.join(Injector.design.generatedFilesDir, 'LOG*.csv')))
             restore_file = logfiles[-1]
-            Injector.initialize(restore_file)
+            Injector.initialize(restore_file, "", None, False)
             #print('Test successful')
 
 

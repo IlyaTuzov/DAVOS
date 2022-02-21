@@ -72,7 +72,7 @@ class InjectionStatistics:
         self.err_stat = {}
 
     def register_failure_mode(self, status_msg, fmode=FailureModes.Other):
-        self.status_messages[status_msg] = fmode
+        self.status_messages[status_msg.lower()] = fmode
         if fmode not in self.abs_stat:
             self.abs_stat[fmode] = 0
         if fmode not in self.per_stat:
@@ -81,8 +81,8 @@ class InjectionStatistics:
             self.err_stat[fmode] = float(0)
 
     def get_failure_mode(self, status_msg):
-        if status_msg in self.status_messages:
-            return self.status_messages[status_msg]
+        if status_msg.lower() in self.status_messages:
+            return self.status_messages[status_msg.lower()]
         else:
             return FailureModes.Other
 
@@ -241,7 +241,7 @@ class FFIHostBase(object):
             self.fault_list.append(fdesc)
         print('Fault descriptors restored from {0:s} : {1:d} items'.format(infile, len(self.fault_list)))
 
-    def initialize(self, logifle_to_restore="", unit_path="", pb=None):
+    def initialize(self, logifle_to_restore="", unit_path="", pb=None, load_ll_file=True):
         if logifle_to_restore == "":
             self.logfilename = os.path.join(self.generatedFilesDir, 'LOG_{0:s}.csv'.format(
                 datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
@@ -253,7 +253,7 @@ class FFIHostBase(object):
             self.load_fault_list_csv(self.logfilename)
             self.logfile = open(self.logfilename, 'a')
             print('Injector {0:s} Restored from logfile {1:s}'.format(self.__class__.__name__, self.logfilename))
-        self.design.initialize(False, unit_path, pb)
+        self.design.initialize(False, unit_path, pb, load_ll_file)
 
     def cleanup(self):
         self.logfile.close()

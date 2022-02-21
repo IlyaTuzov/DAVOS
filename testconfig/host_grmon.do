@@ -4,7 +4,7 @@
 
 variable refres 0
 variable refreg 0
-variable kernel "/workloads/obj_1_matmult.out"
+variable kernel "/home/tuil/FFIMIC/workloads/obj_1_matmult.out"
 variable resadr 0x10000
 
 proc DutReset { } {

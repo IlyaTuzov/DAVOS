@@ -368,6 +368,9 @@ class VivadoDesignModel:
                     break
 
         details = DevicePartDetails(self.DevicePart)
+        if details.series == None:
+            print('Error: VivadoDesignModel: invalid DevicePart specified: {0}, exiting'.format(self.DevicePart))
+            exit(0)
         self.series = details.series
         print(details.to_string())
         self.CM = ConfigMemory(self.series)
@@ -591,11 +594,12 @@ class VivadoDesignModel:
             res.add_row(data)
         return res
 
-    def initialize(self, skip_files=False, unit_path="", pb=None):
+    def initialize(self, skip_files=False, unit_path="", pb=None, load_ll_file=True):
         if not skip_files:
             self.fix_preconditions()
             self.netlist.load_netlist_cells(self.files['CELLS'], unit_path, pb)
-            self.netlist.load_logic_location_file(self.files['LL'], True)
+            if load_ll_file:
+                self.netlist.load_logic_location_file(self.files['LL'], True)
             self.CM.set_series(self.series)
             self.load_layout(self.DevicePart)
             self.CM.load_bitstream(self.files['BIT'], BitfileType.Regular)

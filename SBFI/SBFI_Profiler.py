@@ -102,10 +102,6 @@ def ProfileHdlModels(config, toolconf, datamodel):
                 for i1 in range(p.indexes[0].low, p.indexes[0].high+1):
                     for i2 in range:
                         pass
-            else:
-                pass
-        else:
-            pass
 
 
 
