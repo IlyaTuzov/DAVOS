@@ -7,7 +7,8 @@
 #       Base library for the definition of the host-side of FPGA-based fault injectors,
 #       whose workflow is completely controlled from the host
 #
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# Authors: Ilya Tuzov, Universitat Politecnica de Valencia
+#          Gabriel Cobos Tello, Universitat Politecnica de Valencia
 # ------------------------------------------------------------------------------------------------------
 
 from FFI_Host_Base import *
@@ -15,8 +16,8 @@ from FFI_Host_Base import *
 
 
 class FFIHostControlled(FFIHostBase):
-    def __init__(self, targetDir, series, DevicePart):
-        super(FFIHostControlled, self).__init__(targetDir, series, DevicePart)
+    def __init__(self, targetDir, DevicePart):
+        super(FFIHostControlled, self).__init__(targetDir, DevicePart)
         self.restart_period = 100
 
     def load_faultlist(self, part_idx):

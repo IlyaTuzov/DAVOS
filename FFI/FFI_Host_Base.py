@@ -118,7 +118,7 @@ class LogFormats:
 
 
 class FFIHostBase(object):
-    def __init__(self, targetDir, series, DevicePart):
+    def __init__(self, targetDir, DevicePart):
         self.design = VivadoDesignModel(os.path.normpath(targetDir), DevicePart)
         self.generatedFilesDir = os.path.normpath(os.path.join(targetDir, 'DavosGenerated'))
         self.faultload_files = []

@@ -81,12 +81,12 @@ class JobManager:
         path =  os.path.join( davosconf.ExperimentalDesignConfig.design_genconf.design_dir, davosconf.ExperimentalDesignConfig.design_genconf.template_dir)
         if raw_input('Clean the cache before running: Y/N: ').lower().startswith('y'):                                   
             for i in self.DeviceList:   #cleanup (cache, ...) each platform
-                Injector = InjectorHostManager(path, 
-                                               0, 
-                                               os.path.join(path,  davosconf.FFIConfig.hdf_path),
-                                               os.path.join(path, davosconf.FFIConfig.init_tcl_path),
-                                               os.path.join(path, davosconf.FFIConfig.injectorapp_path),
-                                               davosconf.FFIConfig.memory_buffer_address)  
+                Injector = FFIHostZynq(path,
+                                       0,
+                                       os.path.join(path,  davosconf.FFIConfig.hdf_path),
+                                       os.path.join(path, davosconf.FFIConfig.init_tcl_path),
+                                       os.path.join(path, davosconf.FFIConfig.injectorapp_path),
+                                       davosconf.FFIConfig.memory_buffer_address)
                 Injector.configure(i['TargetId'], i['PortID'], "", "")
                 Injector.cleanup_platform()
         self.manager = multiprocessing.Manager()
@@ -165,12 +165,12 @@ def estimate_robustness(model, Device, stat, davosconf, lock):
         stat.update(str(k), '{} sec'.format(v), 'ok')
     
 
-    Injector = InjectorHostManager(model.ModelPath, 
-                                   model.ID, 
-                                   os.path.join(model.ModelPath,  davosconf.FFIConfig.hdf_path),
-                                   os.path.join(model.ModelPath, davosconf.FFIConfig.init_tcl_path),
-                                   os.path.join(model.ModelPath, davosconf.FFIConfig.injectorapp_path),
-                                   davosconf.FFIConfig.memory_buffer_address)    
+    Injector = FFIHostZynq(model.ModelPath,
+                           model.ID,
+                           os.path.join(model.ModelPath,  davosconf.FFIConfig.hdf_path),
+                           os.path.join(model.ModelPath, davosconf.FFIConfig.init_tcl_path),
+                           os.path.join(model.ModelPath, davosconf.FFIConfig.injectorapp_path),
+                           davosconf.FFIConfig.memory_buffer_address)
     Injector.verbosity = 0  #silent when multiprocessing is used
 
 #    Injector.attachMemConfig(   os.path.join(model.ModelPath, "./MicZC.sdk/BD_wrapper_hw_platform_0/BD_wrapper.mmi"), 

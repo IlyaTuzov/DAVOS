@@ -1,3 +1,7 @@
+#XSCT App to communicate with microblaze-based injector
+#Authors: Ilya Tuzov, Universitat Politecnica de Valencia
+#         Gabriel Cobos Tello, Universitat Politecnica de Valencia
+
 variable micapp ""
 
 

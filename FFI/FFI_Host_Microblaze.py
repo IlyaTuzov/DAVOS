@@ -7,7 +7,8 @@
 #       Adaptation of Host-controlled FFI to the Microblaze-based injectors,
 #       and its application to the NOEL-V processor (DUT)
 #
-# Author: Ilya Tuzov, Universitat Politecnica de Valencia
+# Authors: Ilya Tuzov, Universitat Politecnica de Valencia
+#          Gabriel Cobos Tello, Universitat Politecnica de Valencia
 # ------------------------------------------------------------------------------------------------------
 
 
@@ -18,8 +19,8 @@ import commands
 
 
 class FFIHostMicroblaze(FFIHostControlled):
-    def __init__(self, targetDir, series, DevicePart):
-        super(FFIHostMicroblaze, self).__init__(targetDir, series, DevicePart)
+    def __init__(self, targetDir, DevicePart):
+        super(FFIHostMicroblaze, self).__init__(targetDir, DevicePart)
         self.mic_script = os.path.join(self.moduledir, 'FFI_Microblaze/microblaze_server.do')
         self.mic_app    = os.path.join(self.moduledir, 'FFI_Microblaze/InjApp_build/InjAppRelease.elf')
         self.mic_port   = 12346
@@ -111,8 +112,8 @@ class FFIHostMicroblaze(FFIHostControlled):
 
 
 class FFIHostNOELV(FFIHostMicroblaze):
-    def __init__(self, targetDir, series, DevicePart, dut_script):
-        super(FFIHostNOELV, self).__init__(targetDir, series, DevicePart)
+    def __init__(self, targetDir, DevicePart, dut_script):
+        super(FFIHostNOELV, self).__init__(targetDir, DevicePart)
         print('NOELV_FFI_App object as subclass')
         self.proc_grmon = None
         self.dut_script = dut_script

@@ -64,38 +64,26 @@ class JobDescriptor:
         specificator = '<L'  # Little Endian
         with open(fname, 'wb') as f:
             f.write(struct.pack(specificator, 0xAABBCCDD))  # Start Sequence
-            f.write(struct.pack(specificator, self.BitstreamId))
-            f.write(struct.pack(specificator, self.SyncTag))
-            f.write(struct.pack(specificator, self.BitstreamAddr))
-            f.write(struct.pack(specificator, self.BitstreamSize))
-            f.write(struct.pack(specificator, self.BitmaskAddr))
-            f.write(struct.pack(specificator, self.BitmaskSize))
-            f.write(struct.pack(specificator, self.FaultListAdr))
-            f.write(struct.pack(specificator, self.FaultListSize))
-            f.write(struct.pack(specificator, self.UpdateBitstream))
-            f.write(struct.pack(specificator, self.Mode))
-            f.write(struct.pack(specificator, self.Blocktype))
-            f.write(struct.pack(specificator, self.Celltype))
-            f.write(struct.pack(specificator, self.Essential_bits))
-            f.write(struct.pack(specificator, self.CheckRecovery))
-            f.write(struct.pack(specificator, self.LogTimeout))
-            f.write(struct.pack(specificator, self.StartIndex))
-            f.write(struct.pack(specificator, self.ExperimentsCompleted))
-            f.write(struct.pack(specificator, self.Failures))
-            f.write(struct.pack(specificator, self.Signaled))
-            f.write(struct.pack(specificator, self.Masked))
-            f.write(struct.pack(specificator, self.Latent))
-            f.write(struct.pack(specificator, self.SDC))
-            f.write(struct.pack(specificator, self.sample_size_goal))
-            f.write(struct.pack('<f', self.error_margin_goal))
-            f.write(struct.pack(specificator, self.FaultMultiplicity))
-            f.write(struct.pack(specificator, self.FilterFrames))
+            for i in [ self.BitstreamId, self.SyncTag, self.BitstreamAddr, self.BitstreamSize,
+                       self.BitmaskAddr, self.BitmaskSize, self.FaultListAdr, self.FaultListSize,
+                       self.UpdateBitstream, self.Mode, self.Blocktype, self.Celltype, self.Essential_bits,
+                       self.CheckRecovery, self.LogTimeout, self.StartIndex, self.ExperimentsCompleted,
+                       self.Failures, self.Signaled, self.Masked, self.Latent, self.SDC, self.sample_size_goal]:
+                f.write(struct.pack(specificator, i))
             f.write(struct.pack('<f', self.PopulationSize))
-            f.write(struct.pack(specificator, self.WorkloadDuration))
-            f.write(struct.pack(specificator, self.SamplingWithouRepetition))
-            f.write(struct.pack(specificator, self.DetailedLog))
-            f.write(struct.pack(specificator, self.DetectLatentErrors))
-            f.write(struct.pack(specificator, self.InjectionTime))
+            f.write(struct.pack('<f', self.error_margin_goal))
+            for i in [ self.FaultMultiplicity, self.FilterFrames, self.WorkloadDuration, self.SamplingWithouRepetition,
+                       self.DetailedLog, self.DetectLatentErrors, self.InjectionTime]:
+                f.write(struct.pack(specificator, i))
 
 
 
+
+
+
+
+
+class FFIHostMonitored(FFIHostBase):
+    def __init__(self, targetDir, DevicePart, modelId):
+        super(FFIHostMonitored, self).__init__(targetDir, DevicePart)
+        self.modelId = modelId

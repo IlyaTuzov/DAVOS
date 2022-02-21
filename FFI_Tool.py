@@ -22,13 +22,13 @@ from Datamanager import *
 
 
 def run_zynq_injector(davosconf, modelconf):
-    Injector = InjectorHostManager(modelconf.work_dir,
-                                   0,
-                                   os.path.join(modelconf.work_dir, davosconf.FFI.hdf_path),
-                                   os.path.join(modelconf.work_dir, davosconf.FFI.init_tcl_path),
-                                   os.path.join(modelconf.work_dir, davosconf.FFI.injectorapp_path),
-                                   davosconf.FFI.memory_buffer_address,
-                                   True)
+    Injector = FFIHostZynq(modelconf.work_dir,
+                           0,
+                           os.path.join(modelconf.work_dir, davosconf.FFI.hdf_path),
+                           os.path.join(modelconf.work_dir, davosconf.FFI.init_tcl_path),
+                           os.path.join(modelconf.work_dir, davosconf.FFI.injectorapp_path),
+                           davosconf.FFI.memory_buffer_address,
+                           True)
     Injector.RecoveryNodeNames = davosconf.FFI.post_injection_recovery_nodes
     Injector.CustomLutMask = davosconf.FFI.custom_lut_mask
     Injector.Profiling = davosconf.FFI.profiling
@@ -102,7 +102,7 @@ def run_zynq_injector(davosconf, modelconf):
 
 
 def run_microblaze_injector(davosconf, modelconf):
-    Injector = FFIHostNOELV(modelconf.work_dir, FPGASeries.S7, davosconf.FFI.device_part, davosconf.FFI.dut_script)
+    Injector = FFIHostNOELV(modelconf.work_dir, davosconf.FFI.device_part, davosconf.FFI.dut_script)
     Injector.InjStat.register_failure_mode('pass', FailureModes.Masked)
     Injector.InjStat.register_failure_mode('latent', FailureModes.Latent)
     Injector.InjStat.register_failure_mode('sdc', FailureModes.SDC)

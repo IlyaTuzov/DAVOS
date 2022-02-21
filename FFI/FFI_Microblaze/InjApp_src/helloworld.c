@@ -9,6 +9,7 @@
       based on the FFI library
 
    Author: Ilya Tuzov, Universitat Politecnica de Valencia
+           Gabriel Cobos Tello, Universitat Politecnica de Valencia
    ------------------------------------------------------------------------------------------------------
  */
 

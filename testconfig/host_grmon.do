@@ -1,3 +1,7 @@
+#GRMON script to communicate with NOELV DUT
+#Authors: Ilya Tuzov, Universitat Politecnica de Valencia
+#         Gabriel Cobos Tello, Universitat Politecnica de Valencia
+
 variable refres 0
 variable refreg 0
 variable kernel "/workloads/obj_1_matmult.out"

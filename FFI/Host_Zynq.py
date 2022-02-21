@@ -27,6 +27,8 @@ from Davos_Generic import Table
 from BitstreamParser import *
 from DesignParser import *
 from SBFI.SBFI_Profiler import *
+from FFI_Host_Monitored import *
+
 
 class OperatingModes:
     Exhaustive, SampleExtend, SampleUntilErrorMargin = range(3)
@@ -119,10 +121,10 @@ def recover_statistics(fname):
 
 
 
-class InjectorHostManager:
-    def __init__(self, targetDir, modelId, HwDescFile_path, InitTcl_path, InjectorApp_path, MemoryBufferAddress, cleanlog=False):       
+class FFIHostZynq(FFIHostMonitored):
+    def __init__(self, targetDir, modelId, HwDescFile_path, InitTcl_path, InjectorApp_path, MemoryBufferAddress, cleanlog=False):
         #Attach target dir and modelID
-        self.targetDir, self.modelId = targetDir, modelId
+        super(FFIHostZynq, self).__init__(targetDir, "")
         self.HwDescFile_path = HwDescFile_path          #Hardware description file for the target platform (system.hdf)
         self.InitTcl_path = InitTcl_path                #TCL to initialize the APU (ps7_init.tcl)
         self.InjectorApp_path = InjectorApp_path        #Injector App executable (.elf)

@@ -147,29 +147,7 @@
 		injection_time = 0-random, > 0 - inject after that number of clock cycles, e.g. ==1 - inject at the workload start, ==10 - inject after 9 clock cycles
 		pblock: name: Bottom-Left : Top-Right  (NOELV : X77Y2:X151Y147)
 	-->
-		<!--FFI
-			injector 						= "MICROBLAZE"
-            injector_phase 					= "on"
-            reportbuilder_phase 			= "off"
-			device_part 					= "7vx485tffg1761"
-
-			dut_scope 						= ""
-			pblock 							= "NOELV:X77Y2:X151Y147"
-			target_logic 					= "TYPE0"
-			custom_lut_mask 				= "on"
-
-			mode 							= "101"
-			sample_size_goal 				= "10000"
-			error_margin_goal 				= "0.5"
-			fault_multiplicity				= "1"
-			injection_time 					= "1"
-
-			dut_script 					    = "grmon -u -ucli -uart /dev/ttyUSB2 -c /tmp/FFI/FFIMIC/host_grmon_1.do"
-		>
-        </FFI-->
-
-
-            <FFI
+        <FFI
 			injector 						= "MICROBLAZE"
             injector_phase 					= "on"
             reportbuilder_phase 			= "off"
