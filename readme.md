@@ -118,4 +118,7 @@ Please check the LICENSE.txt file (that is included as a part of this package) f
 ## Acknowledgement
 
 - This work has been carried-out under the support of the "Programa de Ayudas de Investigación y Desarrollo" (PAID) de la Universitat Politècnica de València.
-- Adaptation to the NOEL-V RISCV platform is currently supported by the H2020 SELENE project (www.selene-project.eu). 
+- Adaptation to the NOEL-V RISCV platform is currently supported by the:
+  * SELENE project (www.selene-project.eu) funded by the European Unions Horizon 2020 research and innovation programme under grant agreement No. 871467, and
+  * FRACTAL project (https://fractal-project.eu/) funded by the ECSEL Joint Undertaking (JU) under grant agreement No. 877056
+    
