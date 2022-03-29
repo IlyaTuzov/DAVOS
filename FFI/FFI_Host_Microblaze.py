@@ -9,7 +9,7 @@
 #
 # Authors: Ilya Tuzov, Universitat Politecnica de Valencia
 #          Gabriel Cobos Tello, Universitat Politecnica de Valencia
-# ------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------s---------
 
 
 from FFI_Host_Controlled import *
@@ -22,7 +22,7 @@ class FFIHostMicroblaze(FFIHostControlled):
     def __init__(self, targetDir, DevicePart):
         super(FFIHostMicroblaze, self).__init__(targetDir, DevicePart)
         self.mic_script = os.path.join(self.moduledir, 'FFI/FFI_Microblaze/microblaze_server.do')
-        self.mic_app    = os.path.join(self.moduledir, 'FFI/FFI_Microblaze/InjApp_build/InjAppRelease.elf')
+        self.mic_app    = os.path.join(self.moduledir, 'FFI/FFI_Microblaze/InjApp_build/InjApp.elf')
         self.mic_port   = 12346
         self.proc_xsct = None
 
@@ -34,10 +34,10 @@ class FFIHostMicroblaze(FFIHostControlled):
             commands.getoutput('fuser -k %d/tcp' %(self.mic_port))    
         time.sleep(1)
         #launch microblaze host app (xsct server at localhost:self.mic_port) 
-        cmd = 'xsct {0:s} {1:d} {2:s} {3:s}'.format(self.mic_script, self.mic_port, self.design.files['BIT'], self.mic_app)
+        cmd = 'xsct {0:s} {1:d} {2:s} {3:s}'.format(self.mic_script, self.mic_port, self.design.files['BIT'][0], self.mic_app)
         print('Running: {0:s}'.format(cmd))
-        self.proc_xsct = pexpect.spawn(cmd, timeout=60)
-        self.proc_xsct.expect('XSCT Connected', timeout=60)
+        self.proc_xsct = pexpect.spawn(cmd, timeout=100)
+        self.proc_xsct.expect('XSCT Connected', timeout=100)
         print('XSCT started at localhost:{0:d}'.format(self.mic_port))        
 
     def load_faultlist(self, part_idx):
@@ -131,7 +131,7 @@ class FFIHostNOELV(FFIHostMicroblaze):
             print('Running: {0:s} : attempt {1:d}'.format(self.dut_script, i))
             try:
                 self.proc_grmon = pexpect.spawn(self.dut_script, timeout=maxtimeout)
-                self.proc_grmon.expect('DUT has been initialized', timeout=maxtimeout)
+                self.proc_grmon.expect('DUT ready', timeout=maxtimeout)
                 print('GRMON started at localhost:{0:d}'.format(self.dut_port))
                 return (0)
             except Exception as e:
@@ -182,8 +182,8 @@ class FFIHostNOELV(FFIHostMicroblaze):
             else:
                 self.consec_failures += 1              
             if self.consec_failures >= 3:
-                self.restart_all('Several consecutive GRMON hangs')
                 self.consec_failures = 0
+                self.restart_all('Several consecutive GRMON hangs')
                 return        
             #If no hang loops detected - try to recover grmon without reloading a bitstream
             res = self.serv_communicate('localhost', self.dut_port, "1\n", 1)
@@ -199,7 +199,7 @@ class FFIHostNOELV(FFIHostMicroblaze):
                     #    print("\tDUT has been reset")
                     # else:
                     #    print "\tDUT recovery check (post-SEU-remove): DUT Hang"
-                    status = self.connect_dut(1, 15)
+                    status = self.connect_dut(3, 30)
                     if status > 0:
                         self.restart_all('GRMON hang')
                         return
@@ -210,19 +210,19 @@ class FFIHostNOELV(FFIHostMicroblaze):
                             print "\tDUT recovery check (post-Reset): Ok"
                         else:
                             print "\tDUT recovery check (post-Reset): Fail"
-                            status = self.connect_dut(1, 15)
+                            status = self.connect_dut(3, 30)
                             if status > 0:
                                 self.restart_all('GRMON hang')
                             return
                     else:
                         print "\tDUT recovery check (post-Reset): GRMON Hang"
-                        status = self.connect_dut(1, 15)
+                        status = self.connect_dut(3, 30)
                         if status > 0:
                             self.restart_all('GRMON hang')
                         return
             else:
                 print "\tDUT recovery check (post-SEU-remove): Hang"
-                status = self.connect_dut(1, 15)
+                status = self.connect_dut(3, 30)
                 if status > 0:
                     self.restart_all('GRMON hang')
                 self.LastFmode = FailureModes.Hang

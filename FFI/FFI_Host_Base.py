@@ -140,7 +140,7 @@ class FFIHostBase(object):
                     while (essential_bit_mask >> seu.Bit) & 0x1 == 0x0:
                         frame = random.choice(framelist)
                         seu.FAR = frame.FAR
-                        seu.SLR = frame.SLR_ID
+                        seu.SLR = self.design.CM.SLR_ID_LIST.index(frame.SLR_ID)
                         seu.Word = random.randint(0, self.design.CM.FrameSize-1)
                         seu.Bit = random.randint(0, 31)
                         essential_bit_mask = frame.mask[seu.Word]
@@ -160,7 +160,7 @@ class FFIHostBase(object):
                     essential_bit_mask = 0x0
                     while (essential_bit_mask >> seu.Bit) & 0x1 == 0x0:
                         lut = random.choice(lustcells)
-                        seu.SLR = lut.slr.fragment.SLR_ID
+                        seu.SLR = self.design.CM.SLR_ID_LIST.index(lut.slr.fragment.SLR_ID)
                         lut_bit_index = random.choice(lut.bitmap.keys())
                         seu.FAR, seu.Word, seu.Bit = lut.bitmap[lut_bit_index]
                         frame = self.design.CM.get_frame_by_FAR(seu.FAR, seu.SLR)

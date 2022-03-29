@@ -4,15 +4,15 @@
 
 variable refres 0
 variable refreg 0
-variable kernel "/home/tuil/FFIMIC/workloads/obj_1_matmult.out"
+variable kernel "/home2/tuil/selene_ffi/selene-hardware/selene-soc/selene-xilinx-vcu118/workloads/main/obj_1_matmult.out"
 variable resadr 0x10000
 
 proc DutReset { } {
     global kernel
-    attach
-    reset
+    if {[catch {[attach]} er]} { }
+    if {[catch {[reset]} er]} { }
     load $kernel
-    detach
+    if {[catch {[detach]} er]} { }
     #cont
     puts "DUT has been reset"
     return "Status: {OK}"
@@ -28,7 +28,7 @@ proc TestWorkload { goldenrun} {
     global resadr
     wmem $resadr 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
     #if {[catch {[silent cont]} er]} { }
-    wmem 0x1000000 0x1
+    wmem 0x200000 0x1
     after 100
     if {$goldenrun==1} {
         set refres [silent mem $resadr 128]
@@ -73,10 +73,10 @@ set port 12345
 puts "GRMON script started at port=$port"
 
 DutReset
-TestWorkload 1
 puts "DUT has been initialized"
+TestWorkload 1
+puts "DUT ready"
 
 
 socket -server accept $port
 vwait forever
-

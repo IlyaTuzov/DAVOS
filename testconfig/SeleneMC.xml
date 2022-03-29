@@ -5,15 +5,15 @@
             mode = clean / continue
         -->
     <DAVOS
-        report_dir = "/home/tuil/HTWEB/SELENE/DEMO"
-        experiment_label = "SEU"
-        platform = "Grid"
-        maxproc = "100" >
+        report_dir = "/home2/tuil/HTWEB/SELENE/DEMO"
+        experiment_label = "SELENE_FFI"
+        platform = "Multicore"
+        maxproc = "2" >
 
 
 
 		<ModelConfig
-			work_dir = "../selene-hardware/selene-soc/selene-xilinx-vcu118"
+			work_dir = "/home2/tuil/selene_ffi/selene-hardware/selene-soc/selene-xilinx-vcu118/vivado/noelv-xilinx-vcu118"
             checkpoint = "./checkpoints/seleneMC.sim"
             design_type = "RTL"
 			label = "SeleneMC"
@@ -138,6 +138,35 @@
         </SBFI>
 
 
+
+	<!--
+		injector: MICROBLAZE / ZYNQ
+		target_logic = FF/LUT/BRAM/TYPE0/ALL
+		mode = 1XX: using essential bits: 101 - sampling, 102 - exhaustive
+			   2XX: using external fault list
+		injection_time = 0-random, > 0 - inject after that number of clock cycles, e.g. ==1 - inject at the workload start, ==10 - inject after 9 clock cycles
+		pblock: name: Bottom-Left : Top-Right  (NOELV : X77Y2:X151Y147)
+	-->
+        <FFI
+			injector 						= "MICROBLAZE"
+            injector_phase 					= "on"
+            reportbuilder_phase 			= "off"
+
+			dut_scope 						= "noelv0/cpuloop[0].core/u0"
+			pblock 							= "pblock_cpuloop[0].core:X2Y302:X90Y359"
+			target_logic 					= "TYPE0"
+			custom_lut_mask 				= "on"
+
+			mode 							= "101"
+			sample_size_goal 				= "1000"
+			error_margin_goal 				= "0.5"
+			fault_multiplicity				= "1"
+			injection_time 					= "1"
+
+			dut_script 					    = "grmon -u -ucli -uart /dev/ttyUSB2 -c /home2/tuil/DAVOS/testconfig/host_grmon.do"
+		>
+
+		</FFI>
 
     </DAVOS>
 </data>

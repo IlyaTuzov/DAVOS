@@ -114,7 +114,6 @@ def run_microblaze_injector(davosconf, modelconf):
             pb = Pblock(davosconf.FFI.pblock['X1'], davosconf.FFI.pblock['Y1'], davosconf.FFI.pblock['X2'], davosconf.FFI.pblock['Y2'], davosconf.FFI.pblock['name'])
         else:
             pb = None
-
         if davosconf.FFI.target_logic == 'type0':
             Injector.initialize("", davosconf.FFI.dut_scope, pb, False)
             Injector.sample_SEU(pb, CellTypes.EssentialBits, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)

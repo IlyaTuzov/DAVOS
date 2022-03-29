@@ -14,3 +14,4 @@ DecisionSupport/Python/Logs
 *.suo
 venv
 FFI/DeviceSupport
+.vscode

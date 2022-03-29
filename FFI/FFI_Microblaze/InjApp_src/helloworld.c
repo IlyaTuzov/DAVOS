@@ -9,7 +9,6 @@
       based on the FFI library
 
    Author: Ilya Tuzov, Universitat Politecnica de Valencia
-           Gabriel Cobos Tello, Universitat Politecnica de Valencia
    ------------------------------------------------------------------------------------------------------
  */
 
@@ -73,7 +72,14 @@ int InjectorInitialize(InjectorDescriptor *InjDesc){
 	Status = XHwIcap_GetConfigReg(&(InjDesc->HwIcap), XHI_IDCODE, &ConfigRegData);
 		if (Status != XST_SUCCESS) { return XST_FAILURE; }
 		InjDesc->HwIcap.DeviceIdCode = ConfigRegData & 0x0FFFFFFF;
-	printf("Device ID = %08x\n\r", ConfigRegData);
+	printf("ICAP: Device ID          = %08x\n\r", ConfigRegData);
+	printf("ICAP: Frame Size         = %03d\n\r", InjDesc->HwIcap.WordsPerFrame);
+	printf("ICAP: Readback pad words = %03d\n\r", READBACK_PAD_WORDS);
+
+	InjDesc->SlrId[0] = InjDesc->HwIcap.DeviceIdCode; //0x04b31093;
+	InjDesc->SlrId[1] = 0x04b22093;
+	InjDesc->SlrId[2] = 0x04b24093;
+
 	InjDesc->DebugMode = DEBUG_MODE;
 	return(0);
 }
@@ -87,13 +93,20 @@ int main()
 	printf("Injector Initialized\n\r");
 
 	/*
+	FaultDescriptor fdesc = {.CellType=0, .FAR=0x0, .Id=0x0, .Offset=0x0, .SLR=0x0, .mask=0x0, .time=0x0, .word=0x0};
     while(1){
-    	print("Input FAR (0xFFFFFFFF to exit):\n\r");
-    	u32 FAR = input_int();
-    	log_Frame(&InjDesc, FAR);
-    	if(FAR == 0xFFFFFFFF)break;
+    	//print("Input SLR index (0 to 10):\n\r");
+    	//fdesc.SLR = input_int(16);
+    	print("Input FAR:\n\r");
+    	fdesc.FAR = input_int(16);
+    	print("Input word:\n\r");
+    	fdesc.word = input_int(16);
+    	print("Input mask:\n\r");
+    	fdesc.mask = input_int(16);
+    	FlipBits(&InjDesc, &fdesc);
+    	log_Frame(&InjDesc, fdesc.SLR, fdesc.FAR);
     }
-*/
+	 */
 
 
 
@@ -126,12 +139,12 @@ int main()
     	}
     	else if(host_cmd==0x1){
     		*ptr_status = 0x1;
-    		Status = FlipBits(&InjDesc, host_data);
+    		Status = ProcessFaultDescriptor(&InjDesc, host_data);
     	}
     	else if(host_cmd==0x2){
     		//stub for recover routine: in case of non-changeable CM recovery is equivalent to flipping the bits again
     		*ptr_status = 0x1;
-    		Status = FlipBits(&InjDesc, host_data);
+    		Status = ProcessFaultDescriptor(&InjDesc, host_data);
     	}
 
     	if(Status==0){

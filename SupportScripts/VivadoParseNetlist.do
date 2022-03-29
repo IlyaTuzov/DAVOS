@@ -128,7 +128,7 @@ if {$mode == "cells"} {
 }
 close $fout
 
-
+set_property BITSTREAM.GENERAL.COMPRESS FALSE [current_design]
 
 # bit/bin/edc/ebd/ll: Write bitstream files
 if {$ebc == 1} {

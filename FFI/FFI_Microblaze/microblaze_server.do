@@ -3,12 +3,28 @@
 #         Gabriel Cobos Tello, Universitat Politecnica de Valencia
 
 variable micapp ""
-
+variable CLKBUFADR 0x44A00000
 
 proc restart {bitstream} {
+    global CLKBUFADR
     connect 
     target 1
     fpga -file $bitstream
+    after 1000
+    target 3
+    #CLKBUF: free clocking mode
+    mwr [expr $CLKBUFADR + 0x4] 0x2
+    #configure reset duration for 110 clk cycles
+    mwr [expr $CLKBUFADR + 0x8] 0x6E 
+}
+
+
+proc dut_reset { } {
+    global CLKBUFADR
+    mwr [expr $CLKBUFADR + 0x4] 0x3
+    after 1
+    mwr [expr $CLKBUFADR + 0x4] 0x2
+    return "Status: {ok reset_done}"
 }
 
 
@@ -63,10 +79,12 @@ proc accept {chan addr port} {
         set res [loadfaultlist $arg2]
     } elseif { $arg1 == "11" } {
         set res [run_kernel]
+    } elseif { $arg1 == "12"} {
+        set res [dut_reset]
     } else {    
         set res [excmd $arg1 $arg2]
     }
-    #puts "$addr:$port says $res"
+    puts "$addr:$port says $res"
     puts $chan "Test result : $res"
     close $chan                          
 }   
@@ -82,10 +100,10 @@ puts "Microblaze host script started at port=$port\n\tbitfile=$bitfile\n\tmicapp
 
 
 restart $bitfile 
+#dut_reset
 run_kernel
 
 puts "XSCT Connected"
 
 socket -server accept $port              ;# Create a server socket
 vwait forever                            ;# Enter the event loop
- 

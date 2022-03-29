@@ -133,16 +133,38 @@ class FrameDesc:
         return res
 
 
+class ConfColumnDescriptor:
+    def __init__(self, SLR, Block, Top, Row, Column, FrameNum, Type):
+        self.SLR = SLR
+        self.Block = Block
+        self.Top = Top
+        self.Row = Row
+        self.Column = Column
+        self.FrameNum = FrameNum
+        self.Type = Type
+
+    def to_string(self):
+        return "SLR: {0:08x}, Block: {1:2d}, Top: {2:2d}, Row: {3:3d}, Column: {4:3d}, Minor Frames: {5:3d}, Type: {6:s}".format(
+                self.SLR, self.Block, self.Top, self.Row, self.Column, self.FrameNum, self.Type)
+
 class ConfMemLayout:
     def __init__(self):
         self.TopRows, self.BottomRows = 0, 0
         self.Columns = 0
         self.RowHeight = 0
+        self.ColumnTypes = ['SW', 'CLB', 'DSP', 'BRAMTYPE0', 'BRAMTYPE1', 'LAGUNA', 'UNKNOWN']
+        self.ColumnDescriptors = []
+        self.TileColumnIndexes = {i : [] for i in self.ColumnTypes}
 
-    def to_string(self):
-        return("TopRows: {0:d}, BottomRows: {1:d}, Columns: {2:d}, RowHeight: {3:d}".format(
-            self.TopRows, self.BottomRows, self.Columns, self.RowHeight))
-
+    def to_string(self, short=True):
+        res = "TopRows: {0:d}, BottomRows: {1:d}, Columns: {2:d}, RowHeight: {3:d}".format(
+            self.TopRows, self.BottomRows, self.Columns, self.RowHeight)
+        res += '\n\tColumnIndexes: {0:s}'.format('\n\t\t'.join(['{0:s} : {1:s}'.format(str(k), str(v)) for k, v in self.TileColumnIndexes.iteritems()]))
+        if not short:
+            for desc in self.ColumnDescriptors:
+                res += "\n\t{0:s}".format(desc.to_string())
+        return(res)
+        
 
 class BitfileType:
     Debug, Regular = range(2)
@@ -174,7 +196,7 @@ class SuperLogicRegion:
     def put_frame(self, frame):
         if not self.Empty:
             if frame.FAR == self.FarList[-1]:
-                print "FAR = {0:08x} already registered (pad frame)".format(frame.FAR)
+                print("FAR = {0:08x} already registered (pad frame)".format(frame.FAR))
                 return
         self.FarList.append(frame.FAR)
         self.Frames[frame.FAR] = frame
@@ -456,6 +478,26 @@ class ConfigMemory:
                     fragment.layout.RowHeight = 50
                 elif self.Series == FPGASeries.US or self.Series == FPGASeries.USP:
                     fragment.layout.RowHeight = 60
+                
+            for i in range(len(fragment.FarList)-1):
+                x1, x2 = FarFields.from_FAR(fragment.FarList[i], self.Series), FarFields.from_FAR(fragment.FarList[i+1], self.Series)
+                if x1.Major != x2.Major:
+                    desc = ConfColumnDescriptor(id, x1.BlockType, x1.Top, x1.Row, x1.Major, x1.Minor+1, 'UNKNOWN')
+                    if self.Series == FPGASeries.USP:
+                        if desc.FrameNum == 76:
+                            desc.Type = "SW"
+                        elif desc.FrameNum == 16:
+                            desc.Type = "CLB"
+                        elif desc.FrameNum == 6:
+                            desc.Type = "BRAMTYPE0"
+                        #elif desc.FrameNum == 8:
+                        #    desc.Type = "DSP"
+                    elif self.Series == FPGASeries.S7:
+                        if desc.FrameNum == 36:
+                            desc.Type = "CLB"
+                    fragment.layout.ColumnDescriptors.append(desc)
+                    if desc.Top == 0 and desc.Row == 0:
+                        fragment.layout.TileColumnIndexes[desc.Type].append(desc.Column)
         print('Bitstream parsed: {0:s}\n\tVivado Version: {1:s}\n\tDevice part: {2:s}'.format(
             self.BitstreamFile, self.VivadoVersion, self.DevicePart))
 
@@ -509,13 +551,16 @@ class ConfigMemory:
 
     def log(self, fname, skipEmptyFrames, log_data, log_mask, log_word_indexes):
         with open(fname, 'w') as f:
+            f.write('CM_LAYOUT:\n')
+            for chip_id, fragment in self.FragmentDict.iteritems():
+                f.write('\nFragment {0:s} : \n{1:s}'.format(str(chip_id), fragment.layout.to_string(False)))
+            f.write('\n\n\nCM_CONTENT:\n')
             for chip_id, fragment in self.FragmentDict.iteritems():
                 for i in fragment.FarList:
                     frame = fragment.Frames[i]
                     if (not skipEmptyFrames) or (not frame.stat.Empty):
                         f.write(frame.to_string(log_data, log_mask, log_word_indexes)+'\n')
         print('CM logged into: {0:s}'.format(fname))
-
 
 
 

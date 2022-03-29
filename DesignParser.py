@@ -349,11 +349,11 @@ class VivadoDesignModel:
             print "Warning: Vivado project file not found in: {0}".format(self.targetDir)
         self.ImplementationRun = '*'
         self.files = {
-            'BIT' : os.path.join(self.generatedFilesDir, 'Bitstream.bit'),
-            'EBC' : os.path.join(self.generatedFilesDir, 'Bitstream.ebc'),
-            'EBD' : os.path.join(self.generatedFilesDir, 'Bitstream.ebd'),
-            'LL'  : os.path.join(self.generatedFilesDir, 'Bitstream.ll'),
-            'CELLS': os.path.join(self.generatedFilesDir, 'CELLS.csv')
+            'BIT' : [os.path.join(self.generatedFilesDir, 'Bitstream.bit')],
+            'EBC' : [os.path.join(self.generatedFilesDir, 'Bitstream.ebc')],
+            'EBD' : [os.path.join(self.generatedFilesDir, 'Bitstream.ebd')],
+            'LL'  : [os.path.join(self.generatedFilesDir, 'Bitstream.ll')],
+            'CELLS': [os.path.join(self.generatedFilesDir, 'CELLS.csv')]
         }
 
         if DevicePart is not None and DevicePart != "":
@@ -443,17 +443,25 @@ class VivadoDesignModel:
 
     def check_preconditions(self):
         res = True
-        for fname in self.files.values():
-            if not os.path.exists(fname):
-                res = False
-                print('check_preconditions: {0:55s} : missing'.format(fname))
-            else:
-                print('check_preconditions: {0:55s} : available'.format(fname))
+        if not os.path.exists(self.files['EBD'][0]):
+            fileset = sorted(glob.glob(os.path.join(self.generatedFilesDir, '*.ebd')))
+            if len(fileset) > 0:
+                self.files['EBD'] = fileset
+            fileset = sorted(glob.glob(os.path.join(self.generatedFilesDir, '*.ebc')))
+            if len(fileset) > 0:
+                self.files['EBC'] = fileset
+        for fileset in self.files.values():
+            for fname in fileset:
+                if not os.path.exists(fname):
+                    res = False
+                    console_message('check_preconditions: missing: {0:s}\n'.format(fname), ConsoleColors.Default)
+                else:
+                    console_message('check_preconditions: available: {0:s}\n'.format(fname), ConsoleColors.Default)
         return res
 
     def fix_preconditions(self):
         os.chdir(self.targetDir)
-        if not self.check_preconditions():
+        while not self.check_preconditions():
             print('Running Vivado to obtain input files')
             parser_path = os.path.join(DAVOSPATH, 'SupportScripts', 'VivadoParseNetlist.do')
             script = "vivado -mode batch -source {0} -tclargs {1} \"{2}\" {3} {4} 1 1".format(
@@ -473,19 +481,39 @@ class VivadoDesignModel:
                 cm_slr_id = self.CM.SLR_ID_LIST[slr.config_index]
                 fragment = self.CM.FragmentDict[cm_slr_id]
                 cr_y = yl/self.dev_layout.cr_height
-                if yl >= fragment.layout.BottomRows * self.dev_layout.cr_height:
+
+                #in 7-series each column[x] maps to one major_frame[x] 
+                if self.series == FPGASeries.S7:
+                    if yl >= fragment.layout.BottomRows * self.dev_layout.cr_height:
+                        Top = 0
+                        Row = cr_y - fragment.layout.BottomRows
+                    else:
+                        Top = 1
+                        Row = fragment.layout.BottomRows-1-cr_y
+                    FAR = FarFields(self.series, 0, Top, Row, x, 0).get_far()
+                    columns.add((slr.config_index, FAR))
+
+                #in ultrascale+ most columns are composed of 3 subcolumns:  LeftHandResource--Switchbox--RighhandResource
+                #These columns map onto 3 consecutive major frames  
+                elif self.series == FPGASeries.USP:
                     Top = 0
                     Row = cr_y - fragment.layout.BottomRows
-                else:
-                    Top = 1
-                    Row = fragment.layout.BottomRows-1-cr_y
-                FAR = FarFields(self.series, 0, Top, Row, x, 0).get_far()
-                columns.add((slr.config_index, FAR))
+                    maj_frame = slr.fragment.layout.TileColumnIndexes['SW'][x]
+                    #add major frame of the Switchbox column
+                    columns.add((slr.config_index, FarFields(self.series, 0, Top, Row, maj_frame, 0).get_far() ))
+                    #add major frame of the LeftHandResource column
+                    if maj_frame-1 >= 0:
+                        columns.add((slr.config_index, FarFields(self.series, 0, Top, Row, maj_frame-1, 0).get_far() ))
+                    #add major frame of the RighhandResource column
+                    if maj_frame+1 < slr.fragment.layout.Columns:
+                        columns.add((slr.config_index, FarFields(self.series, 0, Top, Row, maj_frame+1, 0).get_far() ))
         columnlist = sorted(list(columns), key = lambda x: (x[0], x[1]))
         for i in columnlist:
             res += self.CM.get_frames_of_column(i[0], i[1])
-        # for i in res:
-        #     print(i.to_string(False, False, False))
+
+
+
+
         return(res)
 
 
@@ -597,14 +625,15 @@ class VivadoDesignModel:
     def initialize(self, skip_files=False, unit_path="", pb=None, load_ll_file=True):
         if not skip_files:
             self.fix_preconditions()
-            self.netlist.load_netlist_cells(self.files['CELLS'], unit_path, pb)
+            self.netlist.load_netlist_cells(self.files['CELLS'][0], unit_path, pb)
             if load_ll_file:
                 self.netlist.load_logic_location_file(self.files['LL'], True)
             self.CM.set_series(self.series)
             self.load_layout(self.DevicePart)
-            self.CM.load_bitstream(self.files['BIT'], BitfileType.Regular)
-            self.CM.load_essential_bits(self.files['EBC'], FileTypes.EBC, self.CM.SLR_ID_LIST[0])
-            self.CM.load_essential_bits(self.files['EBD'], FileTypes.EBD, self.CM.SLR_ID_LIST[0])
+            self.CM.load_bitstream(self.files['BIT'][0], BitfileType.Regular)
+            for i in range(len(self.CM.SLR_ID_LIST)):
+                self.CM.load_essential_bits(self.files['EBC'][i], FileTypes.EBC, self.CM.SLR_ID_LIST[i])
+                self.CM.load_essential_bits(self.files['EBD'][i], FileTypes.EBD, self.CM.SLR_ID_LIST[i])
         self.CM.print_stat()
         self.CM.log(os.path.join(self.generatedFilesDir, 'bitlog.txt'), True, True, True, True)
         for slr_idx, slr in self.dev_layout.slr_by_config_index.iteritems():
@@ -672,23 +701,23 @@ if __name__ == "__main__":
 
 
     if options['op'].lower() == 'addlayout':
-        print 'Parsing FPGA layout'
+        print('Parsing FPGA layout')
         if 'part' not in options:
-            print 'Error: FPGA part not specified'
+            print('Error: FPGA part not specified')
         parts = VivadoDesignModel.get_matching_devices(options['part'])
         if (len(parts) == 1) or (len(parts) > 1 and options['part'] in parts):
             VivadoDesignModel.parse_fpga_layout(parts[0])
         elif len(parts) == 0:
-            print 'No matching devices found for {0:s}'.format(options['part'])
+            print('No matching devices found for {0:s}'.format(options['part']))
         else:
-            print 'Ambiguous part parameter {0:s}, please select one of the following matching parts: \n\t{1:s}'.format(
-                options['part'], '\n\t'.join(parts))
+            print('Ambiguous part parameter {0:s}, please select one of the following matching parts: \n\t{1:s}'.format(
+                options['part'], '\n\t'.join(parts)))
 
 
     if options['op'].lower() == 'list_parts':
-        print 'Available FPGA descriptors:\n\t{0}'.format('\n\t'.join(VivadoDesignModel.get_parts()) )
+        print('Available FPGA descriptors:\n\t{0}'.format('\n\t'.join(VivadoDesignModel.get_parts()) ))
 
-    print "Completed"
+    print("Completed")
 
 
 

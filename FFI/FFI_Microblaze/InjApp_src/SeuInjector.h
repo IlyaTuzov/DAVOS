@@ -12,8 +12,31 @@
    ------------------------------------------------------------------------------------------------------
 */
 
+#define SERIES 3
+//1 - series7, 2 - UltraScale, 3 - UltraScale+
 
-#define FRAME_SIZE 101
+
+#if SERIES == 1
+	#define FRAME_SIZE 101
+	#define READBACK_PAD_WORDS 0
+#elif SERIES == 2
+	#define FRAME_SIZE 123
+	#define READBACK_PAD_WORDS 10
+#elif SERIES == 3
+	#define FRAME_SIZE 93
+	#define READBACK_PAD_WORDS 25
+#endif
+
+
+#include <xhwicap.h>
+#include "xgpio.h"
+#include "xparameters.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+
+
+
 #define HWICAP_DEVICEID			XPAR_HWICAP_0_DEVICE_ID
 
 
@@ -84,7 +107,7 @@
 #define XHI_FAR_COLUMN_ADDR_SHIFT_7 	 7
 #define XHI_FAR_MINOR_ADDR_SHIFT_7 		 0
 #define UNUSED_BITS						26
-#define FarSetup(Block, Top, Row, ColumnAddress, MinorAddress)  \
+#define FarSetup_S7(Block, Top, Row, ColumnAddress, MinorAddress)  \
 		(Block << XHI_FAR_BLOCK_SHIFT_7) | \
 		((Top << XHI_FAR_TOP_BOTTOM_SHIFT_7) | \
 		(Row << XHI_FAR_ROW_ADDR_SHIFT_7) | \
@@ -102,6 +125,11 @@
 #define HOST_SOCKET_ADR 	(HOST_BUF+0x0)
 #define HOST_FAULT_LIST_ADR (HOST_BUF+0x200)
 
+typedef enum{
+	S7 = 1,
+	US = 2,
+	USP = 3
+} FpgaSeries;
 
 
 typedef struct{
@@ -127,8 +155,9 @@ typedef struct{
 
 typedef struct{
 	XHwIcap_Config *CfgPtr;
-	XHwIcap HwIcap;
-	XGpio Gpio;
+	u32 			SlrId[10];
+	XHwIcap 		HwIcap;
+	XGpio 			Gpio;
 	uint32_t 		* clock_ctrl_ptr;
 	uint32_t 		* host_socket_ptr;
 	FaultDescriptor * fault_list_ptr;
@@ -137,12 +166,13 @@ typedef struct{
 } InjectorDescriptor;
 
 
-int readFrame(XHwIcap *InstancePtr, u32 FAR, u32 *FrameBuffer, int Capture);
-int writeFrame(XHwIcap *InstancePtr, u32 FAR, u32 *FrameData, int Restore);
-int FlipBits(InjectorDescriptor * InjDesc, int FdescOffset);
-void log_Frame(InjectorDescriptor * InjDesc, u32 FAR);
+int readFrame(XHwIcap *InstancePtr, u32 SlrConfigIndex, u32 FAR, u32 *FrameBuffer, int Capture);
+int writeFrame(XHwIcap *InstancePtr, u32 SlrConfigIndex, u32 SlrIDcode, u32 FAR, u32 *FrameBuffer, int Restore);
+int FlipBits(InjectorDescriptor * InjDesc, FaultDescriptor *fdesc);
+int ProcessFaultDescriptor(InjectorDescriptor * InjDesc, int FdescOffset);
+void log_Frame(InjectorDescriptor * InjDesc, u32 SlrID, u32 FAR);
 
-FarFields parseFAR(u32 FAR);
-int input_int();
+FarFields parseFAR(u32 FAR, FpgaSeries series);
+u32 input_int();
 int cmpfunc (const void * a, const void * b);
 
