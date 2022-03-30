@@ -13,7 +13,7 @@
 
 
 		<ModelConfig
-			work_dir = "/home2/tuil/selene_ffi/selene-hardware/selene-soc/selene-xilinx-vcu118/vivado/noelv-xilinx-vcu118"
+			work_dir = "/home2/tuil/selene_axi4/selene-hardware/selene-soc/selene-xilinx-vcu118/vivado/noelv-xilinx-vcu118"
             checkpoint = "./checkpoints/seleneMC.sim"
             design_type = "RTL"
 			label = "SeleneMC"

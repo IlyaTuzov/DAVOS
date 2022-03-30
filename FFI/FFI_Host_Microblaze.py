@@ -17,16 +17,21 @@ from DesignParser import *
 import pexpect
 import commands
 
+MIC_APPS = {
+    FPGASeries.S7  : 'FFI/FFI_Microblaze/InjApp_build/InjApp_S7.elf', 
+    FPGASeries.USP : 'FFI/FFI_Microblaze/InjApp_build/InjApp_USP.elf'
+    }
 
 class FFIHostMicroblaze(FFIHostControlled):
     def __init__(self, targetDir, DevicePart):
         super(FFIHostMicroblaze, self).__init__(targetDir, DevicePart)
         self.mic_script = os.path.join(self.moduledir, 'FFI/FFI_Microblaze/microblaze_server.do')
-        self.mic_app    = os.path.join(self.moduledir, 'FFI/FFI_Microblaze/InjApp_build/InjApp.elf')
+        self.mic_app = self.mic_app = os.path.join(self.moduledir, MIC_APPS[self.design.series])
         self.mic_port   = 12346
         self.proc_xsct = None
 
     def connect_microblaze(self):
+        self.mic_app = os.path.join(self.moduledir, MIC_APPS[self.design.series])
         if self.proc_xsct is not None:
             self.proc_xsct.close(force=True)
         #terminate any process that blocks microblaze port (if any)
@@ -175,16 +180,16 @@ class FFIHostNOELV(FFIHostMicroblaze):
         return res
 
     def dut_recover(self):
-        if self.LastFmode != FailureModes.Masked:
-            #detect hang loops (several consecutive hangs)
-            if self.LastFmode != FailureModes.Hang:
-                self.consec_failures = 0
-            else:
-                self.consec_failures += 1              
-            if self.consec_failures >= 3:
-                self.consec_failures = 0
-                self.restart_all('Several consecutive GRMON hangs')
-                return        
+        #detect hang loops (several consecutive hangs)
+        if self.LastFmode != FailureModes.Hang:
+            self.consec_failures = 0
+        else:
+            self.consec_failures += 1              
+        if self.consec_failures >= 3:
+            self.consec_failures = 0
+            self.restart_all('Several consecutive GRMON hangs')
+            return           
+        if self.LastFmode != FailureModes.Masked:     
             #If no hang loops detected - try to recover grmon without reloading a bitstream
             res = self.serv_communicate('localhost', self.dut_port, "1\n", 1)
             if res is not None:

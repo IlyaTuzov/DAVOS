@@ -4,7 +4,7 @@
 
 variable refres 0
 variable refreg 0
-variable kernel "/home2/tuil/selene_ffi/selene-hardware/selene-soc/selene-xilinx-vcu118/workloads/main/obj_1_matmult.out"
+variable kernel "/home2/tuil/selene_axi4/selene-hardware/FFI/workloads/main/obj_1_matmult.out"
 variable resadr 0x10000
 
 proc DutReset { } {

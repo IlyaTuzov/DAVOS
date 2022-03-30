@@ -46,6 +46,7 @@ proc loadfaultlist { fname } {
     dow -data $fname 0x20200
     if {[catch {rst} er]} { }
     if {[catch {con} er]} { }
+    if {[catch {con} er]} { }
     puts "Loaded faultlist: $fname"
     return "Status: {ok $fname}"
 }
