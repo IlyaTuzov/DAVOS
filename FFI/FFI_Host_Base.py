@@ -24,8 +24,8 @@ import socket
 davos_dir = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 sys.path.insert(1, davos_dir)
 from Davos_Generic import Table
-from DesignParser import *
-
+from Parsers.DesignParser import *
+import hashlib
 
 class SEU_item:
     def __init__(self):
@@ -51,11 +51,11 @@ class CellTypes:
 
 
 class FailureModes:
-    Masked, Latent, SDC, Hang, Other = range(5)
+    Masked, Latent, Fail, Hang, Timeout, ReplicaFail, ReplicaTimeout, ReplicaHang, Other = range(9)
 
     @staticmethod
     def to_string(fmode):
-        labels = ['Masked', 'Latent', 'SDC', 'Hang', 'Other']
+        labels = ['Masked', 'Latent', 'Fail', 'Hang', 'Timeout', 'ReplicaFail', 'ReplicaTimeout', 'ReplicaHang', 'Other']
         if fmode <= len(labels):
             return labels[fmode]
         else:
@@ -129,6 +129,7 @@ class FFIHostBase(object):
         self.PartIdx = -1
 
     def sample_SEU(self, pb, cell_type, sample_size, multiplicity):
+        random.seed(12345)
         if cell_type == CellTypes.EssentialBits:
             framelist = self.design.getFarList_for_Pblock(pb.X1, pb.Y1, pb.X2, pb.Y2)
             self.InjStat.population_size = sum(frame.stat.EssentialBitsCount for frame in framelist)
@@ -163,15 +164,18 @@ class FFIHostBase(object):
                         seu.SLR = self.design.CM.SLR_ID_LIST.index(lut.slr.fragment.SLR_ID)
                         lut_bit_index = random.choice(lut.bitmap.keys())
                         seu.FAR, seu.Word, seu.Bit = lut.bitmap[lut_bit_index]
-                        frame = self.design.CM.get_frame_by_FAR(seu.FAR, seu.SLR)
+                        frame = self.design.CM.get_frame_by_FAR(seu.FAR, lut.slr.fragment.SLR_ID)
                         essential_bit_mask = frame.mask[seu.Word]
                     seu.Mask = 0x1 << seu.Bit
                     seu.DesignNode = '{0:s}/bit_{1:02d}'.format(lut.name, lut_bit_index)
                     fconf.SeuItems.append(seu)
                 self.fault_list.append(fconf)
+        elif cell_type == CellTypes.FF:
+            ffcells = self.design.netlist.get_cells(NetlistCellGroups.FF)
+            self.InjStat.population_size = sum(len(ff.bitmap.keys()) for ff in ffcells)
         print('Sampled faults: {0:d} (population size = {1:d})'.format(sample_size, self.InjStat.population_size))
 
-    def export_fault_list_bin(self, part_size = 1000):
+    def export_fault_list_bin(self, part_size=1000):
         specificator = '<L'         #Little Endian
         nparts = int(math.ceil(float(len(self.fault_list))/part_size))
         for part_idx in range(nparts):
@@ -241,7 +245,8 @@ class FFIHostBase(object):
             self.fault_list.append(fdesc)
         print('Fault descriptors restored from {0:s} : {1:d} items'.format(infile, len(self.fault_list)))
 
-    def initialize(self, logifle_to_restore="", unit_path="", pb=None, load_ll_file=True):
+    def initialize(self, hashing=False, logifle_to_restore="", unit_path="", pb=None, load_ll_file=True):
+        start_time = time.time()
         if logifle_to_restore == "":
             self.logfilename = os.path.join(self.generatedFilesDir, 'LOG_{0:s}.csv'.format(
                 datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
@@ -253,7 +258,21 @@ class FFIHostBase(object):
             self.load_fault_list_csv(self.logfilename)
             self.logfile = open(self.logfilename, 'a')
             print('Injector {0:s} Restored from logfile {1:s}'.format(self.__class__.__name__, self.logfilename))
-        self.design.initialize(False, unit_path, pb, load_ll_file)
+        if hashing:
+            cfg = (unit_path, pb.to_string() if pb is not None else '', load_ll_file)
+            digest = hashlib.md5(str(cfg)).hexdigest()
+            dumpfile = os.path.join(self.generatedFilesDir, '{0:s}.pickle'.format(digest))
+            if os.path.exists(dumpfile):
+                with open(dumpfile, 'rb') as f:
+                    print 'Loading cached DesignModel from {0:s}, config = {1:s}'.format(dumpfile, str(cfg))
+                    self.design = pickle.load(f)
+            else:
+                self.design.initialize(False, unit_path, pb, load_ll_file)
+                with open(dumpfile, 'wb') as f:
+                    pickle.dump(self.design, f)
+        else:
+            self.design.initialize(False, unit_path, pb, load_ll_file)
+        print('FFI Design Model initialized in {0:.1f} seconds'.format(time.time() - start_time))
 
     def cleanup(self):
         self.logfile.close()

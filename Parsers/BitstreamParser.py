@@ -16,8 +16,10 @@ import struct
 import ast
 from collections import OrderedDict
 import copy
+DAVOSPATH = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+sys.path.insert(1, DAVOSPATH)
 
-DAVOSPATH = os.path.dirname(os.path.realpath(__file__))
+
 
 
 class ByteOrder:
@@ -287,9 +289,7 @@ class ConfigMemory:
         self.BitstreamFile = ""
         self.SLR_ID_LIST = []
         self.FragmentDict = dict()
-        self.moduledir = DAVOSPATH #os.path.dirname(os.path.realpath(__file__))
         self.DeviceDetails = DevicePartDetails()
-        print('Config Memory Model instantiated from: {0}'.format(self.moduledir))
 
     def set_series(self, series):
         self.Series = series
@@ -379,7 +379,7 @@ class ConfigMemory:
                 else:
                     i += 1
             #export FAR List
-            farlistfile = os.path.join(self.moduledir, 'FFI/DeviceSupport/FARLIST_{0}.txt'.format(self.DevicePart))
+            farlistfile = os.path.join(DAVOSPATH, 'Parsers', 'DeviceSupport', 'FARLIST_{0}.txt'.format(self.DevicePart))
             with open(farlistfile, 'w') as f:
                 for id in self.SLR_ID_LIST:
                     for far in self.FragmentDict[id].FarList:
@@ -387,7 +387,7 @@ class ConfigMemory:
 
         #In a regular bitstream data are written as one big packet
         elif filetype == BitfileType.Regular:
-            os.chdir(os.path.join(self.moduledir, 'FFI/DeviceSupport'))
+            os.chdir(os.path.join(DAVOSPATH, 'Parsers', 'DeviceSupport'))
             farlistfile = glob.glob('FARLIST*{0:s}*.txt'.format(self.DevicePart))
             if len(farlistfile) > 0:
                 print('Using cached FarList: {0:s}'.format(farlistfile[0]))

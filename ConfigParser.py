@@ -798,14 +798,16 @@ class FFIConfiguration:
         self.reportbuilder_phase = True if xnode.get('reportbuilder_phase', '') == 'on' else False
         self.device_part = xnode.get('device_part', '').lower()
         self.dut_scope = xnode.get('dut_scope','')
-        matchDesc = re.search('([0-9a-zA-Z]+)\s*?:\s*?X([0-9]+)Y([0-9]+)\s*?:\s*?X([0-9]+)Y([0-9]+)', xnode.get('pblock','').upper().replace(' ',''))
+        matchDesc = re.search('([0-9a-zA-Z]+)\s*?:([0-9a-zA-Z]+)\s*?:\s*?X([0-9]+)Y([0-9]+)\s*?:\s*?X([0-9]+)Y([0-9]+)',
+                              xnode.get('pblock','').upper().replace(' ',''))
         if matchDesc:
             self.pblock = {
                 'name': matchDesc.group(1),
-                'X1': int(matchDesc.group(2)),
-                'Y1': int(matchDesc.group(3)),
-                'X2': int(matchDesc.group(4)),
-                'Y2': int(matchDesc.group(5))
+                'notation': matchDesc.group(2),
+                'X1': int(matchDesc.group(3)),
+                'Y1': int(matchDesc.group(4)),
+                'X2': int(matchDesc.group(5)),
+                'Y2': int(matchDesc.group(6))
             }
         self.target_logic = xnode.get('target_logic', '').lower()
         self.custom_lut_mask = True if xnode.get('custom_lut_mask', '') == 'on' else False

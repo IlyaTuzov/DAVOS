@@ -25,7 +25,7 @@ import glob
 from Davos_Generic import *
 from Datamanager import *
 from SBFI_Initializer import *
-from BitstreamParser import *
+from Parsers.DesignParser import *
 import multiprocessing
 
 class ProfilingType:

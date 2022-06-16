@@ -13,5 +13,6 @@ DecisionSupport/Python/Logs
 /testconfig/obsolete
 *.suo
 venv
-FFI/DeviceSupport
+Parsers/DeviceSupport
 .vscode
+LUTMAP/

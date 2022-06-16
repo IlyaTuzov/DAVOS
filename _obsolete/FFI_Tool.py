@@ -34,13 +34,13 @@ if __name__ == "__main__":
 
     for modelconf in davosconf.parconf:
 
-        Injector = InjectorHostManager(modelconf.work_dir, 
-                                       0, 
-                                       os.path.join(modelconf.work_dir, davosconf.FFIConfig.hdf_path),
-                                       os.path.join(modelconf.work_dir, davosconf.FFIConfig.init_tcl_path),
-                                       os.path.join(modelconf.work_dir, davosconf.FFIConfig.injectorapp_path),
-                                       davosconf.FFIConfig.memory_buffer_address,
-                                       True)
+        Injector = FFIHostZynq(modelconf.work_dir,
+                               0,
+                               os.path.join(modelconf.work_dir, davosconf.FFIConfig.hdf_path),
+                               os.path.join(modelconf.work_dir, davosconf.FFIConfig.init_tcl_path),
+                               os.path.join(modelconf.work_dir, davosconf.FFIConfig.injectorapp_path),
+                               davosconf.FFIConfig.memory_buffer_address,
+                               True)
         Injector.RecoveryNodeNames = davosconf.FFIConfig.post_injection_recovery_nodes
         Injector.CustomLutMask = davosconf.FFIConfig.custom_lut_mask
         Injector.Profiling = davosconf.FFIConfig.profiling

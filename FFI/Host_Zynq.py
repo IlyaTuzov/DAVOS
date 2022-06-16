@@ -24,8 +24,8 @@ import time
 import math
 #sys.path.insert(0, os.path.abspath(".."))
 from Davos_Generic import Table
-from BitstreamParser import *
-from DesignParser import *
+from Parsers.BitstreamParser import *
+from Parsers.DesignParser import *
 from SBFI.SBFI_Profiler import *
 from FFI_Host_Monitored import *
 

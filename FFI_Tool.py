@@ -13,6 +13,7 @@
 import os
 import sys
 from FFI.FFI_Host_Microblaze import *
+from FFI.FFI_Host_Grmon import *
 from FFI.Host_Zynq import *
 #from FFI.FFI_ReportBuilder import *
 import xml.etree.ElementTree as ET
@@ -102,34 +103,45 @@ def run_zynq_injector(davosconf, modelconf):
 
 
 def run_microblaze_injector(davosconf, modelconf):
-    Injector = FFIHostNOELV(modelconf.work_dir, davosconf.FFI.device_part, davosconf.FFI.dut_script)
-    Injector.InjStat.register_failure_mode('pass', FailureModes.Masked)
-    Injector.InjStat.register_failure_mode('latent', FailureModes.Latent)
-    Injector.InjStat.register_failure_mode('sdc', FailureModes.SDC)
+    Injector = FFIHostGrmon(modelconf.work_dir, davosconf.FFI.device_part, davosconf.FFI.dut_script)
+    Injector.InjStat.register_failure_mode('masked', FailureModes.Masked)
+    Injector.InjStat.register_failure_mode('fail', FailureModes.Fail)
     Injector.InjStat.register_failure_mode('hang', FailureModes.Hang)
+    #Injector.InjStat.register_failure_mode('timeout', FailureModes.Timeout) 
+    #Injector.InjStat.register_failure_mode('Other', FailureModes.Other)    
+    #Injector.InjStat.register_failure_mode('replicafail', FailureModes.ReplicaFail)
+    #Injector.InjStat.register_failure_mode('replicatimeout', FailureModes.ReplicaTimeout)
+    #Injector.InjStat.register_failure_mode('replicahang', FailureModes.ReplicaHang)
+
     random.seed(davosconf.FFI.seed)
+    hashing = False
 
     if davosconf.FFI.injector_phase:
         if davosconf.FFI.pblock is not None:
-            pb = Pblock(davosconf.FFI.pblock['X1'], davosconf.FFI.pblock['Y1'], davosconf.FFI.pblock['X2'], davosconf.FFI.pblock['Y2'], davosconf.FFI.pblock['name'])
+            pb = Pblock('TILE' in davosconf.FFI.pblock['notation'].upper(),
+                        davosconf.FFI.pblock['X1'],
+                        davosconf.FFI.pblock['Y1'],
+                        davosconf.FFI.pblock['X2'],
+                        davosconf.FFI.pblock['Y2'],
+                        davosconf.FFI.pblock['name'])
         else:
             pb = None
         if davosconf.FFI.target_logic == 'type0':
-            Injector.initialize("", davosconf.FFI.dut_scope, pb, False)
+            Injector.initialize(hashing, "", davosconf.FFI.dut_scope, pb, False)
             Injector.sample_SEU(pb, CellTypes.EssentialBits, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
         elif davosconf.FFI.target_logic == 'lut':
-            Injector.initialize("", davosconf.FFI.dut_scope, pb, False)
+            Injector.initialize(hashing, "", davosconf.FFI.dut_scope, pb, False)
             Injector.design.map_lut_cells(davosconf.FFI.dut_scope, pb)
             Injector.sample_SEU(pb, CellTypes.LUT, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
         elif davosconf.FFI.target_logic == 'ff':
-            Injector.initialize("", davosconf.FFI.dut_scope, pb, True)
+            Injector.initialize(hashing, "", davosconf.FFI.dut_scope, pb, True)
             Injector.sample_SEU(pb, CellTypes.FF, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
         elif davosconf.FFI.target_logic == 'bram':
-            Injector.initialize("", davosconf.FFI.dut_scope, pb, True)
+            Injector.initialize(hashing, "", davosconf.FFI.dut_scope, pb, True)
             Injector.sample_SEU(pb, CellTypes.BRAM, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
         Injector.export_fault_list_bin(1000)
         Injector.export_fault_list_csv()
-        raw_input('Injector configured, Press any key to run the experiment...')
+        #raw_input('Injector configured, Press any key to run the experiment...')
         Injector.restart_all('DAVOS started')
         Injector.run()
 
@@ -138,7 +150,7 @@ def run_microblaze_injector(davosconf, modelconf):
             #restore Injector state from most recent log file
             logfiles = sorted(glob.glob(os.path.join(Injector.design.generatedFilesDir, 'LOG*.csv')))
             restore_file = logfiles[-1]
-            Injector.initialize(restore_file, "", None, False)
+            Injector.initialize(False, restore_file, "", None, False)
             #print('Test successful')
 
 

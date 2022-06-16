@@ -46,6 +46,8 @@ if {$run != "*" } {
 }
 puts "Implementation opened: [current_run]"
 set devicepart [lindex  [get_parts -of_objects [current_project]] 0]
+set devicefamily [lindex [split [get_property ARCHITECTURE_FULL_NAME $devicepart]] 0]
+set deviceseries [lindex [split [get_property ARCHITECTURE_FULL_NAME $devicepart]] 1]
 
 
 set_property BITSTREAM.General.UnconstrainedPins {Allow} [current_design]
@@ -57,48 +59,31 @@ puts "Debug Bitsream Generated"
 
 
 
-
-set fout [open $exportdir/LAYOUT_$devicepart.xml w]
+set fout [open $exportdir/LAYOUT.xml w]
 puts $fout "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-puts $fout "<DEVICE part=\"$devicepart\">"
+puts $fout [format "<DEVICE part=\"%s\" family=\"%s\" series=\"%s\" >" $devicepart $devicefamily $deviceseries]
+
 
 foreach slr [get_slrs] {
-    puts $fout [format "\t<SLR\n\t\tname=\"%s\"" [get_property NAME $slr]]
+    puts $fout [format "\t<Slr\n\t\tname=\"%s\"" [get_property NAME $slr]]
     puts $fout [format "\t\tslr_index=\"%s\"" [get_property SLR_INDEX $slr]]
     puts $fout [format "\t\tconfig_order_index=\"%s\">" [get_property CONFIG_ORDER_INDEX $slr]]
     
     
     foreach cr [get_clock_regions -of_objects $slr] {
-        puts $fout [format "\n\t\t<CLOCK_REGION name=\"%s\">" [get_property NAME $cr]]
-    
+        puts $fout [format "\n\t\t<ClockRegion name=\"%s\">" [get_property NAME $cr]]
         puts "Processing Tiles in SRL: $slr, ClockRegion: $cr"
-        set columndict [dict create]
-        foreach tile [get_tiles -of_objects $cr -filter {TYPE==CLBLL_L || TYPE==CLBLL_R || TYPE==CLBLM_L || TYPE==CLBLM_R || TYPE==CLEL_R || TYPE==CLEM}] {
-            lassign [regexp -all -inline X([0-9]+)Y([0-9]+) [get_property NAME $tile]] S X Y
-            if { [dict exists $columndict $X] } { 
-                set v [dict get $columndict $X] 
-                if { $Y < [lindex $v 0] } { 
-                    #puts "replace Min: $Y"
-                    set v [lreplace $v 0 0 $Y]  
-                }
-                if { $Y > [lindex $v 1] } { 
-                    #puts "replace Max: $Y"
-                    set v [lreplace $v 1 1 $Y]
-                }
-                dict set columndict $X $v
-            } else {
-                #puts "Appending $X : $Y : $Y"
-                set tiletype [get_property TYPE $tile]
-                dict append columndict $X [list $Y $Y $tiletype]
+        foreach tile [get_tiles -of_objects $cr ] {
+            puts $fout [format "\t\t<Tile name=\"%s\" type=\"%s\" column=\"%s\">" [get_property NAME $tile] [get_property TYPE $tile] [get_property COLUMN $tile]]
+            foreach site [get_sites -of_objects $tile] {
+                puts $fout [format "\t\t\t<Slice name=\"%s\" type=\"%s\" />" [get_property NAME $site] [get_property SITE_TYPE $site]]
             }
-        }    
+            puts $fout "\t\t</Tile>"
 
-        dict for {key val} $columndict {
-            puts $fout [format "\t\t\t<COLUMN type=\"%s\" X=\"%s\" MinY=\"%s\" MaxY=\"%s\"> </COLUMN>" [lindex $val 2] $key [lindex $val 0] [lindex $val 1]]
         }
-        puts $fout "\n\t\t</CLOCK_REGION>"      
+        puts $fout "\n\t\t</ClockRegion>"
     }
-    puts $fout "\n\t</SLR>"
+    puts $fout "\n\t</Slr>"
     flush $fout
 }
 puts $fout "</DEVICE>"

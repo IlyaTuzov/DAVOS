@@ -446,8 +446,8 @@ class Table:
                 for c in range(0, len(self.columns), 1):
                     self.columns[c].append(idata[c])
             else:
-                #pass
-                print "Warning: Table.add_row(): data items less than labels" + str(len(idata)) + " <> " + str(self.colnum())
+                pass
+                #print "Warning: Table.add_row(): data items less than labels" + str(len(idata)) + " <> " + str(self.colnum())
         else:
             for c in self.columns:
                 c.append("")
@@ -1607,3 +1607,11 @@ def resolve_indetermination(addr):
                 cnt += 1
                 break
     return (res)
+
+
+def get_index_of_bit(data, bitval, width):
+    for i in range(width):
+        if (data >> i) & 0x1 == bitval:
+            return i
+    return -1
+

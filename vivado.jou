@@ -1,0 +1,14 @@
+#-----------------------------------------------------------
+# Vivado v2020.2 (64-bit)
+# SW Build 3064766 on Wed Nov 18 09:12:47 MST 2020
+# IP Build 3064653 on Wed Nov 18 14:17:31 MST 2020
+# Start of session at: Tue Jun 14 19:50:00 2022
+# Process ID: 22984
+# Current directory: /home2/tuil/DAVOS
+# Command line: vivado
+# Log file: /home2/tuil/DAVOS/vivado.log
+# Journal file: /home2/tuil/DAVOS/vivado.jou
+#-----------------------------------------------------------
+start_gui
+open_project /home2/tuil/selene_axi4/selene-hardware/selene-soc/selene-xilinx-vcu118/vivado/noelv-xilinx-vcu118/noelv-xilinx-vcu118.xpr
+open_run impl_1
