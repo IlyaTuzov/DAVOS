@@ -21,7 +21,7 @@ MODE = "fast"   #fast / robust
 T_Table = {0.95:1.96, 0.99:2.576, 0.999:3.291}
 
 
-failuremodes_alias = dict([('M', 'Masked_Fault'), ('L', 'Latent_Fault'), ('S', 'Signalled_Failure'), ('C', 'Silent_Data_Corruption')])
+failuremodes_alias = dict([('M', 'Masked_Fault'), ('L', 'Latent_Fault'), ('S', 'Signalled_Failure'), ('C', 'Silent_Data_Corruption'), ('H', 'Hang'), ('F', 'Failure')])
 
 
 fields = [  ('M.Label', 'model', True), 
@@ -110,8 +110,8 @@ def xml_markup(attrlist, valuelist, emptyfields=[]):
 class DesignNode:
     def __init__(self, tname):
         self.name = tname
-        self.fmc = {'c': 0, 's': 0, 'm': 0, 'l': 0}
-        self.fmc_percentage = {'c': 0.0, 's': 0.0, 'm': 0.0, 'l': 0.0}
+        self.fmc = {'c': 0, 's': 0, 'm': 0, 'l': 0, 'h': 0, 'f': 0  }
+        self.fmc_percentage = {'c': 0.0, 's': 0.0, 'm': 0.0, 'l': 0.0, 'h': 0.0, 'f': 0.0}
         self.children = []
     
     def append(self, pth, fm):
@@ -129,19 +129,22 @@ class DesignNode:
             xnode.append(pth, fm)
     
     def normalize(self, relnode):
-        total = relnode.fmc['c'] + relnode.fmc['s'] + relnode.fmc['m'] + relnode.fmc['l']
+        total = relnode.fmc['c'] + relnode.fmc['s'] + relnode.fmc['m'] + relnode.fmc['l'] + relnode.fmc['h'] + relnode.fmc['f']
         self.fmc_percentage['c'] = (self.fmc['c'] * 100.0)/total
         self.fmc_percentage['s'] = (self.fmc['s'] * 100.0)/total
         self.fmc_percentage['m'] = (self.fmc['m'] * 100.0)/total
         self.fmc_percentage['l'] = (self.fmc['l'] * 100.0)/total
+        self.fmc_percentage['h'] = (self.fmc['h'] * 100.0)/total
+        self.fmc_percentage['f'] = (self.fmc['f'] * 100.0)/total
+
         for c in self.children:
             c.normalize(relnode)
         
     
             
     def to_JSON(self):
-        res = '{\n\"name\": \"' + self.name + '\"' + ',\n\"m\": \"' + str(self.fmc['m']) + '\",\n' + '\"l\": \"' + str(self.fmc['l']) + '\",\n' + '\"s\": \"' + str(self.fmc['s']) + '\",\n' + '\"c\": \"' + str(self.fmc['c']) + '\"'
-        res += ',\n\"c_p\": \"' + str('%.2f' % self.fmc_percentage['c']) + '\",\n\"s_p\": \"'+ str('%.2f' % self.fmc_percentage['s']) + '\",\n\"m_p\": \"'+ str('%.2f' % self.fmc_percentage['m']) + '\",\n\"l_p\": \"'+ str('%.2f' % self.fmc_percentage['l']) + '\"'
+        res = '{\n\"name\": \"' + self.name + '\"' + ',\n\"m\": \"' + str(self.fmc['m']) + '\",\n' + '\"l\": \"' + str(self.fmc['l']) + '\",\n' + '\"s\": \"' + str(self.fmc['s']) + '\",\n' + '\"c\": \"' + str(self.fmc['c']) + '\",\n' + '\"h\": \"' + str(self.fmc['h'])+ '\",\n' + '\"f\": \"' + str(self.fmc['f']) + '\"'
+        res += ',\n\"c_p\": \"' + str('%.2f' % self.fmc_percentage['c']) + '\",\n\"s_p\": \"'+ str('%.2f' % self.fmc_percentage['s']) + '\",\n\"m_p\": \"'+ str('%.2f' % self.fmc_percentage['m']) + '\",\n\"l_p\": \"'+ str('%.2f' % self.fmc_percentage['l']) + '\",\n\"h_p\": \"' + str('%.2f' % self.fmc_percentage['h']) + '\",\n\"f_p\": \"' + str('%.2f' % self.fmc_percentage['f']) + '\"'
         if len(self.children) > 0:
             res += ',\n\"children\": ['
             for i in range(0,len(self.children),1):
@@ -157,8 +160,8 @@ class DesignNode:
     def to_HTML(self, level=0):
         tab = ''
         for i in range(0, level, 1): tab += "    |"
-        res = "\n<tr>" + "<td><pre>" + tab+ self.name + "</td></pre>"+ "<td><pre>" + str(self.fmc['m']) + "</td></pre>"+ "<td><pre>" + str(self.fmc['l']) + "</td></pre>"+ "<td><pre>" + str(self.fmc['s']) + "</td></pre>"+ "<td><pre>" + str(self.fmc['c']) + "</td></pre>"
-        res += "<td><pre>" + str('%.2f' % self.fmc_percentage['m']) + "</td></pre>"+ "<td><pre>" + str('%.2f' % self.fmc_percentage['l']) + "</td></pre>"+ "<td><pre>" + str('%.2f' % self.fmc_percentage['s']) + "</td></pre>"+ "<td><pre>" + str('%.2f' % self.fmc_percentage['c']) + "</td></pre>"+"</tr>"
+        res = "\n<tr>" + "<td><pre>" + tab+ self.name + "</td></pre>"+ "<td><pre>" + str(self.fmc['m']) + "</td></pre>"+ "<td><pre>" + str(self.fmc['l']) + "</td></pre>"+ "<td><pre>" + str(self.fmc['s']) + "</td></pre>"+ "<td><pre>" + str(self.fmc['c']) + "</td></pre>" + "<td><pre>" + str(self.fmc['h']) + "</td></pre>" + "<td><pre>" + str(self.fmc['f']) + "</td></pre>"
+        res += "<td><pre>" + str('%.2f' % self.fmc_percentage['m']) + "</td></pre>"+ "<td><pre>" + str('%.2f' % self.fmc_percentage['l']) + "</td></pre>"+ "<td><pre>" + str('%.2f' % self.fmc_percentage['s']) + "</td></pre>"+ "<td><pre>" + str('%.2f' % self.fmc_percentage['c']) + "</td></pre>"+ "<td><pre>" + str('%.2f' % self.fmc_percentage['h']) + "</td></pre>" + "<td><pre>" + str('%.2f' % self.fmc_percentage['f']) + "</td></pre>" + "</tr>"
         for c in self.children:
             res += c.to_HTML(level+1)
         return(res)
@@ -260,6 +263,7 @@ try:
         pathsep = re.compile('[/_\.\(\)\[\]]')
         while True:
             rows = cursor.fetchmany(50000)
+            log.write('\nRows fetched={0:d}'.format(len(rows)))
             if not rows:
                 break            
             for c in rows:
@@ -326,20 +330,21 @@ try:
         with open(os.path.join(os.getcwd(), 'cache', signature,'distree.html'), 'w') as cachefile:
             cachefile.write("<table> <th><pre>Design Unit</pre></th> <th><pre>Masked, Abs</pre></th> <th><pre>Latent, Abs</pre> <th><pre>Signaled Failure, Abs</pre></th> <th><pre>SDC, Abs</pre> <th><pre>Masked, %</pre> <th><pre>Latent, %</pre> <th><pre>Signaled Failure, %</pre></th> <th><pre>SDC, %</pre>" + DesignTree.to_HTML() + "</table>")            
             
-    
-    #return result for requested action
-    if form.getvalue('action','').find('search') >= 0:
-        with open(os.path.join(os.getcwd(), 'cache', signature,'search.xml'), 'r') as f:
-            result = f.read()
-            
-    elif form.getvalue('action','').find('gedistree') >= 0:
-        if form.getvalue('action','').find('JSON') >= 0: 
-            with open(os.path.join(os.getcwd(), 'cache', signature,'distree.json'), 'r') as f:
+    try:
+        #return result for requested action
+        if form.getvalue('action','').find('search') >= 0:
+            with open(os.path.join(os.getcwd(), 'cache', signature,'search.xml'), 'r') as f:
                 result = f.read()
-        else: 
-            with open(os.path.join(os.getcwd(), 'cache', signature,'distree.html'), 'r') as f:
-                result = f.read()            
-    
+        elif form.getvalue('action','').find('gedistree') >= 0:
+            if form.getvalue('action','').find('JSON') >= 0: 
+                with open(os.path.join(os.getcwd(), 'cache', signature,'distree.json'), 'r') as f:
+                    result = f.read()
+            else: 
+                with open(os.path.join(os.getcwd(), 'cache', signature,'distree.html'), 'r') as f:
+                    result = f.read()            
+    except:
+        print("Unexpected error:", sys.exc_info()[0])
+
     print "Status: 200 \r\n"
     print result    
             

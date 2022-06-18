@@ -27,11 +27,13 @@ from Davos_Generic import *
 from Datamanager import *
 
 
-failuremodes_alias = dict([('M', 'Masked_Fault'), ('L', 'Latent_Fault'), ('S', 'Signalled_Failure'), ('C', 'Silent_Data_Corruption')])
+failuremodes_alias = {'M': 'Masked_Fault', 'L': 'Latent_Fault', 'S': 'Signalled_Failure',
+                      'C': 'Silent_Data_Corruption', 'H': 'Hang', 'F': 'Failure'}
+
 attach_css = ['markupstyle.css']
 attach_script = ['../jquery.min.js', 'xscript.js']
 
-def build_report(config, toolconf, datamodel):
+def build_report(config, toolconf, datamodel, short=False):
     if datamodel == None:
         datamodel = DataModel()
         datamodel.ConnectDatabase( config.get_DBfilepath(False), config.get_DBfilepath(True) )
@@ -43,8 +45,9 @@ def build_report(config, toolconf, datamodel):
     copy_all_files(os.path.join(config.call_dir,'UserInterface/libs'), os.path.join(config.report_dir, 'libs'))
     shutil.copy(os.path.join(config.call_dir, config.file), os.path.join(config.report_dir, 'config.xml'))
     build_querypage(config, toolconf, datamodel)
-    compute_stat(config, toolconf, datamodel)
-    build_summary_page(config, toolconf, datamodel)
+    if not short:
+        compute_stat(config, toolconf, datamodel)
+        build_summary_page(config, toolconf, datamodel)
 
 
 def build_querypage(config, toolconf, datamodel):    
@@ -73,7 +76,8 @@ def build_querypage(config, toolconf, datamodel):
         content = content.replace('_#qforcedvalue', buf + '\n\t<option value=\"\">ANY</option>')
 
         buf = '\n\t<option value=\"\">ANY</option>'
-        for c in [('M', 'Masked_Fault'), ('L', 'Latent_Fault'), ('S', 'Signalled_Failure'), ('C', 'Silent_Data_Corruption')]: buf += '\n\t<option value=\"' + str(c[1]) + '\">'+ str(c[1]) + '</option>'
+        for c in failuremodes_alias.values():
+            buf += '\n\t<option value=\"' + str(c) + '\">'+ str(c) + '</option>'
         content = content.replace('_#qfailuremode', buf)
 
         buf = ''

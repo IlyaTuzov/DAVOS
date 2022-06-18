@@ -19,7 +19,7 @@ from FFI.Host_Zynq import *
 import xml.etree.ElementTree as ET
 from Davos_Generic import *
 from Datamanager import *
-
+from Reportbuilder import *
 
 
 def run_zynq_injector(davosconf, modelconf):
@@ -150,8 +150,44 @@ def run_microblaze_injector(davosconf, modelconf):
             #restore Injector state from most recent log file
             logfiles = sorted(glob.glob(os.path.join(Injector.design.generatedFilesDir, 'LOG*.csv')))
             restore_file = logfiles[-1]
-            Injector.initialize(False, restore_file, "", None, False)
-            #print('Test successful')
+            #Injector.initialize(False, restore_file, "", None, False)
+            Injector.load_fault_list_csv(restore_file)
+        datamodel = DataModel()
+        if not os.path.exists(davosconf.report_dir):
+            os.makedirs(davosconf.report_dir)
+        datamodel.ConnectDatabase(davosconf.get_DBfilepath(False), davosconf.get_DBfilepath(True))
+        datamodel.RestoreHDLModels(davosconf.parconf)
+        datamodel.RestoreEntity(DataDescriptors.InjTarget)
+        model = datamodel.GetHdlModel(modelconf.label)
+        ExpDescIdCnt = datamodel.GetMaxKey(DataDescriptors.InjectionExp) + 1
+        for faultconf in Injector.fault_list:
+            node = '/'.join(faultconf.SeuItems[0].DesignNode.split('/')[:-1])
+            injcase = faultconf.SeuItems[0].DesignNode.split('/')[-1]
+            target = datamodel.GetOrAppendTarget(node, davosconf.FFI.target_logic.upper(), injcase)
+            InjDesc = InjectionDescriptor()
+            InjDesc.InjectionTime = float(faultconf.SeuItems[0].Time)
+            InjDesc.FailureMode = faultconf.FailureMode.upper()[0]
+            InjDesc.ID = ExpDescIdCnt
+            InjDesc.ModelID = model.ID
+            InjDesc.TargetID = target.ID
+            InjDesc.FaultModel = 'BitFlip'
+            InjDesc.ForcedValue = ''
+            InjDesc.InjectionDuration = float(0)
+            InjDesc.ObservationTime = float(0)
+            InjDesc.Node = target.NodeFullPath
+            InjDesc.InjCase = target.InjectionCase
+            InjDesc.Status = 'F'
+            InjDesc.FaultToFailureLatency = float(0)
+            InjDesc.ErrorCount = 0
+            InjDesc.Dumpfile = ''
+            datamodel.LaunchedInjExp_dict[InjDesc.ID] = InjDesc
+            ExpDescIdCnt += 1
+        datamodel.SaveHdlModels()
+        datamodel.SaveTargets()
+        datamodel.SaveInjections()
+        build_report(davosconf, davosconf.toolconf, datamodel, True)
+        datamodel.SyncAndDisconnectDB()
+        print('Test successful')
 
 
 if __name__ == "__main__":

@@ -237,6 +237,8 @@ div.tab button.active {
             <option value="m">Masked_Fault</option>
             <option value="l">Latent_Fault</option>
             <option value="s">Signalled_Failure</option>
+            <option value="h">Hang</option>
+            <option value="f">Failure</option>
             <option value="">ALL</option>
         </select> <input id="TreePercentageSelected" type="checkbox" onclick = "UpdateTreeView()" checked ="true" > Show Percentage
     </div>    
@@ -264,7 +266,9 @@ var UniqueNodeList = []
 var maskedRateList = [];
 var latentRateList = [];
 var failureRateList = [];
+var signaledRateList = [];
 var silentRateList = [];
+var hangRateList = [];
 var BarChartNodes = []; 
 
 var StatusBar = document.getElementById('Status');
@@ -282,8 +286,10 @@ var fmodes_clr = [];
 for(i=0;i<fmodes_lbl.length;i++){
     if(fmodes_lbl[i].toLowerCase().indexOf('masked') != -1){fmodes_clr.push("#42f453"); }
     else if (fmodes_lbl[i].toLowerCase().indexOf('latent') != -1){fmodes_clr.push("#4286f4"); }
-    else if (fmodes_lbl[i].toLowerCase().indexOf('failure') != -1){fmodes_clr.push("#d559ff"); }
-    else if (fmodes_lbl[i].toLowerCase().indexOf('silent') != -1){fmodes_clr.push("#ef155a"); }
+    else if (fmodes_lbl[i].toLowerCase().indexOf('signalled') != -1){fmodes_clr.push("#d559ff"); }
+    else if (fmodes_lbl[i].toLowerCase().indexOf('silent') != -1){fmodes_clr.push("#ff0066"); }
+    else if (fmodes_lbl[i].toLowerCase().indexOf('hang') != -1){fmodes_clr.push("#9900ff"); }
+    else if (fmodes_lbl[i].toLowerCase().indexOf('failure') != -1){fmodes_clr.push("#ff3300"); }
     else {fmodes_clr.push('#'+Math.floor(Math.random()*16777215).toString(16)); };
 };
 var ctx = document.getElementById('GlobalFMChart').getContext('2d');
@@ -388,7 +394,7 @@ var treemap = d3.tree().size([height, width]);
                 },
                 {
                     label: fmodes_lbl[2],
-                    data: failureRateList,
+                    data: signaledRateList,
                                 backgroundColor: fmodes_clr[2],
                                 hoverBackgroundColor: fmodes_clr[2],
                                 hoverBorderWidth: 2,
@@ -401,7 +407,23 @@ var treemap = d3.tree().size([height, width]);
                                 hoverBackgroundColor: fmodes_clr[3],
                                 hoverBorderWidth: 2,
                                 hoverBorderColor: 'lightgrey'
-                },                
+                }, 
+                {
+                    label: fmodes_lbl[4],
+                    data: failureRateList,
+                                backgroundColor: fmodes_clr[4],
+                                hoverBackgroundColor: fmodes_clr[4],
+                                hoverBorderWidth: 2,
+                                hoverBorderColor: 'lightgrey'
+                }, 
+                {
+                    label: fmodes_lbl[5],
+                    data: hangRateList,
+                                backgroundColor: fmodes_clr[5],
+                                hoverBackgroundColor: fmodes_clr[5],
+                                hoverBorderWidth: 2,
+                                hoverBorderColor: 'lightgrey'
+                }, 
                 ]
             },
             options: {
@@ -466,7 +488,9 @@ var treemap = d3.tree().size([height, width]);
             maskedRateList.length = 0;
             latentRateList.length = 0;
             failureRateList.length = 0;
+            signaledRateList.length = 0;
             silentRateList.length = 0;
+            hangRateList.length = 0;
             sel_node = (document.getElementById("TreeNodeSelect").value).split('/');
             if(sel_node[0]=="")sel_node.shift();
             sel_node.shift();
@@ -486,14 +510,19 @@ var treemap = d3.tree().size([height, width]);
                     if(document.getElementById('percentageSelected').checked == true){
                         maskedRateList.push(item.children[i].m_p);
                         latentRateList.push(item.children[i].l_p);
-                        failureRateList.push(item.children[i].s_p);
-                        silentRateList.push(item.children[i].c_p);                        
+                        signaledRateList.push(item.children[i].s_p);
+                        silentRateList.push(item.children[i].c_p);      
+                        failureRateList.push(item.children[i].f_p);
+                        hangRateList.push(item.children[i].h_p);                             
+
                     }
                     else{
                         maskedRateList.push(item.children[i].m);
                         latentRateList.push(item.children[i].l);
-                        failureRateList.push(item.children[i].s);
-                        silentRateList.push(item.children[i].c);                          
+                        signaledRateList.push(item.children[i].s);
+                        silentRateList.push(item.children[i].c);    
+                        failureRateList.push(item.children[i].f);
+                        hangRateList.push(item.children[i].h);     
                     }
                 }
             }
@@ -601,7 +630,7 @@ var treemap = d3.tree().size([height, width]);
                     newCell = newRow.insertCell(newRow.cells.length);
                     if(j==0){
                         fmode = xmlNodes[i].getAttribute("failuremode");
-                        cl = (fmode == "S" || fmode == "C") ? "fail" : "pass";
+                        cl = (fmode == "S" || fmode == "C" || fmode == "H" || fmode == "F") ? "fail" : "pass";
                         link = '<a target="_blank" href=\"dumptrace.py?config='+xmlNodes[i].getAttribute("model")+ '&dump='+xmlNodes[i].getAttribute("dumpfile")+'\">' +xmlNodes[i].getAttribute("eind")+"</a>";
                         newCell.innerHTML= '<div class = "' + cl +'"><pre>' + link + '</pre></div>';
                     }
@@ -746,6 +775,8 @@ function UpdateTreeView(source) {
             else if(smode == 'l'){return(d.data.name + ': ' + (percentageview ? d.data.l_p + '%': d.data.l)); }
             else if(smode == 's'){return(d.data.name + ': ' + (percentageview ? d.data.s_p + '%': d.data.s)); }
             else if(smode == 'c'){return(d.data.name + ': ' + (percentageview ? d.data.c_p + '%': d.data.c)); }
+            else if(smode == 'h'){return(d.data.name + ': ' + (percentageview ? d.data.h_p + '%': d.data.h)); }
+            else if(smode == 'f'){return(d.data.name + ': ' + (percentageview ? d.data.f_p + '%': d.data.f)); }
             else {return(d.data.name + ': ' + (percentageview ? (d.data.m_p + "%_" + d.data.l_p + "%_"+ d.data.s_p + "%_"+ d.data.c_p+"%") : (d.data.m + "_" + d.data.l + "_"+ d.data.s + "_"+ d.data.c))); };
             });
 

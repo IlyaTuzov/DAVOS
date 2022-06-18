@@ -145,16 +145,16 @@
 		mode = 1XX: using essential bits: 101 - sampling, 102 - exhaustive
 			   2XX: using external fault list
 		injection_time = 0-random, > 0 - inject after that number of clock cycles, e.g. ==1 - inject at the workload start, ==10 - inject after 9 clock cycles
-		pblock: name: Bottom-Left : Top-Right  (SELENE : pblock_cpuloop[0].core:tiles:X2Y302:X90Y359)
+		pblock: name: Bottom-Left : Top-Right
+                        example:
+                            pblock_cpuloop[0].core:tiles:X2Y302:X90Y359
         dut_scope examples: cpu/core0/HLSinf_en.axi_acc_conv_instance/
                             cpu/core0/gpp0/noelv0/cpuloop[0].core
-                            
-                            /home2/tuil/selene_axi4/selene-hardware/FFI/workloads/rootvoter/host_grmon.do
-                            /home2/tuil/DAVOS/testconfig/host_grmon.do
+
 	-->
         <FFI
 			dut_scope 						= "cpu/core0/gpp0/noelv0/cpuloop[0].core"
-			pblock 							= ""
+			pblock 							= "pblock_cpuloop[0].core:tiles:X2Y302:X90Y359"
 			target_logic 					= "LUT"
 			fault_multiplicity				= "1"
 			sample_size_goal 				= "5000"
@@ -165,7 +165,7 @@
 			injector 						= "MICROBLAZE"
             injector_phase 					= "off"
             reportbuilder_phase 			= "on"
-			custom_lut_mask 				= "on"
+			custom_lut_mask 				= "off"
             node_list                       = ""
 			mode 							= "101"
 		>

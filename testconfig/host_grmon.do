@@ -1,4 +1,4 @@
-#GRMON script to communicate with NOELV DUT
+#GRMON script to communicate with SELENE DUT
 #Author: Ilya Tuzov, Universitat Politecnica de Valencia
 
 
@@ -13,7 +13,6 @@ proc DutReset { } {
     if {[catch {[reset]} er]} { }
     load $kernel
     if {[catch {[detach]} er]} { }
-    #cont
     puts "DUT has been reset"
     return "Status: {OK}"
     after 1000
@@ -24,15 +23,19 @@ proc DutReset { } {
 proc TestWorkload { goldenrun} { 
     global SYNC_BUF  
     global refres
-    wmem [expr {$SYNC_BUF + 0}]  0x0
+    #clean-up results buffer
     wmem [expr {$SYNC_BUF + 40}] 0x00 0x00
+    #unlock the semaphore
     wmem [expr {$SYNC_BUF + 0}]  0x1
+    #wait for wokload completion (200 ms as timeout)
     after 200
+    #read-back ready flag and processing results (checksum)
     set token  [silent mem [expr {$SYNC_BUF + 40}] 1]
     set runres [silent mem [expr {$SYNC_BUF + 44}] 1]
         
-        
     if {$goldenrun==1} {
+        #Uncomment following to line to obtain golden-run results automatically
+        #set refres $runres
         puts $token
         puts $runres
         return "Status: {Pass}"
@@ -42,17 +45,22 @@ proc TestWorkload { goldenrun} {
         #Check responce from the DUT and forward it to DAVOS host
         if {$token=="0xabcdabcd"} {
             if { $runres==$refres} {
-                return "Status: {Masked:token=$token:runres=$runres}"                
+                return "Status: {Masked: token=$token:runres=$runres}"                
             } else {
-                return "Status: {Fail:token=$token:runres=$runres}"
+                return "Status: {Fail: token=$token:runres=$runres}"
             }
         } else {
-            return "Status: {Hang:token=$token:runres=$runres}"
+            return "Status: {Hang: token=$token:runres=$runres}"
         }
     }
 }
 
 
+
+# The code below implements communication with the DAVOS tool
+# by means of command-responce interface (via sockets)
+# This code is valid for any testbench 
+# and SHOULD BE KEPT UNCHANGED
 
 #Process connection request
  proc accept {chan addr port} {           
