@@ -11,6 +11,7 @@ class FFIHostGrmon(FFIHostMicroblaze):
         self.dut_script = dut_script
         self.dut_port = 12345
         self.consec_failures = 0
+        self.consec_timeouts = 0
 
     def connect_dut(self, attempts=1, maxtimeout=60):
         for i in range(attempts):
@@ -56,7 +57,7 @@ class FFIHostGrmon(FFIHostMicroblaze):
         # sys.exit(0)
 
     def run_workload(self):
-        res = self.serv_communicate('localhost', self.dut_port, "1\n", 2)
+        res = self.serv_communicate('localhost', self.dut_port, "1\n", 3)
         if res is not None:
             msg_tag = res.split(':')[0]
             self.LastFmode = self.InjStat.get_failure_mode(msg_tag)
@@ -69,14 +70,19 @@ class FFIHostGrmon(FFIHostMicroblaze):
 
     def dut_recover(self):
         #detect hang loops (several consecutive hangs)
-        if self.LastFmode != FailureModes.Hang:
-            self.consec_failures = 0
+        if self.LastFmode == FailureModes.Hang:
+            self.consec_failures+=1
+        elif self.LastFmode == FailureModes.Timeout:
+            self.consec_timeouts+=1
         else:
-            self.consec_failures += 1
-        if self.consec_failures >= 2:
-            self.consec_failures = 0
+            self.consec_failures=0
+            self.consec_timeouts=0
+        if self.consec_failures >= 2 or self.consec_timeouts >= 2:
+            self.consec_failures=0
+            self.consec_timeouts=0
             self.restart_all('Several consecutive GRMON hangs')
             return
+            
         if self.LastFmode == FailureModes.Hang:
             status = self.connect_dut(3, 30)
             if status > 0:
@@ -84,15 +90,15 @@ class FFIHostGrmon(FFIHostMicroblaze):
                 return
         if self.LastFmode != FailureModes.Masked:
             #If no hang loops detected - try to recover grmon without reloading a bitstream
-            res = self.serv_communicate('localhost', self.dut_port, "1\n", 2)
+            res = self.serv_communicate('localhost', self.dut_port, "1\n", 3)
             if res is not None:
                 if self.InjStat.get_failure_mode(res.lower().split(':')[0]) == FailureModes.Masked:
                     print "\tDUT recovery check (post-SEU-remove): Ok"
                 else:
-                    if self.InjStat.get_failure_mode(res.lower().split(':')[0]) in [FailureModes.ReplicaFail, FailureModes.ReplicaTimeout]:
-                        self.LastFmode = FailureModes.ReplicaHang
-                    else:
-                        self.LastFmode = FailureModes.Hang
+                    #if self.InjStat.get_failure_mode(res.lower().split(':')[0]) in [FailureModes.ReplicaFail, FailureModes.ReplicaTimeout]:
+                    #    self.LastFmode = FailureModes.ReplicaHang
+                    #else:
+                    #    self.LastFmode = FailureModes.Hang
                     print "\tDUT recovery check (post-SEU-remove): Fail"
                     # try to reset the DUT
                     # res = self.serv_communicate('localhost', self.dut_port, "2\n", 10)
@@ -105,21 +111,21 @@ class FFIHostGrmon(FFIHostMicroblaze):
                         self.restart_all('GRMON hang')
                         return
                     # run workload after reset
-                    res = self.serv_communicate('localhost', self.dut_port, "1\n", 2)
+                    res = self.serv_communicate('localhost', self.dut_port, "1\n", 3)
                     if res is not None:
                         if self.InjStat.get_failure_mode(res.lower().split(':')[0]) == FailureModes.Masked:
                             print "\tDUT recovery check (post-Reset): Ok"
                         else:
                             print "\tDUT recovery check (post-Reset): Fail"
-                            status = self.connect_dut(3, 30)
-                            if status > 0:
-                                self.restart_all('GRMON hang')
-                            return
+                            #status = self.connect_dut(3, 30)
+                            #if status > 0:
+                            self.restart_all('GRMON hang')
+                            #return
                     else:
                         print "\tDUT recovery check (post-Reset): GRMON Hang"
-                        status = self.connect_dut(3, 30)
-                        if status > 0:
-                            self.restart_all('GRMON hang')
+                        #status = self.connect_dut(3, 30)
+                        #if status > 0:
+                        self.restart_all('GRMON hang')
                         return
             else:
                 print "\tDUT recovery check (post-SEU-remove): Hang"
