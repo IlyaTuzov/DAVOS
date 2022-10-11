@@ -91,6 +91,7 @@ class FFIHostMicroblaze(FFIHostControlled):
         if not MIC_OK:
             print('inject_fault() failure: Relaunching microblaze')
             self.restart_all('')
+        self.proc_xsct.expect(r'.+')
 
     def remove_fault(self, idx):
         data = self.fault_list[idx].SeuItems[0].Offset

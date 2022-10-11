@@ -57,7 +57,7 @@ class FFIHostGrmon(FFIHostMicroblaze):
         # sys.exit(0)
 
     def run_workload(self):
-        res = self.serv_communicate('localhost', self.dut_port, "1\n", 3)
+        res = self.serv_communicate('localhost', self.dut_port, "1\n", 10)
         if res is not None:
             msg_tag = res.split(':')[0]
             self.LastFmode = self.InjStat.get_failure_mode(msg_tag)
@@ -66,6 +66,7 @@ class FFIHostGrmon(FFIHostMicroblaze):
             self.LastFmode = FailureModes.Hang
             print("\t{0:20s}: {1:s}".format('Injection result', 'Hang'))
             # self.restart_all('GRMON Hang')
+        self.proc_grmon.expect(r'.+')
         return res
 
     def dut_recover(self):
@@ -90,7 +91,7 @@ class FFIHostGrmon(FFIHostMicroblaze):
                 return
         if self.LastFmode != FailureModes.Masked:
             #If no hang loops detected - try to recover grmon without reloading a bitstream
-            res = self.serv_communicate('localhost', self.dut_port, "1\n", 3)
+            res = self.serv_communicate('localhost', self.dut_port, "1\n", 10)
             if res is not None:
                 if self.InjStat.get_failure_mode(res.lower().split(':')[0]) == FailureModes.Masked:
                     print "\tDUT recovery check (post-SEU-remove): Ok"
@@ -111,7 +112,7 @@ class FFIHostGrmon(FFIHostMicroblaze):
                         self.restart_all('GRMON hang')
                         return
                     # run workload after reset
-                    res = self.serv_communicate('localhost', self.dut_port, "1\n", 3)
+                    res = self.serv_communicate('localhost', self.dut_port, "1\n", 10)
                     if res is not None:
                         if self.InjStat.get_failure_mode(res.lower().split(':')[0]) == FailureModes.Masked:
                             print "\tDUT recovery check (post-Reset): Ok"

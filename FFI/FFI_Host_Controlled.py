@@ -78,7 +78,7 @@ class FFIHostControlled(FFIHostBase):
             sct = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sct.connect((host, port))
             sct.settimeout(timeout)
-            sct.send(in_cmd)
+            sct.sendall(in_cmd)
             buf = sct.recv(1024)
             s = re.search(st_pattern, buf)
             if s:
