@@ -124,7 +124,7 @@ Wait for the completion of an FFI experiment.
 
 Upon completion the resulting FFI trace will be available in the *DavosGenerated/LOG.csv* file.  
 This file details the fault configuration (targeted DUT node, injeciton time, fault multiplicity), and resulting experimental outcome (failure mode).
-![fig_trace](doc/trace_csv.png)
+![fig_trace](doc/Trace_csv.png)
 
 
 5. Query and visualize results. 
