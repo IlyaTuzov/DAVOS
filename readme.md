@@ -22,7 +22,7 @@ DAVOS comprises a set of standalone tools and supplementary modules, as depicted
    Supports hierarchical FFI experiments where any node in the DUT tree can be targeted at the granularity of individual 
    netlist cells (LUTs, registers, BRAM/LUTRAM cells, etc). Implements the bit-accurate FFI methodology described in [1]. 
    
-   ###Main features
+   ### Main features
    DAVOS-FFI tool emulates SEUs in FPGA prototypes by manipulating the content of FPGA configuration memory (CM) at runtime. 
    The low-level fault injection operations (CM manipulations) are controlled directly from the target FPGA using a Xilinx Microblaze or Zynq IPs as an on-chip FFI controller.
    This allows to reduce the fault injection latency to the minimum. When using Zynq devices the CM content is accessed through the PCAP port, 
@@ -48,7 +48,7 @@ DAVOS-FFI allows speeding-up FFI experiments using iterative statistical samplin
 ![fig_FFI](doc/FFI.png)
 
 
-###Get started
+### Get started
 
 A typical FFI experiment comprises the following five steps.
 
