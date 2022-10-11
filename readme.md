@@ -45,7 +45,7 @@ Current DAVOS distribution offers two preconfigured FFI setups:
 DAVOS-FFI currently supports Xilinx 7-series, Ultrascale and Ultrascale+ FPGAs and Zynq SoCs. 
 DAVOS-FFI allows speeding-up FFI experiments using iterative statistical sampling of fault space, and multiprocessing on the stacks of FPGA evaluation boards.
 
-![DAVOS architecture](doc/FFI.png)
+![fig_FFI](doc/FFI.png)
 
 
 ###Get started
@@ -73,7 +73,7 @@ end generate;
 Implement the design, generate a bitstream. It is recommended to place an FFI controller into a dedicated area on the design floorplan (Pbock)
 in order to prevent undesired interference with the DUT during FFI experiments.
 
-![DAVOS architecture](doc/floorplan.png)
+![fig_floorplan](doc/floorplan.png)
 
 
 
@@ -120,18 +120,18 @@ The 'dut_script' specified the command line script to invoke the testbench servi
 DAVOS/> python FFI_tool.py testconfig/Selene.xml
 ```
 Wait for the completion of an FFI experiment.
-![DAVOS architecture](doc/log.png)
+![fig_log](doc/log.png)
 
 Upon completion the resulting FFI trace will be available in the *DavosGenerated/LOG.csv* file.  
 This file details the fault configuration (targeted DUT node, injeciton time, fault multiplicity), and resulting experimental outcome (failure mode).
-![DAVOS architecture](doc/trace_csv.png)
+![fig_trace](doc/trace_csv.png)
 
 
 5. Query and visualize results. 
    
 In addition, all FFI results collected during experimentation are saved into an SQLite dataset. 
 The results from this dataset can be queried and visualized by means of a DAVOS web-based UI (as depicted below). 
-![DAVOS architecture](doc/UI.png)
+![fig_UI](doc/UI.png)
 
 
 ---
