@@ -214,17 +214,17 @@ def RunSBFI(datamodel, config, toolconf):
     backup_label = ''
     for conf in config.parconf:
         cleanup(config, toolconf, conf, False, backup_label)
+        if config.SBFI.initializer_phase:
+            InitializeHDLModels(config, toolconf, conf)
+        if config.SBFI.injector_phase:
+            generate_clustering_checkpoints(config, toolconf, conf)
+            golden_run(config, toolconf, conf)
 
-        InitializeHDLModels(config, toolconf, conf)
+            # Generate SBFI scripts for the given model and faultload configuration
+            generate_faultload(FaultloadModes.Sampling, config, conf, toolconf)
 
-        generate_clustering_checkpoints(config, toolconf, conf)
-        golden_run(config, toolconf, conf)
-
-        # Generate SBFI scripts for the given model and faultload configuration
-        generate_faultload(FaultloadModes.Sampling, config, conf, toolconf)
-
-        # Execute injection scripts (simulate - on Selected platform)
-        execute_injection_scripts(config, toolconf, conf)
+            # Execute injection scripts (simulate - on Selected platform)
+            execute_injection_scripts(config, toolconf, conf)
 
         # Analyze observation traces and save the results to the database
         launch_analysis(config, toolconf, conf, datamodel)
@@ -239,7 +239,7 @@ def RunSBFI(datamodel, config, toolconf):
 
 # Script entry point when launched directly
 if __name__ == "__main__":
-    sys.stdin = open('/dev/tty')
+    #sys.stdin = open('/dev/tty')
     toolconf = ToolOptions(ET.parse('tool_config.xml').getroot().findall('ToolOptions')[0])
     # extract SBFI configuration from input XML
     tree = parse_xml_config(sys.argv[1]).getroot()

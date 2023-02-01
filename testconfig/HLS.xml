@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<data>
+
+		<!-- platform: Multicore / Grid / GridLight 
+            mode = clean / continue
+        -->
+    <DAVOS
+        report_dir = "C:/HTWEB/SBFI/HLS"
+        experiment_label = "SELENE"
+        platform = "Multicore"
+        maxproc = "4" >
+
+
+
+		<ModelConfig
+			work_dir = "C:/Projects/SELENE_HLS"
+            checkpoint = "./checkpoints/seleneMC.sim"
+            design_type = "RTL"
+			label = "HLS"
+			clk_period = "5.0"
+            simulation_time = "15000"
+		/>
+
+
+        <SBFI
+            clean_run = "off"
+            checkpoint_mode = "ColdRestore"
+            initializer_phase = "off"
+            profiler_phase = "off"
+            injector_phase = "off"
+            reportbuilder_phase = "on"
+            time_quota =  "20:00:00"
+            fault_dictionary = "./FaultDictionaries/Xilinx_Unisim_Ver.xml"
+            >
+
+            <!-- unit path: withing the design scope-->
+            <InjectionScope unit_path = "/testbench/cpu/cpu/core0/axi_acc_instance0/acc_inst"
+                            node_filter = ""
+                            scope_filter = "" />
+
+
+
+            <ObservationItem
+                path= "/testbench/cpu/cpu/core0/debug_acc_ar"
+                array_range = ""
+                label = "debug_acc_ar"
+                sampling_options = ""
+                group = "OUTPUTS"
+                domain = "testbench"
+            />
+
+            <ObservationItem
+                path= "/testbench/cpu/cpu/core0/debug_acc_aw"
+                array_range = ""
+                label = "debug_acc_aw"
+                sampling_options = ""
+                group = "OUTPUTS"
+                domain = "testbench"
+            />
+			
+
+			
+
+			
+            <faultload
+                model = "StuckAt"
+			    target_logic = "SIGNAL"
+                forced_value = "1"
+ 			    multiplicity = "1"
+                time_mode = "Relative"
+                injection_time_start = "0.0"
+                injection_time_end = "0.0"
+                experiments_per_target = "1"
+                sample_size = "10"
+                rand_seed	= "10"
+                CCF = ""
+            />
+
+			
+            <faultload
+                model = "StuckAt"
+			    target_logic = "SIGNAL"					   
+                forced_value = "0"
+                multiplicity = "1"
+                time_mode = "Relative"
+                injection_time_start = "0.0"
+                injection_time_end = "0.0"
+                experiments_per_target = "1"
+                sample_size = "10"
+                rand_seed	= "10"
+                CCF = ""
+            />
+			
+			
+			
+			
+			
+            <!-- domain_mode: "" / SIMPLEX / TMR -->
+            <Analyzer
+                mode = "MLV"
+                domain_mode = "SIMPLEX"
+                time_window = ""
+                max_time_violation = "0"
+                error_flag_signal = ""
+                error_flag_active_value = "1"
+                trap_type_signal = ""
+                threads = "1"
+                check_range_columns = "debug_acc_ar, debug_acc_aw"
+                >
+
+                <join_groups>
+                </join_groups>
+
+                <rename_list>
+                </rename_list>
+
+            </Analyzer>
+
+        </SBFI>
+
+
+
+	<!--
+		injector: MICROBLAZE / ZYNQ
+		target_logic = FF/LUT/BRAM/TYPE0
+		mode = 1XX: using essential bits: 101 - sampling, 102 - exhaustive
+			   2XX: using external fault list
+		injection_time = 0-random, > 0 - inject after that number of clock cycles, e.g. ==1 - inject at the workload start, ==10 - inject after 9 clock cycles
+		pblock: name: Bottom-Left : Top-Right
+                        example:
+                            pblock_cpuloop[0].core:tiles:X2Y302:X90Y359
+                            ACC_Replica_1:tiles:X12Y330:X61Y567
+        dut_scope examples: cpu/core0/HLSinf_en.axi_acc_conv_instance/
+                            cpu/core0/HLSinf_en.axi_acc_conv_instance2/
+                            cpu/core0/gpp0/noelv0/cpuloop[0].core
+
+	-->
+        <FFI
+			dut_scope 			= "cpu/core0/HLSinf_en.axi_acc_conv_instance2/"
+			pblock 				= "ACC_Replica_2:tiles:X10Y303:X65Y597"
+			target_logic 		= "TYPE0"
+			fault_multiplicity	= "1"
+			sample_size_goal 	= "5000"
+			error_margin_goal 	= "0.5"            
+			injection_time 		= "1"
+			dut_script 			= "grmon -u -uart /dev/ttyUSB1 -c /home/tuil/DAVOS/testconfig/testbench_hls.do"
+
+			injector 			= "MICROBLAZE"
+            injector_phase 		= "on"
+            reportbuilder_phase = "on"
+			custom_lut_mask 	= "off"
+            node_list           = ""
+			mode 				= "101"
+		>
+		</FFI>
+     </DAVOS>
+</data>

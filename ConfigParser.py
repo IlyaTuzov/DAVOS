@@ -332,6 +332,7 @@ class SBFIConfigAnalyzer:
             self.max_time_violation = int(0)
             self.threads = int(1)
             self.domain_mode = ""
+            self.check_range_columns = []
         else:
             self.build_from_xml(xnode)
 
@@ -352,6 +353,8 @@ class SBFIConfigAnalyzer:
         if len(tag) > 0:
             for c in tag[0].findall('item'):
                 self.rename_list.append(RenameItem(c.get('from'), c.get('to')))
+        self.check_range_columns = xnode.get('check_range_columns', '').replace(' ', '').split(',')
+
 
 
 #1.5 Configuration Items for HDL models under test (annex for genconfig)

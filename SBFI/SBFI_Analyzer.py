@@ -137,6 +137,8 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
             sys.stdout.flush()
         target = datamodel.GetOrAppendTarget(item.target, item.instance_type, item.injection_case)
         InjDesc = InjectionDescriptor()
+        InjDesc.OutOfBounds = dict.fromkeys(datamodel.reference.reference_dump.value_range.keys())
+        InjDesc.MaxValueDeviation = dict.fromkeys(datamodel.reference.reference_dump.value_range.keys())
         InjDesc.ID = ExpDescIdCnt
         InjDesc.ModelID = model.ID
         InjDesc.TargetID = target.ID
@@ -152,10 +154,21 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
             InjDesc.DomainMatch[k] = '-'
         inj_dump = simDump()
         inj_dump.set_labels_copy(datamodel.reference.initial_internal_labels, datamodel.reference.initial_output_labels)
+
         if inj_dump.build_vectors_from_file(os.path.join(conf.work_dir, toolconf.result_dir, item.dumpfile)) == None:
             InjDesc.Status = 'E'  # error
         else:
             InjDesc.Status = 'S'  # Simulation successful and dumpfile exists
+
+            inj_range = inj_dump.get_value_range(config.SBFI.analyzer.check_range_columns)
+            for k, v in datamodel.reference.reference_dump.value_range.iteritems():
+                if k in inj_range:
+                    InjDesc.MaxValueDeviation[k] = max(abs(inj_range[k][0] - v[0]), abs(inj_range[k][1] - v[1]))
+                    if (inj_range[k][0] < v[0]) or (inj_range[k][1] > v[1]):
+                        InjDesc.OutOfBounds[k] = "[0x{0:x},0x{1:x}] : [0x{2:x},0x{3:x}]".format(inj_range[k][0], inj_range[k][1], v[0], v[1])
+                else:
+                    InjDesc.MaxValueDeviation[k] = "x"
+
 
             err_raised = False
             if err_signal_index[0] is not None:
@@ -230,6 +243,7 @@ def process_dumps(config, toolconf, conf, datamodel):
     datamodel.reference.initial_internal_labels, datamodel.reference.initial_output_labels = datamodel.reference.reference_dump.get_labels_copy()
     datamodel.reference.JnGrLst = config.SBFI.analyzer.join_group_list.copy()
     datamodel.reference.reference_dump.join_output_columns(datamodel.reference.JnGrLst.copy())
+    datamodel.reference.reference_dump.get_value_range(config.SBFI.analyzer.check_range_columns)
     desctable = ExpDescTable(conf.label)
     desctable.build_from_csv_file(os.path.normpath(os.path.join(conf.work_dir, toolconf.result_dir, toolconf.exp_desc_file)), "Other")
 
@@ -269,17 +283,21 @@ def process_dumps(config, toolconf, conf, datamodel):
     injsummary = datamodel.LaunchedInjExp_dict.values()
     domains = sorted(injsummary[0].DomainMatch.keys())
 
-    T = Table('SummaryFaultSim', ['Node', 'InjCase', 'InjTime', 'Duration', 'FailureMode'] + domains)
+    T = Table('SummaryFaultSim', ['Node', 'Fault', 'InjTime', 'Duration', 'FailureMode'] + domains +
+              sorted(datamodel.reference.reference_dump.value_range.keys()))
+
 
     for i in range(len(injsummary)):
         T.add_row()
         T.put(i, T.labels.index('Node'), injsummary[i].Node)
-        T.put(i, T.labels.index('InjCase'), injsummary[i].InjCase)
+        T.put(i, T.labels.index('Fault'), "{0}/{1}".format(injsummary[i].FaultModel, injsummary[i].ForcedValue))
         T.put(i, T.labels.index('InjTime'), injsummary[i].InjectionTime)
         T.put(i, T.labels.index('Duration'), injsummary[i].InjectionDuration)
         T.put(i, T.labels.index('FailureMode'), injsummary[i].FailureMode)
         for k in domains:
             T.put(i, T.labels.index(k), injsummary[i].DomainMatch[k])
+        for k in sorted(datamodel.reference.reference_dump.value_range.keys()):
+            T.put(i, T.labels.index(k), str(injsummary[i].MaxValueDeviation[k]))
 
     with open(os.path.join(config.report_dir, 'Summary_{0}_{1}.csv'.format(config.experiment_label, conf.label)), 'w') as f:
         f.write(T.to_csv())
@@ -304,5 +322,12 @@ def process_dumps(config, toolconf, conf, datamodel):
         f.write('\n{0:30s}: Failures: {1:5d}/{2:5d}: {3}'.format(conf.label,
                                                                  failures, valid_exp,
                                                                  '; '.join(['{0:10s}:{1:5d}'.format(k, domain_stats[k]) for k in sorted(domain_stats.keys())])))
+        for i in injsummary:
+            if len(i.OutOfBounds) > 0:
+                f.write('\n\nOutOfBounds: ID={0:d}, Fault: Fault={1:s}/{2:s} : {3:s}'.format(i.ID, i.FaultModel, i.ForcedValue, i.Node))
+                for k,v in i.OutOfBounds.iteritems():
+                    f.write('\n\t{0:s} : {1:s}'.format(k, v))
+
+
 
     print('\n\nAnalysys completed, time taken: ' + str(time_to_seconds(datetime.datetime.now().replace(microsecond=0) - timestart)))

@@ -17,13 +17,13 @@ DAVOS comprises a set of standalone tools and supplementary modules, as depicted
 
 ---
 
-## 1. FPGA fault injection tool (DAVOS-FFI)
+## 1. Bit-accurate FPGA fault injection tool (BAFFI)
    A bit-precise FFI tool for automated dependability/security assessment of FPGA prototypes.
    Supports hierarchical FFI experiments where any node in the DUT tree can be targeted at the granularity of individual 
    netlist cells (LUTs, registers, BRAM/LUTRAM cells, etc). Implements the bit-accurate FFI methodology described in [1]. 
    
    ### Main features
-   DAVOS-FFI tool emulates SEUs in FPGA prototypes by manipulating the content of FPGA configuration memory (CM) at runtime. 
+   BAFFI tool emulates SEUs in FPGA prototypes by manipulating the content of FPGA configuration memory (CM) at runtime. 
    The low-level fault injection operations (CM manipulations) are controlled directly from the target FPGA using a Xilinx Microblaze or Zynq IPs as an on-chip FFI controller.
    This allows to reduce the fault injection latency to the minimum. When using Zynq devices the CM content is accessed through the PCAP port, 
    otherwise (Artix/Kintex/Virtex devices) the ICAP is used.
@@ -42,8 +42,8 @@ Current DAVOS distribution offers two preconfigured FFI setups:
 - Controlled from the target FPGA for fully embedded FFI experiments, suitable for those DUTs that can be tested without host support;
 
 
-DAVOS-FFI currently supports Xilinx 7-series, Ultrascale and Ultrascale+ FPGAs and Zynq SoCs. 
-DAVOS-FFI allows speeding-up FFI experiments using iterative statistical sampling of fault space, and multiprocessing on the stacks of FPGA evaluation boards.
+BAFFI currently supports Xilinx 7-series, Ultrascale and Ultrascale+ FPGAs and Zynq SoCs. 
+BAFFI allows to speed-up FFI experiments by means of iterative statistical sampling of fault space, and multiprocessing on the stacks of FPGA evaluation boards.
 
 ![fig_FFI](doc/FFI.png)
 
@@ -91,7 +91,7 @@ An example of a testbench service for a Cobham Gaisler NOELV design is available
 
 The faultload parameters are grouped under the *FFI* tag of master DAVOS configuration template (tetsconfig/Selene.xml).
 The 'dut_scope' is a hierarchical filter used to select a DUT module in which faults are to be injected, e.g. CPU core[0] in the listing below.
-The 'pblock' is the area filter to contrain the fault injection scope attending to floorplan coordinates,
+The 'pblock' is the area filter to constrain the fault injection scope attending to floorplan coordinates,
 defined in terms of Bottom-Left and Top-Right Tile coordinates.
 The 'target_logic' filters the fault targets attending to the type of nestlist cells, adopting one of the following values: 
 FF - registers, LUT - lookup Tables, BRAM - block RAMs, TYPE0 - all essential bits (attending to EBD bitmask).
@@ -115,7 +115,7 @@ The 'dut_script' specified the command line script to invoke the testbench servi
 
 ```
 
-4. Invoke the DAVOS-FFI tool from the command line terminal.
+4. Invoke BAFFI tool from the command line terminal.
 ```commandline
 DAVOS/> python FFI_tool.py testconfig/Selene.xml
 ```

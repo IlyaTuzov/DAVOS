@@ -564,7 +564,22 @@ class simDump:
                         switch_count[value] += v[1]
         return(actime, switch_count)
 
-
+    def get_value_range(self, keylist):
+        self.value_range = {}
+        for key in keylist:
+            vname, c_index = self.get_index_by_label(key)
+            vlist = []
+            for i in range(len(self.vectors)):
+                try:
+                    if vname == 'outputs':
+                        vlist.append(int(self.vectors[i].outputs[c_index], 16))
+                    else:
+                        vlist.append(int(self.vectors[i].internals[c_index], 16))
+                except ValueError:
+                    pass
+            if len(vlist) != 0:
+                self.value_range[key] = (min(vlist), max(vlist))
+        return self.value_range
 
 
 if __name__=="__main__":
