@@ -47,10 +47,10 @@ proc TestWorkload { goldenrun} {
             if { $runres==$refres} {
                 return "Status: {Masked: token=$token:runres=$runres}"                
             } else {
-                return "Status: {Fail: token=$token:runres=$runres}"
+                return "Status: {SDC: token=$token:runres=$runres}"
             }
         } else {
-            return "Status: {Hang: token=$token:runres=$runres}"
+            return "Status: {Timeout: token=$token:runres=$runres}"
         }
     }
 }

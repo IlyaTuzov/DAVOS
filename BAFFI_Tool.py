@@ -13,13 +13,12 @@
 import os
 import sys
 from FFI.FFI_Host_Microblaze import *
-from FFI.FFI_Host_Grmon import *
 from FFI.Host_Zynq import *
 #from FFI.FFI_ReportBuilder import *
 import xml.etree.ElementTree as ET
 from Davos_Generic import *
 from Datamanager import *
-
+from Reportbuilder import *
 
 
 def run_zynq_injector(davosconf, modelconf):
@@ -103,15 +102,8 @@ def run_zynq_injector(davosconf, modelconf):
 
 
 def run_microblaze_injector(davosconf, modelconf):
-    Injector = FFIHostGrmon(modelconf.work_dir, davosconf.FFI.device_part, davosconf.FFI.dut_script)
-    Injector.InjStat.register_failure_mode('masked', FailureModes.Masked)
-    Injector.InjStat.register_failure_mode('fail', FailureModes.Fail)
-    Injector.InjStat.register_failure_mode('hang', FailureModes.Hang)
-    #Injector.InjStat.register_failure_mode('timeout', FailureModes.Timeout) 
-    #Injector.InjStat.register_failure_mode('Other', FailureModes.Other)    
-    Injector.InjStat.register_failure_mode('replicafail', FailureModes.ReplicaFail)
-    Injector.InjStat.register_failure_mode('replicatimeout', FailureModes.ReplicaTimeout)
-    #Injector.InjStat.register_failure_mode('replicahang', FailureModes.ReplicaHang)
+    Injector = FFIHostMicroblaze(modelconf.work_dir, davosconf.FFI.device_part, davosconf.FFI.dut_script)
+    Injector.FmodesToReset += davosconf.FFI.failure_modes_to_reset
 
     random.seed(davosconf.FFI.seed)
     hashing = False
@@ -150,9 +142,44 @@ def run_microblaze_injector(davosconf, modelconf):
             #restore Injector state from most recent log file
             logfiles = sorted(glob.glob(os.path.join(Injector.design.generatedFilesDir, 'LOG*.csv')))
             restore_file = logfiles[-1]
-            Injector.initialize(False, restore_file, "", None, False)
-            #print('Test successful')
-
+            #Injector.initialize(False, restore_file, "", None, False)
+            Injector.load_fault_list_csv(restore_file)
+        datamodel = DataModel()
+        if not os.path.exists(davosconf.report_dir):
+            os.makedirs(davosconf.report_dir)
+        datamodel.ConnectDatabase(davosconf.get_DBfilepath(False), davosconf.get_DBfilepath(True))
+        datamodel.RestoreHDLModels(davosconf.parconf)
+        datamodel.RestoreEntity(DataDescriptors.InjTarget)
+        model = datamodel.GetHdlModel(modelconf.label)
+        ExpDescIdCnt = datamodel.GetMaxKey(DataDescriptors.InjectionExp) + 1
+        for faultconf in Injector.fault_list:
+            node = '/'.join(faultconf.SeuItems[0].DesignNode.split('/')[:-1])
+            injcase = faultconf.SeuItems[0].DesignNode.split('/')[-1]
+            target = datamodel.GetOrAppendTarget(node, davosconf.FFI.target_logic.upper(), injcase)
+            InjDesc = InjectionDescriptor()
+            InjDesc.InjectionTime = float(faultconf.SeuItems[0].Time)
+            InjDesc.FailureMode = faultconf.FailureMode.upper()
+            InjDesc.ID = ExpDescIdCnt
+            InjDesc.ModelID = model.ID
+            InjDesc.TargetID = target.ID
+            InjDesc.FaultModel = 'BitFlip'
+            InjDesc.ForcedValue = ''
+            InjDesc.InjectionDuration = float(0)
+            InjDesc.ObservationTime = float(0)
+            InjDesc.Node = target.NodeFullPath
+            InjDesc.InjCase = target.InjectionCase
+            InjDesc.Status = 'F'
+            InjDesc.FaultToFailureLatency = float(0)
+            InjDesc.ErrorCount = 0
+            InjDesc.Dumpfile = ''
+            datamodel.LaunchedInjExp_dict[InjDesc.ID] = InjDesc
+            ExpDescIdCnt += 1
+        datamodel.SaveHdlModels()
+        datamodel.SaveTargets()
+        datamodel.SaveInjections()
+        build_report(davosconf, davosconf.toolconf, datamodel, True)
+        datamodel.SyncAndDisconnectDB()
+    print("BAFFI: experiment finished, exiting")
 
 if __name__ == "__main__":
     toolconf = ToolOptions(ET.parse('tool_config.xml').getroot().findall('ToolOptions')[0])

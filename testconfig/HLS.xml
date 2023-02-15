@@ -143,7 +143,7 @@
 			sample_size_goal 	= "5000"
 			error_margin_goal 	= "0.5"            
 			injection_time 		= "1"
-			dut_script 			= "grmon -u -uart /dev/ttyUSB1 -c /home/tuil/DAVOS/testconfig/testbench_hls.do"
+			dut_script 			= "grmon -u -uart /dev/ttyUSB1 -c /home/tuil/DAVOS/testconfig/testbench_selene_hls.do"
 
 			injector 			= "MICROBLAZE"
             injector_phase 		= "on"

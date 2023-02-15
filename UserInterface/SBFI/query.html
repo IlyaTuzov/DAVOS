@@ -233,12 +233,7 @@ div.tab button.active {
         &nbsp; &nbsp; 
     Failure modes with respect to injection target (design unit): &nbsp; 
         <select id = "treeviewoption" onchange="if (this.selectedIndex)  UpdateTreeView();">
-            <option value="c">Silent_Data_Corruption</option>
-            <option value="m">Masked_Fault</option>
-            <option value="l">Latent_Fault</option>
-            <option value="s">Signalled_Failure</option>
-            <option value="h">Hang</option>
-            <option value="f">Failure</option>
+            _#qfailuremode
             <option value="">ALL</option>
         </select> <input id="TreePercentageSelected" type="checkbox" onclick = "UpdateTreeView()" checked ="true" > Show Percentage
     </div>    
@@ -262,13 +257,8 @@ var Results = [];
 var SummaryTag;
 var AllNodeList = [];
 var AllFmodeList = [];
-var UniqueNodeList = []
-var maskedRateList = [];
-var latentRateList = [];
-var failureRateList = [];
-var signaledRateList = [];
-var silentRateList = [];
-var hangRateList = [];
+var UniqueNodeList = [];
+var RateList = {};
 var BarChartNodes = []; 
 
 var StatusBar = document.getElementById('Status');
@@ -280,17 +270,14 @@ var fmodes_lbl = $.map(options ,function(option) {
     return option.value;
     });
 fmodes_lbl.shift();
+fmodes_lbl.forEach((key, i) => RateList[key] = []);
+
 var fmodes_data = [25, 25, 25, 25];
 var errors = [0.1, 0.1, 0.1, 0.1];
-var fmodes_clr = [];
-for(i=0;i<fmodes_lbl.length;i++){
-    if(fmodes_lbl[i].toLowerCase().indexOf('masked') != -1){fmodes_clr.push("#42f453"); }
-    else if (fmodes_lbl[i].toLowerCase().indexOf('latent') != -1){fmodes_clr.push("#4286f4"); }
-    else if (fmodes_lbl[i].toLowerCase().indexOf('signalled') != -1){fmodes_clr.push("#d559ff"); }
-    else if (fmodes_lbl[i].toLowerCase().indexOf('silent') != -1){fmodes_clr.push("#ff0066"); }
-    else if (fmodes_lbl[i].toLowerCase().indexOf('hang') != -1){fmodes_clr.push("#9900ff"); }
-    else if (fmodes_lbl[i].toLowerCase().indexOf('failure') != -1){fmodes_clr.push("#ff3300"); }
-    else {fmodes_clr.push('#'+Math.floor(Math.random()*16777215).toString(16)); };
+var fmodes_clr = ["#d559ff", "#42f453", "#ff0066", "#4286f4",  "#9900ff", "#ff3300"];
+var x = i=fmodes_clr.length-1;
+for(i=x;i<fmodes_lbl.length;i++){
+    fmodes_clr.push('#'+Math.floor(Math.random()*16777215).toString(16));
 };
 var ctx = document.getElementById('GlobalFMChart').getContext('2d');
 
@@ -368,6 +355,21 @@ var svg = d3.select("#TreeGraphView").append("svg")
     .attr("transform", "translate("
           + margin.left + "," + margin.top + ")");
 
+
+var data_set = [];
+for(i=0;i<fmodes_lbl.length;i++){
+    data_set.push({
+        label: fmodes_lbl[i],
+        data: RateList[fmodes_lbl[i]],
+        backgroundColor: fmodes_clr[i],
+        hoverBackgroundColor: fmodes_clr[i],
+        hoverBorderWidth: 2,
+        hoverBorderColor: 'lightgrey'        
+    })
+}
+
+
+
 var treemap = d3.tree().size([height, width]);
   
         var bar_ctx = document.getElementById('TreeFMChart');
@@ -375,56 +377,7 @@ var treemap = d3.tree().size([height, width]);
             type: 'bar',
             data: {
                 labels: BarChartNodes,
-                datasets: [
-                {
-                    label: fmodes_lbl[0],
-                    data: maskedRateList,
-                                backgroundColor: fmodes_clr[0],
-                                hoverBackgroundColor: fmodes_clr[0],
-                                hoverBorderWidth: 2,
-                                hoverBorderColor: 'lightgrey'
-                },
-                {
-                    label: fmodes_lbl[1],
-                    data: latentRateList,
-                                backgroundColor: fmodes_clr[1],
-                                hoverBackgroundColor: fmodes_clr[1],
-                                hoverBorderWidth: 2,
-                                hoverBorderColor: 'lightgrey'
-                },
-                {
-                    label: fmodes_lbl[2],
-                    data: signaledRateList,
-                                backgroundColor: fmodes_clr[2],
-                                hoverBackgroundColor: fmodes_clr[2],
-                                hoverBorderWidth: 2,
-                                hoverBorderColor: 'lightgrey'
-                },
-                {
-                    label: fmodes_lbl[3],
-                    data: silentRateList,
-                                backgroundColor: fmodes_clr[3],
-                                hoverBackgroundColor: fmodes_clr[3],
-                                hoverBorderWidth: 2,
-                                hoverBorderColor: 'lightgrey'
-                }, 
-                {
-                    label: fmodes_lbl[4],
-                    data: failureRateList,
-                                backgroundColor: fmodes_clr[4],
-                                hoverBackgroundColor: fmodes_clr[4],
-                                hoverBorderWidth: 2,
-                                hoverBorderColor: 'lightgrey'
-                }, 
-                {
-                    label: fmodes_lbl[5],
-                    data: hangRateList,
-                                backgroundColor: fmodes_clr[5],
-                                hoverBackgroundColor: fmodes_clr[5],
-                                hoverBorderWidth: 2,
-                                hoverBorderColor: 'lightgrey'
-                }, 
-                ]
+                datasets: data_set
             },
             options: {
                     animation: {
@@ -485,12 +438,9 @@ var treemap = d3.tree().size([height, width]);
         
         function updateTreeChart(){       
             BarChartNodes.length = 0;
-            maskedRateList.length = 0;
-            latentRateList.length = 0;
-            failureRateList.length = 0;
-            signaledRateList.length = 0;
-            silentRateList.length = 0;
-            hangRateList.length = 0;
+            for (let k in RateList) {
+                RateList[k] = [];
+            }
             sel_node = (document.getElementById("TreeNodeSelect").value).split('/');
             if(sel_node[0]=="")sel_node.shift();
             sel_node.shift();
@@ -507,24 +457,24 @@ var treemap = d3.tree().size([height, width]);
             if(item.hasOwnProperty('children')){
                 for(var i in item.children){
                     BarChartNodes.push(item.children[i].name);
-                    if(document.getElementById('percentageSelected').checked == true){
-                        maskedRateList.push(item.children[i].m_p);
-                        latentRateList.push(item.children[i].l_p);
-                        signaledRateList.push(item.children[i].s_p);
-                        silentRateList.push(item.children[i].c_p);      
-                        failureRateList.push(item.children[i].f_p);
-                        hangRateList.push(item.children[i].h_p);                             
-
+                    if(document.getElementById('percentageSelected').checked == false){
+                        for (let k in RateList) {
+                        try{
+                            RateList[k].push(item.children[i][k]);
+                            } catch(error){
+                            RateList[k].push(0);
+                            }
+                        }
                     }
                     else{
-                        maskedRateList.push(item.children[i].m);
-                        latentRateList.push(item.children[i].l);
-                        signaledRateList.push(item.children[i].s);
-                        silentRateList.push(item.children[i].c);    
-                        failureRateList.push(item.children[i].f);
-                        hangRateList.push(item.children[i].h);     
+                        for (let k in RateList) {
+                            RateList[k].push(item.children[i][k+'_p']);
+                        }    
                     }
                 }
+            }
+            for(i=0;i<fmodes_lbl.length;i++){
+                data_set[i].data = RateList[fmodes_lbl[i]];
             }
             bar_chart.update();            
         }            
@@ -771,13 +721,8 @@ function UpdateTreeView(source) {
           return d.children || d._children ? "end" : "start";
       })
       .text(function(d) {
-            if(smode == 'm'){return(d.data.name + ': ' + (percentageview ? d.data.m_p + '%': d.data.m)); }
-            else if(smode == 'l'){return(d.data.name + ': ' + (percentageview ? d.data.l_p + '%': d.data.l)); }
-            else if(smode == 's'){return(d.data.name + ': ' + (percentageview ? d.data.s_p + '%': d.data.s)); }
-            else if(smode == 'c'){return(d.data.name + ': ' + (percentageview ? d.data.c_p + '%': d.data.c)); }
-            else if(smode == 'h'){return(d.data.name + ': ' + (percentageview ? d.data.h_p + '%': d.data.h)); }
-            else if(smode == 'f'){return(d.data.name + ': ' + (percentageview ? d.data.f_p + '%': d.data.f)); }
-            else {return(d.data.name + ': ' + (percentageview ? (d.data.m_p + "%_" + d.data.l_p + "%_"+ d.data.s_p + "%_"+ d.data.c_p+"%") : (d.data.m + "_" + d.data.l + "_"+ d.data.s + "_"+ d.data.c))); };
+            return(d.data.name + ': ' + (percentageview ? d.data[smode+'_p'] + '%': d.data[smode]))
+            
             });
 
   var nodeUpdate = nodeEnter.merge(node);

@@ -50,64 +50,36 @@ class CellTypes:
     EssentialBits, LUT, FF, BRAM, LUTRAM = range(5)
 
 
-class FailureModes:
-    Masked, Latent, Fail, Hang, Timeout, ReplicaFail, ReplicaTimeout, ReplicaHang, Other = range(9)
-
-    @staticmethod
-    def to_string(fmode):
-        labels = ['Masked', 'Latent', 'Fail', 'Hang', 'Timeout', 'ReplicaFail', 'ReplicaTimeout', 'ReplicaHang', 'Other']
-        if fmode <= len(labels):
-            return labels[fmode]
-        else:
-            return 'Other'
-
-
 class InjectionStatistics:
     def __init__(self):
         self.population_size = int(0)
         self.sample_size = int(0)
-        self.status_messages = {}   #status_message :  FailureModes
-        self.abs_stat = {}
-        self.per_stat = {}
-        self.err_stat = {}
-
-    def register_failure_mode(self, status_msg, fmode=FailureModes.Other):
-        self.status_messages[status_msg.lower()] = fmode
-        if fmode not in self.abs_stat:
-            self.abs_stat[fmode] = 0
-        if fmode not in self.per_stat:
-            self.per_stat[fmode] = float(0)
-        if fmode not in self.err_stat:
-            self.err_stat[fmode] = float(0)
-
-    def get_failure_mode(self, status_msg):
-        if status_msg.lower() in self.status_messages:
-            return self.status_messages[status_msg.lower()]
-        else:
-            return FailureModes.Other
+        self.abs = {}
+        self.per = {}
+        self.err = {}
 
     def append(self, fmode):
-        if fmode in self.abs_stat:
-            self.abs_stat[fmode] += 1
+        if fmode in self.abs:
+            self.abs[fmode] += 1
         else:
-            self.abs_stat[fmode] = 1
+            self.abs[fmode] = 1
         self.update_stat()
 
     def get_error_margin(self, p, sample_size, population_size, t=1.96):
         return t*math.sqrt(p*(1-p)*(population_size-sample_size) / (sample_size*(population_size-1)))
 
     def update_stat(self):
-        self.sample_size = sum(self.abs_stat.values())
-        for fmode, val in self.abs_stat.iteritems():
-            self.per_stat[fmode] = self.abs_stat[fmode] / float(self.sample_size)
-            self.err_stat[fmode] = self.get_error_margin(self.per_stat[fmode], self.sample_size, self.population_size, 1.96)
-            self.per_stat[fmode] *= 100.0
-            self.err_stat[fmode] *= 100.0
+        self.sample_size = sum(self.abs.values())
+        for fmode, val in self.abs.iteritems():
+            self.per[fmode] = self.abs[fmode] / float(self.sample_size)
+            self.err[fmode] = self.get_error_margin(self.per[fmode], self.sample_size, self.population_size, 1.96)
+            self.per[fmode] *= 100.0
+            self.err[fmode] *= 100.0
 
     def to_string(self):
         return (", ".join([u"{0:s}: {1:3d} ({2:2.2f}% \u00B1 {3:2.2f}%)".format(
-            FailureModes.to_string(k), self.abs_stat[k], self.per_stat[k], self.err_stat[k])
-            for k in sorted(self.abs_stat.keys())])).encode('utf-8')
+            k, self.abs[k], self.per[k], self.err[k])
+            for k in sorted(self.abs.keys())])).encode('utf-8')
 
 
 st_pattern = re.compile("Status:\s?{(.*?)}")
@@ -125,7 +97,8 @@ class FFIHostBase(object):
         self.fault_list = []
         self.moduledir = davos_dir
         self.InjStat = InjectionStatistics()
-        self.LastFmode = None
+        self.LastFmode, self.PrevFmode = None, None
+        self.FmodesToReset = ['hang']
         self.PartIdx = -1
 
     def sample_SEU(self, pb, cell_type, sample_size, multiplicity):

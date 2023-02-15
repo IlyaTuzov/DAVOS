@@ -388,7 +388,7 @@ CreateDBquery = {
             InjectionDuration REAL,
             ObservationTime REAL,
             Status CHARACTER(1),
-            FailureMode CHARACTER(1),
+            FailureMode VARCHAR(64),
             ErrorCount INTEGER,
             TrapCode VARCHAR(16),
             FaultToFailureLatency REAL,

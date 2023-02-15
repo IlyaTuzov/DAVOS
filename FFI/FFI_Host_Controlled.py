@@ -12,13 +12,19 @@
 # ------------------------------------------------------------------------------------------------------
 
 from FFI_Host_Base import *
-
+import pexpect
+import commands
 
 
 class FFIHostControlled(FFIHostBase):
-    def __init__(self, targetDir, DevicePart):
+    def __init__(self, targetDir, DevicePart, testbench_script):
         super(FFIHostControlled, self).__init__(targetDir, DevicePart)
-        self.restart_period = 100
+        self.restart_period = 10000
+        self.testbench_proc = None
+        self.testbench_script = testbench_script
+        self.testbench_port = 12345
+        self.consec_failures = 0
+        self.consec_timeouts = 0
 
     def load_faultlist(self, part_idx):
         print('Warning: Invoked abstract method load_faultlist() in {0:s} (this method must be overridden in subclass)',
@@ -33,17 +39,80 @@ class FFIHostControlled(FFIHostBase):
               self.__class__.__name__)
 
     def run_workload(self):
-        print('Warning: Invoked abstract method run_workload() in {0:s} (this method must be overridden in subclass)',
-              self.__class__.__name__)
-        self.InjStat.append('pass')
+        res = self.serv_communicate('localhost', self.testbench_port, "1\n", 10)
+        if res is not None:
+            self.LastFmode = res.split(':')[0]
+        else:
+            self.LastFmode = 'hang'
+        print("\t{0:20s}: {1:s} -- {2:s}".format('Injection result: ', self.LastFmode, str(res)))
+        self.testbench_proc.expect(r'.+')
+        return res
 
     def dut_recover(self):
-        print('Warning: Invoked abstract method run_workload() in {0:s} (this method must be overridden in subclass)',
-              self.__class__.__name__)
+        #detect hang loops (several consecutive hangs)
+        if self.LastFmode in self.FmodesToReset:
+            if self.LastFmode == self.PrevFmode:
+                self.restart_all('Repeated failure mode {0} : DUT and MIC restart'.format(self.LastFmode))
+                return
+            #try to recover testbench without reloading a bitstream
+            res = self.serv_communicate('localhost', self.testbench_port, "1\n", 10)
+            if res is not None: 
+                if res.lower().split(':')[0] not in self.FmodesToReset:
+                    print("\tDUT recovery check (post-SEU-remove): Ok")
+                    return
+                else:
+                    print("\tDUT recovery check (post-SEU-remove): Fail")
+                    status = self.connect_testbench(1, 30)
+                    if status > 0:
+                        self.restart_all('testbench hang')
+                        self.LastFmode = "hang"
+                        return
+                    res = self.serv_communicate('localhost', self.testbench_port, "1\n", 10)
+                    if res is not None:
+                        if res.lower().split(':')[0] not in self.FmodesToReset:
+                            print("\tDUT recovery check (post-Reset): Ok")
+                        else:
+                            print("\tDUT recovery check (post-Reset): Fail")
+                            self.restart_all('testbench hang')         
+                    else:
+                        print("\tDUT recovery check (post-Reset): testbench Hang")
+                        self.restart_all('testbench hang')
+                        return
+            else:
+                print("\tDUT recovery check (post-SEU-remove): Hang")
+                status = self.connect_testbench(3, 30)
+                if status > 0:
+                    self.restart_all('testbench hang')
+                    self.LastFmode = "hang"
+
 
     def restart_kernel(self):
         print('Warning: Invoked abstract method restart_kernel() in {0:s} (this method must be overridden in subclass)',
               self.__class__.__name__)
+
+    def restart_all(self, message):
+         print('Warning: Invoked abstract method restart_kernel() in {0:s} (this method must be overridden in subclass)',
+              self.__class__.__name__)       
+
+
+    def connect_testbench(self, attempts=1, maxtimeout=60):
+        for i in range(attempts):
+            if self.testbench_proc is not None:
+                self.testbench_proc.close(force=True)
+            # terminate any process that blocks testbench port (if any)
+            for k in range(2):
+                commands.getoutput('fuser -k %d/tcp' %(self.testbench_port))
+            time.sleep(1)
+            print('Running: {0:s} : attempt {1:d}'.format(self.testbench_script, i))
+            try:
+                self.testbench_proc = pexpect.spawn(self.testbench_script, timeout=maxtimeout)
+                self.testbench_proc.expect('DUT ready', timeout=maxtimeout)
+                print('testbench started at localhost:{0:d}'.format(self.testbench_port))
+                return (0)
+            except Exception as e:
+                print('connect_testbench() failure')
+        return (1)
+
 
     def run(self):
         self.PartIdx = -1
@@ -63,7 +132,8 @@ class FFIHostControlled(FFIHostBase):
             self.remove_fault(idx)
             self.dut_recover()
             self.InjStat.append(self.LastFmode)
-            faultdesc.FailureMode = FailureModes.to_string(self.LastFmode)
+            self.PrevFmode = self.LastFmode
+            faultdesc.FailureMode = self.LastFmode
             print("\t{0:20s}: {1:.1f} seconds (Total: {2:.1f} seconds), Statistics: {3:s}\n".format(
                 'Exp. Time', float(time.time() - start_time), float(time.time() - exp_start_time),
                 self.InjStat.to_string()))
@@ -82,7 +152,7 @@ class FFIHostControlled(FFIHostBase):
             buf = sct.recv(1024)
             s = re.search(st_pattern, buf)
             if s:
-                return (s.group(1))
+                return (s.group(1).lower())
             else:
                 print('serv_communicate(): return status: {0:s}'.format(str(buf)))
                 return (None)

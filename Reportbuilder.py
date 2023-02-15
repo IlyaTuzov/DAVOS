@@ -76,7 +76,7 @@ def build_querypage(config, toolconf, datamodel):
         content = content.replace('_#qforcedvalue', buf + '\n\t<option value=\"\">ANY</option>')
 
         buf = '\n\t<option value=\"\">ANY</option>'
-        for c in failuremodes_alias.values():
+        for c in datamodel.dbhelper.get_distinct('FailureMode', 'Injections', True):
             buf += '\n\t<option value=\"' + str(c) + '\">'+ str(c) + '</option>'
         content = content.replace('_#qfailuremode', buf)
 

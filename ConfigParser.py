@@ -791,6 +791,7 @@ class FFIConfiguration:
         self.platformconf = []
         self.pblock = None
         self.dut_script = ""
+        self.failure_modes_to_reset = []
         if xnode != None:
             self.build_from_xml(xnode)
 
@@ -822,6 +823,7 @@ class FFIConfiguration:
         self.fault_multiplicity = int(xnode.get('fault_multiplicity', '1'))
         self.injection_time = int(xnode.get('injection_time', '0'))
         self.dut_script = xnode.get('dut_script', '')
+        self.failure_modes_to_reset = xnode.get('failure_modes_to_reset', '').replace(" ", "").split(',')
 
         cp = xnode.get('post_injection_recovery_nodes', '')
         if cp != '': self.post_injection_recovery_nodes = ast.literal_eval(cp)
