@@ -782,7 +782,9 @@ class FFIConfiguration:
         self.seed = 1
         self.error_margin_goal = 0.1
         self.fault_multiplicity = 1
-        self.injection_time = 0
+        self.injection_time = [0, 0]
+        self.fault_duration = [0, 0] #min, max
+        self.fault_model = 0
         self.post_injection_recovery_nodes = []
         self.hdf_path = ""
         self.init_tcl_path = ""
@@ -821,7 +823,9 @@ class FFIConfiguration:
         self.seed = int(xnode.get('seed','1'))        
         self.error_margin_goal = float(xnode.get('error_margin_goal', '0.5'))
         self.fault_multiplicity = int(xnode.get('fault_multiplicity', '1'))
-        self.injection_time = int(xnode.get('injection_time', '0'))
+        self.injection_time = map(int, xnode.get('injection_time', '0').split(':'))
+        self.fault_duration = map(int, xnode.get('fault_duration', '0').split(':'))
+        self.fault_model = int(xnode.get('fault_model', '0'))
         self.dut_script = xnode.get('dut_script', '')
         self.failure_modes_to_reset = xnode.get('failure_modes_to_reset', '').replace(" ", "").split(',')
 

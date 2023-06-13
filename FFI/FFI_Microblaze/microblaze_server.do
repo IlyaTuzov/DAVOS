@@ -55,16 +55,30 @@ proc loadfaultlist { fname } {
 
 
 
-
+#arg1 command:  0-NoP, 
+#               1-Inject and wait for ack,  
+#               2-Recover and wait for ack,
+#               3-Inject (async) without ack
 proc excmd {arg1 arg2} {
     scan $arg1 %d cmd
     scan $arg2 %d data
-    mwr 0x20004 $data
-    after 1
-    mwr 0x20000 $cmd
-    if {[catch {con} er]} { }
-    after 10
-    return "Status: {[mrd -value 0x20008 2]}"
+
+    set status [mrd -value 0x20008]
+    # 0-ok, 1-hang, 2-error
+    if {$status != 0} {
+        return "Status: {$status [mrd -value 0x2000C]}"
+    } else { 
+        mwr 0x20004 $data
+        after 1
+        mwr 0x20000 $cmd
+        if {[catch {con} er]} { }
+        if {$cmd == 3} {
+            return "Status: {0 $data}"
+        } else {
+            after 100
+            return "Status: {[mrd -value 0x20008 2]}"
+        }
+    }
 }
 
 

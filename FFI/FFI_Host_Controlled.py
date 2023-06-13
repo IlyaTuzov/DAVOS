@@ -39,7 +39,7 @@ class FFIHostControlled(FFIHostBase):
               self.__class__.__name__)
 
     def run_workload(self):
-        res = self.serv_communicate('localhost', self.testbench_port, "1\n", 10)
+        res = self.serv_communicate('localhost', self.testbench_port, "1\n", 200)
         if res is not None:
             self.LastFmode = res.split(':')[0]
         else:
@@ -55,35 +55,49 @@ class FFIHostControlled(FFIHostBase):
                 self.restart_all('Repeated failure mode {0} : DUT and MIC restart'.format(self.LastFmode))
                 return
             #try to recover testbench without reloading a bitstream
-            res = self.serv_communicate('localhost', self.testbench_port, "1\n", 10)
+            try:
+                res = self.serv_communicate('localhost', self.testbench_port, "3\n", 200)
+            except Exception as e:
+                res = None
+            #res = self.serv_communicate('localhost', self.testbench_port, "2\n", 200)
+            #if res != 'ok':
+            #    self.restart_all('testbench hang')
+            #    self.LastFmode = "hang"
+            #    return
+            
             if res is not None: 
-                if res.lower().split(':')[0] not in self.FmodesToReset:
-                    print("\tDUT recovery check (post-SEU-remove): Ok")
-                    return
+                if res.lower().split(':')[0] == 'pass':
+                    print("\tDUT recovery check (post-SEU-remove): Ok, {0:s}".format(res))
                 else:
-                    print("\tDUT recovery check (post-SEU-remove): Fail")
-                    status = self.connect_testbench(1, 30)
-                    if status > 0:
-                        self.restart_all('testbench hang')
-                        self.LastFmode = "hang"
-                        return
-                    res = self.serv_communicate('localhost', self.testbench_port, "1\n", 10)
-                    if res is not None:
-                        if res.lower().split(':')[0] not in self.FmodesToReset:
-                            print("\tDUT recovery check (post-Reset): Ok")
-                        else:
-                            print("\tDUT recovery check (post-Reset): Fail")
-                            self.restart_all('testbench hang')         
-                    else:
-                        print("\tDUT recovery check (post-Reset): testbench Hang")
-                        self.restart_all('testbench hang')
-                        return
-            else:
-                print("\tDUT recovery check (post-SEU-remove): Hang")
-                status = self.connect_testbench(3, 30)
-                if status > 0:
+                    print("\tDUT recovery check (post-SEU-remove): Fail, {0:s}".format(res))
+                    #raw_input('Tesbench hang, press any key to restart...')
                     self.restart_all('testbench hang')
-                    self.LastFmode = "hang"
+                    #self.LastFmode = "hang"
+                    #status = self.serv_communicate('localhost', self.testbench_port, "2\n", 200)
+                    #status = self.connect_testbench(1, 300)        #!!!!!
+                    #if status > 0:
+                    #    self.restart_all('testbench hang')
+                    #    self.LastFmode = "hang"
+                    #    return
+                    #res = self.serv_communicate('localhost', self.testbench_port, "1\n", 10)
+                    #if res is not None:
+                    #    if res.lower().split(':')[0] not in self.FmodesToReset:
+                    #        print("\tDUT recovery check (post-Reset): Ok")
+                    #    else:
+                    #        print("\tDUT recovery check (post-Reset): Fail")
+                    #        self.restart_all('testbench hang')         
+                    #else:
+                    #    print("\tDUT recovery check (post-Reset): testbench Hang")
+                    #    self.restart_all('testbench hang')
+                    #    return
+            else:
+                print("\tDUT recovery check (post-SEU-remove): Fail")
+                #status = self.serv_communicate('localhost', self.testbench_port, "2\n", 200)
+                #status = self.connect_testbench(3, 300)        #!!!!!
+                #if status > 0:
+                #raw_input('Tesbench hang (None), press any key to restart...')
+                self.restart_all('testbench hang')
+                #self.LastFmode = "hang"
 
 
     def restart_kernel(self):
@@ -95,7 +109,7 @@ class FFIHostControlled(FFIHostBase):
               self.__class__.__name__)       
 
 
-    def connect_testbench(self, attempts=1, maxtimeout=60):
+    def connect_testbench(self, attempts=1, maxtimeout=300):
         for i in range(attempts):
             if self.testbench_proc is not None:
                 self.testbench_proc.close(force=True)
@@ -106,6 +120,7 @@ class FFIHostControlled(FFIHostBase):
             print('Running: {0:s} : attempt {1:d}'.format(self.testbench_script, i))
             try:
                 self.testbench_proc = pexpect.spawn(self.testbench_script, timeout=maxtimeout)
+                self.testbench_proc.logfile_read = sys.stdout
                 self.testbench_proc.expect('DUT ready', timeout=maxtimeout)
                 print('testbench started at localhost:{0:d}'.format(self.testbench_port))
                 return (0)
@@ -129,7 +144,10 @@ class FFIHostControlled(FFIHostBase):
                 self.PartIdx = faultdesc.PartIdx
             self.inject_fault(idx)
             self.run_workload()
-            self.remove_fault(idx)
+            if self.fault_list[idx].FaultModel == FaultModels.PermanentSBU:
+                self.remove_fault(idx)
+            else:
+                print("\t{0:20s}: {1:s}".format('Fault removal', 'Not required for transient faults'))
             self.dut_recover()
             self.InjStat.append(self.LastFmode)
             self.PrevFmode = self.LastFmode
@@ -157,4 +175,5 @@ class FFIHostControlled(FFIHostBase):
                 print('serv_communicate(): return status: {0:s}'.format(str(buf)))
                 return (None)
         except socket.timeout as e:
+            print('Testbench Timeout')
             return (None)

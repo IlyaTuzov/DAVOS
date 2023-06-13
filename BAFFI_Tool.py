@@ -87,7 +87,7 @@ def run_zynq_injector(davosconf, modelconf):
             jdesc.PopulationSize = Injector.EssentialBitsPerBlockType[jdesc.Blocktype]
             jdesc.WorkloadDuration = davosconf.FFI.workload_duration
             jdesc.DetectLatentErrors = davosconf.FFI.detect_latent_errors
-            jdesc.InjectionTime = davosconf.FFI.injection_time
+            jdesc.InjectionTime = davosconf.FFI.injection_time[0]
             res = Injector.run(OperatingModes.SampleUntilErrorMargin, jdesc, False)
             print("Result: SampleSize: {0:9d}, Failures: {1:9d}, FailureRate: {2:3.5f} +/- {3:3.5f} ".format(
                 res.ExperimentsCompleted, res.Failures, res.failure_rate, res.failure_error))
@@ -120,17 +120,17 @@ def run_microblaze_injector(davosconf, modelconf):
             pb = None
         if davosconf.FFI.target_logic == 'type0':
             Injector.initialize(hashing, "", davosconf.FFI.dut_scope, pb, False)
-            Injector.sample_SEU(pb, CellTypes.EssentialBits, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
+            Injector.sample_SEU(pb, CellTypes.EssentialBits, davosconf.FFI)
         elif davosconf.FFI.target_logic == 'lut':
             Injector.initialize(hashing, "", davosconf.FFI.dut_scope, pb, False)
             Injector.design.map_lut_cells(davosconf.FFI.dut_scope, pb)
-            Injector.sample_SEU(pb, CellTypes.LUT, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
+            Injector.sample_SEU(pb, CellTypes.LUT, davosconf.FFI)
         elif davosconf.FFI.target_logic == 'ff':
             Injector.initialize(hashing, "", davosconf.FFI.dut_scope, pb, True)
-            Injector.sample_SEU(pb, CellTypes.FF, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
+            Injector.sample_SEU(pb, CellTypes.FF, davosconf.FFI)
         elif davosconf.FFI.target_logic == 'bram':
             Injector.initialize(hashing, "", davosconf.FFI.dut_scope, pb, True)
-            Injector.sample_SEU(pb, CellTypes.BRAM, davosconf.FFI.sample_size_goal, davosconf.FFI.fault_multiplicity)
+            Injector.sample_SEU(pb, CellTypes.BRAM, davosconf.FFI)
         Injector.export_fault_list_bin(1000)
         Injector.export_fault_list_csv()
         #raw_input('Injector configured, Press any key to run the experiment...')

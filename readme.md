@@ -195,6 +195,12 @@ dependability benchmarking and dependability-driven design space exploration (DS
    Parses the bitstream, essential bits mask, logic location file, and the netlist of the Vivado design, relating them under an internal design model.
    Performs the bit-accurate mapping of essential bits with the hierarchical netlist to support bit-precise FFI.
 
+   To extract LUT content from the bitstream (into a .csv file) use the following command: 
+
+    ```shell
+    ~/DAVOS$ python Parsers/DesignParser.py op=parse_bitstream bitfile=bitfile.bit skipempty=true bitorder=false
+    ```
+
 ## Compatibility and System Requirements
 DAVOS supports Linux and Windows OS.
 

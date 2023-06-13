@@ -34,16 +34,20 @@ class SEU_item:
         self.SLR, self.FAR = 0x0, 0x0
         self.Word, self.Bit, self.Mask = 0x0, 0x0, 0x0
         self.Time = 0
+        self.Duration = 0
 
+class FaultModels:
+    PermanentSBU, TransientSBU = range(2)
 
 class FaultDescriptor:
-    def __init__(self, Id, CellType, multiplicity=1):
+    def __init__(self, Id, CellType, FaultModel, multiplicity=1):
         self.Id = Id
         self.CellType = CellType
         self.Multiplicity = multiplicity
         self.SeuItems = []
         self.PartIdx = 0
         self.FailureMode = '-'
+        self.FaultModel = FaultModel
 
 
 class CellTypes:
@@ -101,14 +105,16 @@ class FFIHostBase(object):
         self.FmodesToReset = ['hang']
         self.PartIdx = -1
 
-    def sample_SEU(self, pb, cell_type, sample_size, multiplicity):
+
+    #  injection_time_interval, fault_duration_interval
+    def sample_SEU(self, pb, cell_type, exp_conf):
         random.seed(12345)
         if cell_type == CellTypes.EssentialBits:
             framelist = self.design.getFarList_for_Pblock(pb.X1, pb.Y1, pb.X2, pb.Y2)
             self.InjStat.population_size = sum(frame.stat.EssentialBitsCount for frame in framelist)
-            for i in range(sample_size):
-                fconf = FaultDescriptor(i, CellTypes.EssentialBits, multiplicity)
-                for j in range(multiplicity):
+            for i in range(exp_conf.sample_size_goal):
+                fexp_conf = FaultDescriptor(i, CellTypes.EssentialBits, exp_conf.fault_model, exp_conf.fault_multiplicity)
+                for j in range(exp_conf.fault_multiplicity):
                     seu = SEU_item()
                     essential_bit_mask = 0x0
                     while (essential_bit_mask >> seu.Bit) & 0x1 == 0x0:
@@ -122,14 +128,16 @@ class FFIHostBase(object):
                     f = FarFields.from_FAR(seu.FAR, self.design.series)
                     seu.DesignNode = 'EB:{0:08x}:(Type_{1:01d}/Top_{2:01d}/Row_{3:01d}/Column_{4:03d}/Frame_{5:02d})/Word_{6:03d}/Bit_{7:02d}'.format(
                         seu.SLR, f.BlockType, f.Top, f.Row, f.Major, f.Minor, seu.Word, seu.Bit)
-                    fconf.SeuItems.append(seu)
-                self.fault_list.append(fconf)
+                    seu.Time = random.randint(exp_conf.injection_time[0], exp_conf.injection_time[1])
+                    seu.Duration = 0 if fexp_conf.FaultModel == FaultModels.PermanentSBU else random.randint(exp_conf.fault_duration[0], exp_conf.fault_duration[1]) 
+                    fexp_conf.SeuItems.append(seu)
+                self.fault_list.append(fexp_conf)
         elif cell_type == CellTypes.LUT:
             lustcells = self.design.netlist.get_cells(NetlistCellGroups.LUT)
             self.InjStat.population_size = sum(len(lut.bitmap.keys()) for lut in lustcells)
-            for i in range(sample_size):
-                fconf = FaultDescriptor(i, CellTypes.LUT, multiplicity)
-                for j in range(multiplicity):
+            for i in range(exp_conf.sample_size_goal):
+                fexp_conf = FaultDescriptor(i, CellTypes.LUT, exp_conf.fault_model, exp_conf.fault_multiplicity)
+                for j in range(exp_conf.fault_multiplicity):
                     seu = SEU_item()
                     essential_bit_mask = 0x0
                     while (essential_bit_mask >> seu.Bit) & 0x1 == 0x0:
@@ -141,12 +149,14 @@ class FFIHostBase(object):
                         essential_bit_mask = frame.mask[seu.Word]
                     seu.Mask = 0x1 << seu.Bit
                     seu.DesignNode = '{0:s}/bit_{1:02d}'.format(lut.name, lut_bit_index)
-                    fconf.SeuItems.append(seu)
-                self.fault_list.append(fconf)
+                    seu.Time = random.randint(exp_conf.injection_time[0], exp_conf.injection_time[1])
+                    seu.Duration = 0 if fexp_conf.FaultModel == FaultModels.PermanentSBU else random.randint(exp_conf.fault_duration[0], exp_conf.fault_duration[1]) 
+                    fexp_conf.SeuItems.append(seu)
+                self.fault_list.append(fexp_conf)
         elif cell_type == CellTypes.FF:
             ffcells = self.design.netlist.get_cells(NetlistCellGroups.FF)
             self.InjStat.population_size = sum(len(ff.bitmap.keys()) for ff in ffcells)
-        print('Sampled faults: {0:d} (population size = {1:d})'.format(sample_size, self.InjStat.population_size))
+        print('Sampled faults: {0:d} (population size = {1:d})'.format(exp_conf.sample_size_goal, self.InjStat.population_size))
 
     def export_fault_list_bin(self, part_size=1000):
         specificator = '<L'         #Little Endian
@@ -164,23 +174,24 @@ class FFIHostBase(object):
                     for seu in fdesc.SeuItems:
                         seu.Offset = offset
                         offset += 1
-                        #Export SEU descriptor to the binary file (7 words x 32-bit)
-                        for atr in [fdesc.Id, seu.Offset, fdesc.CellType, seu.SLR,
-                                    seu.FAR, seu.Word, seu.Mask, seu.Time]:
+                        #Export SEU descriptor to the binary file (10 words x 32-bit)
+                        for atr in [fdesc.Id, seu.Offset, fdesc.CellType, fdesc.FaultModel,
+                                    seu.SLR,  seu.FAR,    seu.Word,       seu.Mask, 
+                                    seu.Time, seu.Duration]:
                             f.write(struct.pack(specificator, atr))
 
     def get_fdesc_labels(self):
-        return ['Id', 'PartIdx', 'CellType', 'Multiplicity', 'FailureMode', 'Offset', 'DesignNode', 'SLR', 'FAR',
-                'Word', 'Bit', 'Mask', 'Time']
+        return ['Id', 'PartIdx', 'CellType', 'FaultModel', 'Multiplicity', 'FailureMode', 'Offset', 'DesignNode', 'SLR', 'FAR',
+                'Word', 'Bit', 'Mask', 'Time', 'Duration']
 
     def faultdesc_format_str(self, idx):
         res = []
         fdesc = self.fault_list[idx]
         for seu in fdesc.SeuItems:
             res.append(map(str, [
-                fdesc.Id, fdesc.PartIdx, fdesc.CellType, fdesc.Multiplicity, fdesc.FailureMode,
+                fdesc.Id, fdesc.PartIdx, fdesc.CellType, fdesc.FaultModel, fdesc.Multiplicity,  fdesc.FailureMode,
                 seu.Offset, seu.DesignNode, '0x{0:08x}'.format(seu.SLR), '0x{0:08x}'.format(seu.FAR), seu.Word, seu.Bit,
-                '0x{0:08x}'.format(seu.Mask), seu.Time, ]))
+                '0x{0:08x}'.format(seu.Mask), seu.Time, seu.Duration]))
         return res
 
     def export_fault_list_csv(self):
@@ -200,6 +211,7 @@ class FFIHostBase(object):
             fdesc = FaultDescriptor(
                 int(Fdesctab.getByLabel('Id', i)),
                 int(Fdesctab.getByLabel('CellType', i)),
+                int(Fdesctab.getByLabel('FaultModel', i)),
                 int(Fdesctab.getByLabel('Multiplicity', i)))
             fdesc.PartIdx = int(Fdesctab.getByLabel('PartIdx', i))
             fdesc.FailureMode = Fdesctab.getByLabel('FailureMode', i)
@@ -213,6 +225,7 @@ class FFIHostBase(object):
                 seu.Bit = int(Fdesctab.getByLabel('Bit', i))
                 seu.Mask = int(Fdesctab.getByLabel('Mask', i), 16)
                 seu.Time = int(Fdesctab.getByLabel('Time', i))
+                seu.Duration = int(Fdesctab.getByLabel('Duration', i))
                 fdesc.SeuItems.append(seu)
                 i += 1
             self.fault_list.append(fdesc)

@@ -130,6 +130,8 @@ class simDump:
         self.v_out_filtered = []
         self.v_int_filtered = []
         self.fname = fname
+        self.inj_target = None
+        self.int_time = None
     
     #input - simInitModel.do
     #result - self.internal_labels, self.output_labels

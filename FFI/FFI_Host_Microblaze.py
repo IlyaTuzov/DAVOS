@@ -9,7 +9,7 @@
 #
 # Authors: Ilya Tuzov, Universitat Politecnica de Valencia
 #          Gabriel Cobos Tello, Universitat Politecnica de Valencia
-# ---------------------------------------------------------------------------------------------s---------
+# ------------------------------------------------------------------------------------------------------
 
 
 from FFI_Host_Controlled import *
@@ -87,7 +87,7 @@ class FFIHostMicroblaze(FFIHostControlled):
             i += 1
             print('Restarting XSCT and testbench {0:s}: attempt {1:d}'.format(message, i))
             self.connect_microblaze()
-            status = self.connect_testbench(2, 60)
+            status = self.connect_testbench(1, 300)
             if status == 0:
                 if self.PartIdx >= 0:
                     self.load_faultlist(self.PartIdx)
@@ -98,7 +98,8 @@ class FFIHostMicroblaze(FFIHostControlled):
 
     def inject_fault(self, idx):
         data = self.fault_list[idx].SeuItems[0].Offset
-        res = self.serv_communicate('localhost', self.mic_port, "{0:d} {1:d}\n".format(1, data))
+        cmd = 1 if self.fault_list[idx].FaultModel==FaultModels.PermanentSBU else 3
+        res = self.serv_communicate('localhost', self.mic_port, "{0:d} {1:d}\n".format(cmd, data))
         MIC_OK = False
         if res is not None:
             status = map(int, res.split())

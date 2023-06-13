@@ -11,14 +11,17 @@
 # Author: Ilya Tuzov, Universitat Politecnica de Valencia
 # ------------------------------------------------------------------------------------------------------
 
-from Davos_Generic import *
 import struct
 import ast
 from collections import OrderedDict
 import copy
+import os
+import sys
+import re
+import glob
 DAVOSPATH = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 sys.path.insert(1, DAVOSPATH)
-
+import Davos_Generic
 
 
 
