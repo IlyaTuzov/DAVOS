@@ -5,29 +5,29 @@
             mode = clean / continue
         -->
     <DAVOS
-        report_dir = "C:/HTWEB/SELENE_STG_SIM"
-        experiment_label = "SELENE_SIM"
+        report_dir = "/home2/tuil/HTWEB"
+        experiment_label = "DEMO"
         platform = "Multicore"
         maxproc = "4" >
 
 
-
 		<ModelConfig
-			work_dir = "C:\Projects\selene_sim\3_aes"
-            checkpoint = "./checkpoints/seleneMC.sim"
+			work_dir = "/home2/tuil/selene-hardware_demo/selene-soc/selene-xilinx-vcu118"
+            checkpoint = "./checkpoints/seleneMC_RF_DFF.sim"
             design_type = "RTL"
-			label = "SeleneMC"
+			label = "SeleneMC_1_matmult"
 			clk_period = "10.0"
             simulation_time = "20000"
 		/>
-
+        
 
         <SBFI
-            clean_run = "off"
+            clean_run = "on"
             checkpoint_mode = "ColdRestore"
-            initializer = "off"
+            initializer = "on"
             profiler = "off"
             injector = "on"
+            analyzer = "on"
             reportbuilder = "on"
             time_quota =  "20:00:00"
             fault_dictionary = "./FaultDictionaries/Xilinx_Unisim_Ver.xml"
@@ -41,12 +41,12 @@
 
 
 
-            <ObservationScope unit_path = "testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/"
-                              node_filter = "ahbo.*"
-                              sampling_options = ""
-                              scope_filter = ""
+            <ObservationScope unit_path = "testbench/cpu/cpu/core0/gpp0/noelv0/cpuloop(0)/core/u0/dffrf/rf0"
+                              node_filter = "r.*"
+                              sampling_options = "-notrigger"
+                              scope_filter = "-internal"
                               group = "INTERNALS"
-                              label_prefix = "core0."
+                              label_prefix = "Core0_RegFile_"
                               domain = "Core0"
             />
 
@@ -54,7 +54,7 @@
 
             <ObservationItem
                 path= "/testbench/cpu/cpu/core0/mem0/mig_gen/sim_ram_gen/axi_mem/rb/p/logpages(1).data"
-                array_range = "0:63"
+                array_range = "0:127"
                 label = "Core0.Res"
                 sampling_options = ""
                 group = "OUTPUTS"
@@ -69,20 +69,41 @@
                 multiplicity = "1"
                 time_mode = "Relative"
                 injection_time_start = "0.0"
-                injection_time_end = "0.2"
+                injection_time_end = "0.5"
                 experiments_per_target = "1"
-                sample_size = "1000"
+                sample_size = "100"
                 rand_seed	= "10"
                 CCF = ""
-                Offsets = "0, 10, 20, 30, 40, 50, 100, 500, 1000, 2000, 5000, 10000"
             />
 			
-
-
-
 				
-			
-			
+            <faultload
+                model = "StuckAt"
+                forced_value = "0"
+                target_logic = "SIGNAL"
+                multiplicity = "1"
+                time_mode = "Relative"
+                injection_time_start = "0.0"
+                injection_time_end = "0.0"
+                experiments_per_target = "1"
+                sample_size = "100"
+                rand_seed	= "10"
+                CCF = ""
+            />
+
+            <faultload
+                model = "StuckAt"
+                forced_value = "1"
+                target_logic = "SIGNAL"
+                multiplicity = "1"
+                time_mode = "Relative"
+                injection_time_start = "0.0"
+                injection_time_end = "0.0"
+                experiments_per_target = "1"
+                sample_size = "100"
+                rand_seed	= "10"
+                CCF = ""
+            />			
 			
             <!-- domain_mode: "" / SIMPLEX / TMR -->
             <Analyzer
@@ -127,6 +148,11 @@
                             
         dut_script 			    = grmon -u -uart /dev/ttyUSB2 -c /home2/tuil/DAVOS/testconfig/testbench_selene.do
         python /home2/tuil/DAVOS/testconfig/testbench_linux.py
+        
+            Transient example:
+            injection_time 		    = "500000:1500000"
+            fault_model             = "1"
+            fault_duration          = "1:10"
 
 	-->
         <FFI
@@ -136,12 +162,12 @@
 			fault_multiplicity	    = "1"
 			sample_size_goal 	    = "1000"
 			error_margin_goal 	    = "0.5"            
-			injection_time 		    = "500000:1500000"
-            fault_model             = "1"
-            fault_duration          = "1:10"
+			injection_time 		    = "0:0"
+            fault_model             = "0"
+            fault_duration          = "0:0"
             CCF                     = ""            
-            dut_script 			    = "python /home2/tuil/DAVOS/testconfig/testbench_linux.py"
-            failure_modes_to_reset  = "timeout, sdc"
+            dut_script 			    = "python /home2/tuil/DAVOS/testconfig/testbench_linux_v3.py"
+            failure_modes_to_reset  = "timeout, sdc, linux_crash, testbench_exception"
 
 			injector 			    = "MICROBLAZE"
             injector_phase 		    = "on"

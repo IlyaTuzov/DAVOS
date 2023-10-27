@@ -376,7 +376,7 @@ class ParConfig:
         self.checkpoint = xnode.get('checkpoint', '')
         self.design_type = xnode.get('design_type', 'RTL').lower()
         self.label = xnode.get('label')
-        self.clk_period = float(xnode.get('clk_period'))
+        self.clk_period = float(xnode.get('clk_period', '1.0'))
         self.workload_time = int(xnode.get('simulation_time'))
 
         
@@ -392,6 +392,7 @@ class SBFIConfiguration:
         self.initializer_phase = False
         self.profiler_phase = False
         self.injector_phase = False
+        self.analyzer_phase = False                   
         self.reportbuilder_phase = False
         self.time_quota = '20:00:00'
         self.fault_dictionary = ''
@@ -408,10 +409,11 @@ class SBFIConfiguration:
     def build_from_xml(self, xnode):
         self.clean_run = True if xnode.get('clean_run','').lower() == 'on' else False
         self.checkpoint_mode = CheckpointModes.WarmRestore if xnode.get('checkpoint_mode', '').lower() == 'warmrestore' else CheckpointModes.ColdRestore
-        self.initializer_phase = True if xnode.get('initializer_phase', '') == 'on' else False
-        self.profiler_phase = True if xnode.get('profiler_phase', '') == 'on' else False
-        self.injector_phase = True if xnode.get('injector_phase', '') == 'on' else False
-        self.reportbuilder_phase = True if xnode.get('reportbuilder_phase', '') == 'on' else False
+        self.initializer_phase = True if xnode.get('initializer', '') == 'on' else False
+        self.profiler_phase = True if xnode.get('profiler', '') == 'on' else False
+        self.injector_phase = True if xnode.get('injector', '') == 'on' else False
+        self.analyzer_phase = True if xnode.get('analyzer', '') == 'on' else False                                                                        
+        self.reportbuilder_phase = True if xnode.get('reportbuilder', '') == 'on' else False
         self.time_quota = xnode.get('time_quota', '20:00:00')
         self.fault_dictionary = xnode.get('fault_dictionary')
         for i in xnode.findall('InjectionScope'):

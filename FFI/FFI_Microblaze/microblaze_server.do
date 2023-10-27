@@ -8,10 +8,15 @@ variable CLKBUFADR 0x44A00000
 proc restart {bitstream} {
     global CLKBUFADR
     connect 
-    target 1
+    #targets -set -filter {name =~ "xcvu9p"} -index 0
+    set pl_index [lindex [targets -filter {name =~ "*xcvu9p*"}] 0]
+    set ps_index [expr $pl_index+2]
+    puts "PL (FPGA) target index: $pl_index, PS target index: $ps_index"
+    target $pl_index
     fpga -file $bitstream
+    puts "FPGA programmed"
     after 1000
-    target 3
+    target $ps_index
     #CLKBUF: free clocking mode
     mwr [expr $CLKBUFADR + 0x4] 0x2
     #configure reset duration for 110 clk cycles
@@ -31,13 +36,15 @@ proc dut_reset { } {
 proc run_kernel { } {
     global micapp
     after 2000
-    target 3
+    set mic_index [regexp -all -inline -- {[0-9]+} [lindex [targets -filter {name =~ "*MicroBlaze #0*"}] 0]]
+    target $mic_index
     rst -processor
     after 2000
     if {[catch {dow $micapp} er]} { }
-    if {[catch {target 3} er]} { }
+    if {[catch {target $mic_index} er]} { }
     if {[catch {con} er]} { }  
-    if {[catch {con} er]} { }      
+    if {[catch {con} er]} { }    
+    puts "FFI controller (microblaze) initialized"  
     return "Status: {ok $micapp}"    
 }
 

@@ -120,6 +120,7 @@ class SimVector:
 class simDump:
     def __init__(self, fname=""):
         self.vectors = []
+        self.vector_dict = dict()
         self.internal_labels = []
         self.output_labels = []
         self.internal_domain = []
@@ -130,24 +131,25 @@ class simDump:
         self.v_out_filtered = []
         self.v_int_filtered = []
         self.fname = fname
-        self.inj_target = None
-        self.int_time = None
     
     #input - simInitModel.do
     #result - self.internal_labels, self.output_labels
-    def build_labels_from_file(self, fname="", rename_list=None):
-        initfile = open(fname,'r')
-        self.fname = fname
-        fcontent = initfile.read()
-        initfile.close()
+    def build_labels_from_file(self, file="", rename_list=None):
+        if isinstance(file, str):        
+            initfile = open(file,'r')
+            self.fname = file
+            fcontent = initfile.read()
+            initfile.close()
+        else:
+            fcontent = file.read()
         internals_content = find_between(fcontent, "#<INTERNALS>","#</INTERNALS>")
         outputs_content = find_between(fcontent, "#<OUTPUTS>","#</OUTPUTS>")
-        for item in re.findall("-label \{(.+?)\}.*?#domain=\{(.+?)\}", internals_content):
+        for item in re.findall("-label \{(.+?)\} \{.+?\}(; #domain=\{(.+?)\})?", internals_content):
             self.internal_labels.append(item[0])
-            self.internal_domain.append(item[1])
-        for item in re.findall("-label \{(.+?)\}.*?#domain=\{(.+?)\}", outputs_content):
+            self.internal_domain.append(item[2])
+        for item in re.findall("-label \{(.+?)\} \{.+?\}(; #domain=\{(.+?)\})?", outputs_content):
             self.output_labels.append(item[0])
-            self.output_domain.append(item[1])
+            self.output_domain.append(item[2])
         for key in sorted(list(set(self.output_domain))):
             for i, v in enumerate(self.output_domain):
                 if v == key:
@@ -178,14 +180,17 @@ class simDump:
         return(0)        
         
 
-    def normalize_array_labels(self, dumpfilename):
-        if not os.path.exists(dumpfilename):
-            return(None)
-        with open(dumpfilename, 'r') as dumpfile:
-            lines = dumpfile.readlines()
+    def normalize_array_labels(self, file):
+        if isinstance(file, str):
+            if not os.path.exists(file):
+                return(None)
+            with open(file, 'r') as dumpfile:
+                lines = dumpfile.readlines()
+        else:
+            lines = file.readlines()
         for l in lines:
             if re.match('^\s*?[0-9]+', l):
-                clm = re.findall("[0-9a-zA-Z\.\+\-\*{}]+", l)
+                clm = re.findall("[0-9a-zA-Z\.\+\-\*{}\?]+", l)
                 data_ind = 2
                 normalized_internal_labels = []
                 for label_i in range(len(self.internal_labels)):
@@ -218,17 +223,21 @@ class simDump:
              
     #input - dump file *.lst
     #result - self.vectors
-    def build_vectors_from_file(self, fname):
-        if not os.path.exists(fname):
-            return(None)
-        self.caption = fname
-        with open(fname, 'r') as dumpfile:
-            lines = dumpfile.readlines()
+    def build_vectors_from_file(self, file):
+        if isinstance(file, str):
+            if not os.path.exists(file):
+                return(None)
+            self.caption = file
+            with open(file, 'r') as dumpfile:
+                lines = dumpfile.readlines()
+        else:
+            lines = file.readlines()
         try:
             timeunit = re.findall('\s*(.*?)\s+',lines[0])[0]
         except:
             print('Skipping corrupted sim dump')
             return(None)
+        self.vector_dict = dict()            
         for l in lines:
             if re.match(vect_start_ptn, l.replace('{','').replace('}','')):
                 v = SimVector()
@@ -237,6 +246,7 @@ class simDump:
                 if   timeunit=='ps': v.time = v.time/1000.0
                 elif timeunit=='fs': v.time = v.time/1000000.0
                 self.vectors.append(v)
+                self.vector_dict[v.time] = v
         if(len(self.vectors) == 0):
             with open('error_log.txt','a') as err_log:
                 err_log.write('\nEmpty list file: '+ fname)
@@ -583,6 +593,10 @@ class simDump:
                 self.value_range[key] = (min(vlist), max(vlist))
         return self.value_range
 
+    def select_vectors(self, key, value):
+        vname, c_index = self.get_index_by_label(key)
+        return [self.vectors[i] for i in range(len(self.vectors)) if (vname == 'outputs' and self.vectors[i].outputs[c_index] == value) or 
+                                                                    (vname == 'internals' and self.vectors[i].internals[c_index] == value) ]
 
 if __name__=="__main__":
     inj_dump = simDump()

@@ -13,6 +13,7 @@ import time
 
 ETH_INITIALIZED = False
 grmon_proc, linux_proc = None, None
+grmon_message_buf = ['']
 MAX_RETRIES = 1
     
 def eth_config(selene_dir):  
@@ -36,6 +37,7 @@ def eth_config(selene_dir):
         grmon_proc.close()        
         time.sleep(5)
 
+
 def boot_linux(selene_dir):   
     global grmon_proc
     with open(os.path.join(selene_dir, "grmon_davos.do"), "w") as f:
@@ -55,20 +57,7 @@ def boot_linux(selene_dir):
     for i in range(MAX_RETRIES):
         try:
             print("BOOT LINUX: START")
-            #grmon_proc = pexpect.spawn(script, timeout=300)
-            #grmon_proc.logfile_read = sys.stdout
-            #index = grmon_proc.expect(['Started Journal Service', 'Error occurred'], timeout=300)
-            #if index == 0:
-            #    print("BOOT LINUX: ongoing") 
-            #    break
-            #else:
-            #    print("BOOT LINUX: Error")
-            #    if i==MAX_RETRIES-1:
-            #        return False
-            #    continue
-            with open(os.path.join(selene_dir, 'LinuxBoot.log'), 'w') as logfile:
-                with open(os.path.join(selene_dir, 'LinuxBoot.err'), 'w') as errfile:
-                    grmon_proc = subprocess.Popen(script, stdin=subprocess.PIPE, stdout=logfile, stderr=errfile, shell=True)
+            grmon_proc = subprocess.Popen(script, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         except Exception as e:
             print(str(e))
             print("BOOT LINUX: FAILURE")   
@@ -80,6 +69,12 @@ def boot_linux(selene_dir):
     return True
     
     
+def capture_grmon_out(f, buffer):
+    print("capture_grmon_out started")
+    while True:
+        line=f.readline()
+        if line:
+            grmon_message_buf[-1] += line    
 
 
 
@@ -87,8 +82,6 @@ def get_linux_terminal():
     global linux_proc
     try:
         if linux_proc is not None:
-            #linux_proc.logout()
-            linux_proc.close()
             linux_proc.close()
     except Exception as e:
         print(str(e))
@@ -96,7 +89,7 @@ def get_linux_terminal():
     linux_proc = pxssh.pxssh()
     for i in range(MAX_RETRIES):
         try:
-            linux_proc.login("192.168.0.153", "riscv", "riscv", login_timeout=60, sync_multiplier=60)
+            linux_proc.login("192.168.0.153", "riscv", "riscv", login_timeout=120, sync_multiplier=60)
             break
         except Exception as e:
             print(str(e))
@@ -212,7 +205,11 @@ sct.bind((HOST, PORT))
 sct.listen(5)
 
 eth_config("/home2/tuil/selene_axi4/selene-hardware/selene-soc/selene-xilinx-vcu118")
-grmon_proc = boot_linux("/home2/tuil/selene_axi4/selene-hardware/selene-soc/selene-xilinx-vcu118")
+boot_linux("/home2/tuil/selene_axi4/selene-hardware/selene-soc/selene-xilinx-vcu118")
+t = Thread(target=capture_grmon_out, args=(grmon_proc.stdout, grmon_message_buf))
+t.daemon=True
+t.start()
+
 get_linux_terminal()
 
 print("DUT ready")

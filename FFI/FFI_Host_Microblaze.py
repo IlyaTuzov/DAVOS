@@ -105,8 +105,9 @@ class FFIHostMicroblaze(FFIHostControlled):
             status = map(int, res.split())
             if (status[0] == 0) and (status[1] == data):
                 MIC_OK = True
-            print("Exp: {0:d}, Target: {1:s} \n\t{2:20s}: {3:s}".format(
-                idx, self.fault_list[idx].SeuItems[0].DesignNode, 'Injection status', 'Ok' if MIC_OK else 'Fail'))
+            print("Exp: {0:d}, Target: {1:s}, Duration: {2:d}, FFI cmd: {3:d} \n\t{4:20s}: {5:s} ".format(
+                idx, self.fault_list[idx].SeuItems[0].DesignNode, self.fault_list[idx].SeuItems[0].Duration, cmd, 
+                'Injection status', 'Ok' if MIC_OK else 'Fail'))
         else:
             print("Microblaze connection error")               
         if not MIC_OK:

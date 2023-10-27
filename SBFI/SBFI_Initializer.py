@@ -183,7 +183,7 @@ def InitializeHDLModels(config, toolconf, c):
             trace = "\n\n# Signals in scope: {0}\nenv {0}\n".format(i.unit_path)
             if c.design_type == 'rtl':
                 for x in cdata.all_nodes:
-                    subpath_prefix = x.unit_path[len(i.unit_path):]
+                    subpath_prefix = x.unit_path[x.unit_path.find(i.unit_path)+len(i.unit_path):]
                     if subpath_prefix.startswith('/'): subpath_prefix = subpath_prefix[1:]
                     obs_item = ("add list {0} -label {{{1}}} {{{2}}}; #domain={{{3}}}".format(i.sampling_options, i.label_prefix + subpath_prefix.replace('/', '_') + x.name, subpath_prefix + x.name, i.domain)).replace('[', '(').replace(']', ')')
                     if obs_item not in node_set:

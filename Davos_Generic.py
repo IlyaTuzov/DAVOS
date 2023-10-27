@@ -548,6 +548,10 @@ class Table:
             c = [c[v] for v in range(len(c)) if not v in indexes]
             self.columns[i] = c
 
+    def get_row(self, row_index):
+        return [self.columns[i][row_index] for i in range(self.colnum())]
+
+
     def delete_columns(self, indexes):
         self.columns = [self.columns[i] for i in range(len(self.columns)) if not i in indexes]
         self.labels = [self.labels[i] for i in range(len(self.labels)) if not i in indexes]
@@ -582,6 +586,16 @@ class Table:
             if row[column_align: column_align + len(value_sequence)] == value_sequence:
                 res.append(row)
         return (res)
+
+    def filter_copy(self, lbl, val, soft_match=True):
+        res = Table(self.name, self.labels)
+        column_index = self.labels.index(lbl)
+        for row_index in range(self.rownum()):
+            if val in self.get(row_index, column_index):
+                res.add_row(self.get_row(row_index))
+        return res
+
+        
 
 
 class HtmlTableCell:
@@ -1341,9 +1355,12 @@ class ExpDescTable:
         self.label = label
         self.items = []
 
-    def build_from_csv_file(self, fname, default_logic_type='Other'):
-        with open(fname, 'r') as csv_file:
-            lines = csv_file.readlines()
+    def build_from_csv_file(self, file, default_logic_type='Other'):
+        if isinstance(file, str):
+            with open(file, 'r') as csv_file:
+                lines = csv_file.readlines()
+        else:
+            lines = file.readlines()
         itemsep = re.findall("sep\s*?=\s*?([;,]+)", lines[0])[0]
         for i in lines:
             if i.find('INDEX') >= 0:

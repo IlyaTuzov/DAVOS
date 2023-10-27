@@ -719,9 +719,9 @@ if not os.path.exists(s):
 z = os.getcwd()
 
 with ZF.ZipFile(dumppack, 'r') as zp:
-    zp.extract(os.path.join(toolconf.result_dir.replace('./',''), form.getvalue('dump')),   work_dir)
-    zp.extract(os.path.join(toolconf.result_dir.replace('./',''), toolconf.reference_file), work_dir)
-    zp.extract(toolconf.list_init_file.replace('./',''), work_dir)
+    zp.extract(os.path.join(toolconf.result_dir.replace('./',''), form.getvalue('dump')).replace('\\', '/'),   work_dir)
+    zp.extract(os.path.join(toolconf.result_dir.replace('./',''), toolconf.reference_file).replace('\\', '/'), work_dir)
+    zp.extract(toolconf.list_init_file.replace('./','').replace('\\', '/'), work_dir)
 
 os.chdir(z)
 

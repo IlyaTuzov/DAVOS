@@ -34,15 +34,15 @@ from SBFI.SBFI_Analyzer import *
 from Reportbuilder import *
 
 
-def cleanup(config, toolconfig, c, backup_flag = True, backup_label=''):
+def cleanup(clean_run, config, toolconfig, c, backup_flag = True, backup_label=''):
     timestamp = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d_%H-%M-%S')
-    if config.SBFI.clean_run:
+    if clean_run:
         dumppack = "Backup_{0}_({1}).zip".format(backup_label, timestamp)
         os.chdir(c.work_dir)
         if backup_flag:
-            for d in [toolconfig.result_dir, toolconfig.script_dir, toolconfig.checkpoint_dir, toolconfig.code_dir]:
+            for d in [toolconfig.result_dir, toolconfig.code_dir]:
                 zip_folder(d, dumppack)
-        for d in [toolconfig.result_dir, toolconfig.script_dir, toolconfig.checkpoint_dir, toolconfig.log_dir, toolconfig.dataset_dir, toolconfig.code_dir]:
+        for d in [toolconfig.result_dir, toolconfig.script_dir, toolconfig.checkpoint_dir, toolconfig.log_dir, toolconfig.dataset_dir]:
             remove_dir(os.path.join(c.work_dir, d))
     for d in [toolconfig.result_dir, toolconfig.script_dir, toolconfig.checkpoint_dir, toolconfig.log_dir, toolconfig.dataset_dir, toolconfig.code_dir]:
         if not os.path.exists(os.path.join(c.work_dir, d)):
@@ -210,24 +210,32 @@ def tweak_config_and_check_termination(config):
     return (f.time_start > tlim)
 
 
+
 def RunSBFI(datamodel, config, toolconf):
     backup_label = ''
-    for conf in config.parconf:
-        cleanup(config, toolconf, conf, False, backup_label)
+    for i in range(len(config.parconf)):
+        conf = config.parconf[i]
+        cleanup(config.SBFI.clean_run or (i>0), config, toolconf, conf, True, backup_label)
         if config.SBFI.initializer_phase:
             InitializeHDLModels(config, toolconf, conf)
+            
         if config.SBFI.injector_phase:
             generate_clustering_checkpoints(config, toolconf, conf)
             golden_run(config, toolconf, conf)
-
             # Generate SBFI scripts for the given model and faultload configuration
             generate_faultload(FaultloadModes.Sampling, config, conf, toolconf)
-
             # Execute injection scripts (simulate - on Selected platform)
             execute_injection_scripts(config, toolconf, conf)
 
         # Analyze observation traces and save the results to the database
-        launch_analysis(config, toolconf, conf, datamodel)
+        if config.SBFI.analyzer_phase:
+            launch_analysis(config, toolconf, conf, datamodel)
+
+        if config.SBFI.injector_phase:
+            os.chdir(conf.work_dir)                            
+            dumppack = "SBFIRESULT_({0}).zip".format(conf.label)
+            for d in [toolconf.result_dir, toolconf.log_dir, toolconf.script_dir,  toolconf.code_dir]:
+                zip_folder(d, dumppack)        
 
         backup_label = conf.label
         config.SBFI.clean_run = False

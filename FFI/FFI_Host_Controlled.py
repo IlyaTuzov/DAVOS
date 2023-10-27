@@ -120,7 +120,7 @@ class FFIHostControlled(FFIHostBase):
             print('Running: {0:s} : attempt {1:d}'.format(self.testbench_script, i))
             try:
                 self.testbench_proc = pexpect.spawn(self.testbench_script, timeout=maxtimeout)
-                self.testbench_proc.logfile_read = sys.stdout
+                #self.testbench_proc.logfile_read = sys.stdout
                 self.testbench_proc.expect('DUT ready', timeout=maxtimeout)
                 print('testbench started at localhost:{0:d}'.format(self.testbench_port))
                 return (0)

@@ -197,14 +197,14 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
                 # Determine failure mode
                 if out_misnum == 0:
                     if InjDesc.ErrorCount == 0:
-                        InjDesc.FailureMode = 'M'  # Masked fault
+                        InjDesc.FailureMode = 'Masked'  # Masked fault
                     else:
-                        InjDesc.FailureMode = 'L'  # Latent fault
+                        InjDesc.FailureMode = 'Latent'  # Latent fault
                 else:
                     if err_raised:
-                        InjDesc.FailureMode = 'S'  # Signaled Failure
+                        InjDesc.FailureMode = 'Signalled'  # Signaled Failure
                     else:
-                        InjDesc.FailureMode = 'C'  # Silent Data Corruption
+                        InjDesc.FailureMode = 'SDC'  # Silent Data Corruption
             elif config.SBFI.analyzer.domain_mode.upper() in ['TMR']:
                 output_match_res, tmr_match = check_tmr(datamodel.reference.reference_dump, inj_dump, tw, config.SBFI.analyzer.mode, config.SBFI.analyzer.max_time_violation)
                 for k, v in output_match_res.items():
@@ -214,9 +214,9 @@ def process_dumps_in_linst(config, toolconf, conf, datamodel, DescItems, baseind
                     first_mismatch = min(v[1] for k, v in output_match_res.items() if v[1] is not None)
                     InjDesc.FaultToFailureLatency = first_mismatch - basetime - float(InjDesc.InjectionTime)
                 elif sum(i == 'V' for i in InjDesc.DomainMatch.values()) < 3:
-                    InjDesc.FailureMode = 'L'  # Latent fault
+                    InjDesc.FailureMode = 'Latent'  # Latent fault
                 else:
-                    InjDesc.FailureMode = 'M'  # Masked fault
+                    InjDesc.FailureMode = 'Masked'  # Masked fault
 
 
 
@@ -311,7 +311,7 @@ def process_dumps(config, toolconf, conf, datamodel):
 
     domain_stats = {}
     valid_exp = sum(i.Status == 'S' for i in injsummary)
-    failures = sum(i.FailureMode == 'C' for i in injsummary)
+    failures = sum(i.FailureMode == 'SDC' for i in injsummary)
     for i in range(len(injsummary)):
         for k in domains:
             if k not in domain_stats:
