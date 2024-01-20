@@ -98,7 +98,7 @@ def generate_clustering_checkpoints(config, toolconf, conf):
 
         sim_script = "vsim -c -restore {0} -do \"do {1}\" > ./{2}/log_checkpoints_split.log".format(os.path.join(conf.work_dir, conf.checkpoint),
                                                                                                     fscript, toolconf.log_dir)
-        print "Generating clustering checkpoints, running: {0}".format(sim_script)
+        print("Generating clustering checkpoints, running: {0}".format(sim_script))
         if config.platform == Platforms.Multicore:
             proc = subprocess.Popen(sim_script, shell=True)
             proc.wait()
@@ -130,7 +130,7 @@ def golden_run(config, toolconfig, c):
         do {2}
         run $ExecTime
         config list -strobeperiod 1ns -strobestart [expr $now/1000] -usestrobe 1; run 1ns;
-        write list {3}/{4}
+        write list -events {3}/{4}
         quit
         """.format(toolconfig.log_dir, c.workload_time, toolconfig.list_init_file, toolconfig.result_dir, toolconfig.reference_file)
         with open(fscript, "w") as f:
@@ -218,12 +218,15 @@ def RunSBFI(datamodel, config, toolconf):
         cleanup(config.SBFI.clean_run or (i>0), config, toolconf, conf, True, backup_label)
         if config.SBFI.initializer_phase:
             InitializeHDLModels(config, toolconf, conf)
-            
+
+        #if config.SBFI.profiler_phase:
+        #    estimate_RTL_switching_activity(config, toolconf, conf)
+
         if config.SBFI.injector_phase:
             generate_clustering_checkpoints(config, toolconf, conf)
             golden_run(config, toolconf, conf)
             # Generate SBFI scripts for the given model and faultload configuration
-            generate_faultload(FaultloadModes.Sampling, config, conf, toolconf)
+            generate_faultload(config.SBFI.faultload_mode, config, conf, toolconf)
             # Execute injection scripts (simulate - on Selected platform)
             execute_injection_scripts(config, toolconf, conf)
 

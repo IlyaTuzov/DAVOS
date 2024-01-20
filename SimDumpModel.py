@@ -223,7 +223,7 @@ class simDump:
              
     #input - dump file *.lst
     #result - self.vectors
-    def build_vectors_from_file(self, file):
+    def build_vectors_from_file(self, file, filter_deltas = False):
         if isinstance(file, str):
             if not os.path.exists(file):
                 return(None)
@@ -233,28 +233,83 @@ class simDump:
         else:
             lines = file.readlines()
         try:
-            timeunit = re.findall('\s*(.*?)\s+',lines[0])[0]
+            k = re.match('\s*@([0-9\.]+)', lines[0])
+            if k is not None:
+                trace_type = 'evt'
+                timeunit = 'ns' if '.' in k.group(1) else 'ps'
+            else:
+                trace_type = 'lst'
+                timeunit = re.findall('\s*(.*?)\s+',lines[0])[0]
         except:
             print('Skipping corrupted sim dump')
             return(None)
-        self.vector_dict = dict()            
-        for l in lines:
-            if re.match(vect_start_ptn, l.replace('{','').replace('}','')):
-                v = SimVector()
-                if v.build_from_string(len(self.internal_labels), len(self.output_labels), l) == None:
-                    return(None)
-                if   timeunit=='ps': v.time = v.time/1000.0
-                elif timeunit=='fs': v.time = v.time/1000000.0
-                self.vectors.append(v)
-                self.vector_dict[v.time] = v
-        if(len(self.vectors) == 0):
-            with open('error_log.txt','a') as err_log:
-                err_log.write('\nEmpty list file: '+ fname)
-            return(None)
-        else:
-            #self.normalize(True)            
-            return(self)
-    
+
+        if trace_type == 'evt':
+            internal_indexes = {self.internal_labels[i]:i for i in range(len(self.internal_labels))}
+            output_indexes = {self.output_labels[i]:i for i in range(len(self.output_labels))}
+
+            for i in range(len(lines)):
+                k = re.match('\s*@([0-9\.]+)\s+\+([0-9]+)', lines[i])
+                if k is not None:
+                    v = SimVector()
+                    if len(self.vectors) == 0:
+                        v.internals = ['?']*len(self.internal_labels)
+                        v.outputs = ['?']*len(self.output_labels)
+                    else:
+                        v.internals = self.vectors[-1].internals[:]
+                        v.outputs = self.vectors[-1].outputs[:]
+                    v.time = float(k.group(1))/1000.0 if timeunit == 'ps' else float(k.group(1))
+                    v.delta = float(k.group(2))
+                    if filter_deltas and len(self.vectors)>0:
+                        if self.vectors[-1].time == v.time:
+                            self.vectors[-1] = v
+                        else:
+                            self.vectors.append(v)
+                    else:
+                        self.vectors.append(v)
+
+                else:
+                    label, value = lines[i].split()
+                    if label in internal_indexes:
+                        v.internals[internal_indexes[label]] = value
+                    elif label in output_indexes:
+                        v.outputs[output_indexes[label]] = value
+        elif trace_type == 'lst':
+            for l in lines:
+                if re.match(vect_start_ptn, l.replace('{','').replace('}','')):
+                    v = SimVector()
+                    if v.build_from_string(len(self.internal_labels), len(self.output_labels), l) == None:
+                        return(None)
+                    if   timeunit=='ps': v.time = v.time/1000.0
+                    elif timeunit=='fs': v.time = v.time/1000000.0
+                    if filter_deltas and len(self.vectors)>0:
+                        if self.vectors[-1].time == v.time:
+                            self.vectors[-1] = v
+                        else:
+                            self.vectors.append(v)
+                    else:
+                        self.vectors.append(v)
+            if len(self.vectors) == 0:
+                with open('error_log.txt','a') as err_log:
+                    err_log.write('\nEmpty list file: '+ file)
+                return(None)
+        self.vector_dict = dict()
+        for v in self.vectors:
+            self.vector_dict[v.time] = v
+        return self
+
+    def filter_deltas(self):
+        res, cnt = [], 0
+        for v in self.vectors:
+            if len(res) > 0:
+                if v.time == res[-1].time:
+                    res.pop()
+                    cnt += 1
+            res.append(v)
+        self.vectors = res
+        return cnt
+
+
     def remove_vector(self, index):
         del self.vectors[index]
     
@@ -598,10 +653,43 @@ class simDump:
         return [self.vectors[i] for i in range(len(self.vectors)) if (vname == 'outputs' and self.vectors[i].outputs[c_index] == value) or 
                                                                     (vname == 'internals' and self.vectors[i].internals[c_index] == value) ]
 
+    def select_vectors_multiple_filters(self, filters):
+        res = self.vectors[:]
+        for k, v in filters.iteritems():
+            vname, c_index = self.get_index_by_label(k)
+            res = [res[i] for i in range(len(res)) if (vname == 'outputs' and res[i].outputs[c_index] == v) or
+                   (vname == 'internals' and res[i].internals[c_index] == v) ]
+        return(res)
+
+    def select_columns(self, labels):
+        indexes = [self.get_index_by_label(i) for i in labels]
+        res = simDump()
+        res.internal_labels = [self.internal_labels[i[1]] for i in indexes if i[0] == 'internals']
+        res.output_labels = [self.output_labels[i[1]] for i in indexes if i[0] == 'outputs']
+        vec_cur, vec_prev = SimVector(), SimVector()
+        for v in self.vectors:
+            vec_cur.internals = [v.internals[i[1]] for i in indexes if i[0]=='internals']
+            vec_cur.outputs = [v.outputs[i[1]] for i in indexes if i[0] == 'outputs']
+            if (vec_cur.internals != vec_prev.internals) or (vec_cur.outputs != vec_prev.outputs):
+                vec_cur.time, vec_cur.delta = v.time, v.delta
+                res.vectors.append(copy.deepcopy(vec_cur))
+                vec_prev.internals, vec_prev.outputs = vec_cur.internals, vec_cur.outputs
+        return(res)
+
+
 if __name__=="__main__":
     inj_dump = simDump()
     combining = False
-    inj_dump.internal_labels = ['Item', 'Compl'] if combining else ['Item']
-    inj_dump.build_vectors_from_file("C:/Projects/Profiling/Models/MC8051_ZC/Traces/02144_v.lst")
-    res = inj_dump.get_activity_time(0, 1960000, 1 if combining else None)
-    print(str(res))
+    #inj_dump.internal_labels = ['Item', 'Compl'] if combining else ['Item']
+    #inj_dump.build_vectors_from_file("C:/Projects/Profiling/Models/MC8051_ZC/Traces/02144_v.lst")
+    #res = inj_dump.get_activity_time(0, 1960000, 1 if combining else None)
+
+    inj_dump.build_labels_from_file('C:/Projects/DIVERSITY/singleissue/simInitModel.do', None)
+    inj_dump.build_vectors_from_file('C:/Projects/DIVERSITY/singleissue/reference.lst', True)
+    #c = inj_dump.filter_deltas()
+    #print('Filtered vector count: {0:d}'.format(c))
+    print(len(inj_dump.vectors))
+    inj_dump.vectors = [v for v in inj_dump.select_vectors_multiple_filters({'clk':'1', 'core0.ahbi.hready':'1'}) if v.time > 3690000]
+    print(len(inj_dump.vectors))
+    inj_dump.to_html('C:/Projects/DIVERSITY/singleissue/testtrace.html')
+

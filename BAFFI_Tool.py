@@ -181,6 +181,8 @@ def run_microblaze_injector(davosconf, modelconf):
         datamodel.SyncAndDisconnectDB()
     print("BAFFI: experiment finished, exiting")
 
+
+
 if __name__ == "__main__":
     toolconf = ToolOptions(ET.parse('tool_config.xml').getroot().findall('ToolOptions')[0])
     tree = parse_xml_config(sys.argv[1]).getroot()

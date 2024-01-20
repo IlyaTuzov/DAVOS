@@ -24,10 +24,10 @@ import random
 import glob
 from Davos_Generic import *
 from Datamanager import *
-
+from SBFI.SBFI_Profiler import *
 
 class FaultloadModes:
-    Exhaustive, Sampling, Mixed = range(3)
+    Sampling, Exhaustive, Mixed, Staggering = range(4)
 
 
 def get_checkpoints(dir):
@@ -105,8 +105,184 @@ def generate_faultload(mode, config, modelconf, toolconf):
             return sample_fault_generator(config, modelconf, toolconf, faultdict)
         elif mode == FaultloadModes.Mixed:
             return mixed_faultload_generator(config, modelconf, toolconf, faultdict)
+        elif mode == FaultloadModes.Staggering:
+            return stagger_faultload_generator(config, modelconf, toolconf, faultdict)
         else:
             raise ValueError("Requested faultload mode is not defined and/or not implemented")
+
+
+def match_timepoint(points, base_point, left, right):
+    for t in points:
+        delta = base_point - t
+        if left <= delta <= right:
+            return t
+def match_centered(points, base_point, left, right):
+    res_t, res_delta = None, None
+    mid = float(left+right)/2.0
+    for t in points:
+        delta = base_point - t
+        if left <= delta <= right:
+            if (res_delta is None) or (abs(delta-mid) < (res_delta-mid)):
+                res_delta = delta
+                res_t = t
+    return res_t
+
+
+
+def stagger_faultload_generator(config, modelconf, toolconf, faultdict):
+    DescTable = Table('Faultlist', ['INDEX','DUMPFILE','TARGET','INSTANCE_TYPE','INJECTION_CASE','FAULT_MODEL',
+                                    'FORCED_VALUE','DURATION','TIME_INSTANCE','OBSERVATION_TIME',
+                                    'HEAD_TIME', 'INTERVAL', 'OFFSET',
+                                    'SWITCH_INSTANT', "ACTIVE_NODES",
+                                    'MAX_ACTIVITY_DURATION', 'PROFILED_VALUE','ON_TRIGGER'])
+    checkpointlist = get_checkpoints(os.path.join(config.call_dir, modelconf.work_dir, toolconf.checkpoint_dir))
+    os.chdir(os.path.join(modelconf.work_dir, toolconf.script_dir))
+    for fconfig in config.SBFI.fault_model:
+        random.seed(fconfig.rand_seed)
+        nodetree = ET.parse(os.path.join(modelconf.work_dir, toolconf.injnode_list)).getroot()
+        inj_nodes = ConfigNodes(modelconf.label, nodetree)
+        nodelist = inj_nodes.get_all_by_typelist(fconfig.target_logic)
+        activity_profile = estimate_RTL_switching_activity(modelconf, nodelist)
+        for regname, val in activity_profile.items():
+            start_time = val['sw_events'][0]
+            for i in range(len(val['sw_events'])):
+                val['sw_events'][i] -= start_time
+            val['sw_events'].pop(0) #first event may be not due to switching, but simulator logging initial value
+
+        #Export registers description table
+        reg_id = {}
+        reg_per_time = {}
+        id = 0
+        RegDesc = Table("registers", ["ID", "REGNAME", "SW_PER_CYCLE", "EFFECTIVE_SWITHES"])
+        for regname, val in activity_profile.items():
+            reg_id[regname] = id
+            for t in val['sw_events']:
+                if t not in reg_per_time:
+                    reg_per_time[t] = set()
+                reg_per_time[t].add(id)
+            id += 1
+            RegDesc.add_row([str(id), regname,
+                             '{0:.2f}'.format(100 * float(len(val['sw_events'])) / (modelconf.workload_time / modelconf.clk_period)),
+                             str(len(val['sw_events'])) ])
+        RegDesc.to_csv(";", True, os.path.join(modelconf.work_dir, toolconf.result_dir, "registers.csv"))
+
+        script_index = 0
+        exp_dict = {}
+        tested_nodes = set()
+        SampleSizeGoal = fconfig.sample_size * len(fconfig.stagger_offsets)
+        while DescTable.rownum() < SampleSizeGoal:
+            #select random injection target and time instant
+            while True:
+                reg_name = random.choice(activity_profile.keys())
+                reg = activity_profile[reg_name]
+                c = InjectionNode()
+                c.type = reg['type']
+                c.name = reg_name if len(reg['indexes'])==0 else '{0:s}({1:s})'.format(reg_name, random.choice(reg['indexes']))
+                if c.name not in tested_nodes:
+                    break
+            inj_time_base = get_random_injection_time(fconfig.time_start, fconfig.time_end, fconfig.time_mode, fconfig.multiplicity, 1.0, modelconf.clk_period, modelconf.workload_time)[0]
+            head_time = -1
+            for t in reg['sw_events']:
+                if t > inj_time_base:
+                    head_time = t
+                    break
+            if head_time <= 0:
+                continue
+
+            # Generate Head-trail pairs and corresponding SBFI scripts
+            time_pairs = {0: (head_time, head_time)}
+            for offset in fconfig.stagger_offsets:
+                t = match_centered(reg['sw_events'], head_time, offset[0], offset[1])
+                if t is not None:
+                    time_pairs[offset[0]] = (t, head_time)
+            for offset in fconfig.stagger_offsets:
+                if offset[0] not in time_pairs:
+                    for v in [k[0] for k in time_pairs.values()]:
+                        t = match_centered(reg['sw_events'], v, offset[0], offset[1])
+                        if (t is not None) and (t not in [k[0] for k in time_pairs.values()]):
+                            time_pairs[offset[0]] = (t, v)
+                            break
+            if len(time_pairs) <= 1:
+                continue
+            tested_nodes.add(c.name)
+            inj_code = get_injection_code_all(c, faultdict, fconfig, 1.0, None)[0]
+            duration = random.uniform(fconfig.duration_min, fconfig.duration_max)
+            delay = random.randrange(1, modelconf.clk_period)
+            for offset in sorted(time_pairs.keys()):
+                (t, head_time) = time_pairs[offset]
+
+                head_time += delay
+                inj_time = t + delay
+                str_index = "{0:06d}".format(script_index)
+                if config.SBFI.checkpoint_mode == CheckpointModes.ColdRestore:
+                    if config.platform in [Platforms.Grid, Platforms.GridLight]:
+                        inj_script = "set PTH $::env(TMP)\ncatch {{ set WLFFilename ${{PTH}}/WLFSET_{0}.wlf }}\nset WLFDeleteOnQuit 1".format(str_index)
+                        inj_script += "\ntranscript file ${{PTH}}/log_{0}_nodename.txt".format(str_index)
+                    else:
+                        inj_script = "catch {{ set WLFFilename {0}/WLFSET_{1}.wlf }}\nset WLFFileLock 0\nset WLFDeleteOnQuit 1".format(toolconf.dataset_dir, str_index)
+                        inj_script += "\ntranscript file {0}/log_{1}_nodename.txt".format(toolconf.log_dir, str_index)
+                    # select closest checkpoint
+                    checkpoint_linked = 0
+                    for ct in checkpointlist:
+                        if ct < inj_time:
+                            checkpoint_linked = ct
+
+                    inj_script += "\nset ExecTime {0}ns".format(str(int(modelconf.workload_time) - int(checkpoint_linked)) if fconfig.trigger_expression == '' else str(int(modelconf.workload_time)))
+                    for i in range(fconfig.multiplicity):
+                        simcmd = inj_code[2].replace('#DURATION', '{0:0.5f}ns'.format(duration))
+                        if fconfig.trigger_expression == '':  # time-driven injection
+                            inj_script += "\n\twhen \"\\$now >= {0}ns\" {{\n\t\tputs \"Time: $::now: Injection of {1}\"\n\t{2}\n\t}}\n".format(str(int(inj_time) - int(checkpoint_linked)), fconfig.model, simcmd)
+                            fname = "fault_" + str_index + "__checkpoint_" + str(checkpoint_linked) + ".do"
+                        else:  # event-driven injection (on trigger expression)
+                            inj_script += "\n\nwhen {0} {{\n\twhen \"\\$now >= {1}ns\" {{\n\t\tputs \"Time: $::now: Injection of {2}\"\n\t{3}\n\t}}\n}}".format(fconfig.trigger_expression, str(int(inj_time)), fconfig.model, simcmd)
+                            fname = "fault_" + str_index + "__checkpoint_0" + ".do"
+                    if config.SBFI.checkpoint_mode == CheckpointModes.ColdRestore:
+                        inj_script += "\n\ndo {0}".format(toolconf.list_init_file)
+                    inj_script += "\nrun $ExecTime; config list -strobeperiod 1ns -strobestart [expr $now/1000] -usestrobe 1; run 1ns;"
+                    dumpfilename = "dump_{0}_nodename.lst".format(str_index)
+                    inj_script += "\nwrite list -events {0}/{1}".format(toolconf.result_dir, dumpfilename)
+                    if config.SBFI.checkpoint_mode == CheckpointModes.ColdRestore:
+                        inj_script += "\nquit\n"
+                    robust_file_write(fname, inj_script)
+                    sys.stdout.write('Stored script: {0:06d}\r'.format(script_index))
+                    sys.stdout.flush()
+
+                    #s_h, s_t = reg_per_time[head_time], reg_per_time[t]
+                    #activity_match_rate = 100.0*len(s_h.intersection(s_t)) / len(reg_id)
+                    descriptor = [str(script_index),
+                                  dumpfilename,
+                                  inj_code[0],
+                                  reg['type'],
+                                  inj_code[1],
+                                  fconfig.model + fconfig.modifier,
+                                  fconfig.forced_value,
+                                  str(duration),
+                                  str(inj_time),
+                                  str(int(modelconf.workload_time) - int(inj_time)),
+                                  str(head_time),
+                                  str(offset),
+                                  str(head_time-inj_time),
+                                  str(t),
+                                  ":".join([str(i) for i in sorted(list(reg_per_time[t]))]),
+                                  '',
+                                  '',
+                                  '']
+                    DescTable.add_row(descriptor)
+                script_index += 1
+    DescTable.to_csv(';', True, os.path.join(modelconf.work_dir, toolconf.result_dir, toolconf.exp_desc_file))
+
+
+    #desctable = ExpDescTable(modelconf.label)
+    #desctable.build_from_csv_file(os.path.join(modelconf.work_dir, toolconf.result_dir, toolconf.exp_desc_file), "Other")
+    #script_dict = {}
+    #for i in desctable.items:
+    #    script_dict[(i.target, i.injection_time)] = i.index
+    #for i in desctable.items:
+    #    i.head_index = script_dict[(i.target, i.head_time)]
+    #print(modelconf.work_dir)
+
+
+
 
 
 def sample_fault_generator(config, modelconf, toolconf, faultdict):
@@ -142,55 +318,58 @@ def sample_fault_generator(config, modelconf, toolconf, faultdict):
 
         for local_index in range(fconfig.sample_size):
             c = random.sample(inj_code_items, fconfig.multiplicity)
-            inj_time = get_random_injection_time(fconfig.time_start, fconfig.time_end, fconfig.time_mode, fconfig.multiplicity, 1.0, modelconf.clk_period, modelconf.workload_time)
+            inj_time_base = get_random_injection_time(fconfig.time_start, fconfig.time_end, fconfig.time_mode, fconfig.multiplicity, 1.0, modelconf.clk_period, modelconf.workload_time)
             duration = random.uniform(fconfig.duration_min, fconfig.duration_max)
 
             if fconfig.simulataneous_faults:
-                inj_time = [inj_time[0]] * fconfig.multiplicity
-            str_index = "{0:06d}".format(script_index)
-            inj_script = ""
-            if config.SBFI.checkpoint_mode == CheckpointModes.ColdRestore:
-                if config.platform == Platforms.Grid or config.platform == Platforms.GridLight:
-                    inj_script = "set PTH $::env(TMP)\ncatch {{ set WLFFilename ${{PTH}}/WLFSET_{0}.wlf }}\nset WLFDeleteOnQuit 1".format(str_index)
-                    inj_script += "\ntranscript file ${{PTH}}/log_{0}_nodename.txt".format(str_index)
-                else:
-                    inj_script = "catch {{ set WLFFilename {0}/WLFSET_{1}.wlf }}\nset WLFFileLock 0\nset WLFDeleteOnQuit 1".format(toolconf.dataset_dir, str_index)
-                    inj_script += "\ntranscript file {0}/log_{1}_nodename.txt".format(toolconf.log_dir, str_index)
-
-                # select closest checkpoint
-                checkpoint_linked = 0
-                for ct in checkpointlist:
-                    if ct < inj_time[0]:
-                        checkpoint_linked = ct
-
-                dT.append(float(modelconf.workload_time) - checkpoint_linked)
-                inj_script += "\nset ExecTime {0}ns".format(str(int(modelconf.workload_time) - int(checkpoint_linked)) if fconfig.trigger_expression == '' else str(int(modelconf.workload_time)))
-                for i in range(fconfig.multiplicity):
-                    injcode = c[i][2].replace('#DURATION', '{0:0.5f}ns'.format(duration))
-                    if fconfig.trigger_expression == '':  # time-driven injection
-                        inj_script += "\n\twhen \"\\$now >= {0}ns\" {{\n\t\tputs \"Time: $::now: Injection of {1}\"\n\t{2}\n\t}}\n".format(str(int(inj_time[i]) - int(checkpoint_linked)), fconfig.model, injcode)
-                        fname = "fault_" + str_index + "__checkpoint_" + str(checkpoint_linked) + ".do"
-                    else:  # event-driven injection (on trigger expression)
-                        inj_script += "" + + "\n\nwhen {0} {{\n\twhen \"\\$now >= {1}ns\" {{\n\t\tputs \"Time: $::now: Injection of {2}\"\n\t{3}\n\t}}\n}}".format(fconfig.trigger_expression, str(int(inj_time[i])), fconfig.model, injcode)
-                        fname = "fault_" + str_index + "__checkpoint_0" + ".do"
+                inj_time_base = [inj_time_base[0]] * fconfig.multiplicity
+            offsets = [0, 10, 20, 30, 40, 50, 100, 200, 500, 1000, 2000, 5000]
+            for offset in offsets:
+                inj_time = [v - offset for v in inj_time_base]
+                str_index = "{0:06d}".format(script_index)
+                inj_script = ""
                 if config.SBFI.checkpoint_mode == CheckpointModes.ColdRestore:
-                    inj_script += "\n\ndo {0}".format(toolconf.list_init_file)
-                inj_script += "\nrun $ExecTime; config list -strobeperiod 1ns -strobestart [expr $now/1000] -usestrobe 1; run 1ns;"
-                dumpfilename = "dump_{0}_nodename.lst".format(str_index)
-                inj_script += "\nwrite list {0}/{1}".format(toolconf.result_dir, dumpfilename)
-                if config.SBFI.checkpoint_mode == CheckpointModes.ColdRestore:
-                    inj_script += "\nquit\n"
+                    if config.platform == Platforms.Grid or config.platform == Platforms.GridLight:
+                        inj_script = "set PTH $::env(TMP)\ncatch {{ set WLFFilename ${{PTH}}/WLFSET_{0}.wlf }}\nset WLFDeleteOnQuit 1".format(str_index)
+                        inj_script += "\ntranscript file ${{PTH}}/log_{0}_nodename.txt".format(str_index)
+                    else:
+                        inj_script = "catch {{ set WLFFilename {0}/WLFSET_{1}.wlf }}\nset WLFFileLock 0\nset WLFDeleteOnQuit 1".format(toolconf.dataset_dir, str_index)
+                        inj_script += "\ntranscript file {0}/log_{1}_nodename.txt".format(toolconf.log_dir, str_index)
 
-                robust_file_write(fname, inj_script)
-                sys.stdout.write('Stored script: {0:06d}\r'.format(script_index))
-                sys.stdout.flush()
-                fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0][0] + ";" + instance.type + ";" + c[0][1] + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(duration) + ";" + str(inj_time[0]) + ";" + str(int(modelconf.workload_time) - int(inj_time[0]))
-                if c[0][3] is not None:
-                    fdesclog_content += ';{0:.2f};{1:d};{2:s};'.format(c[0][3].total_time, c[0][3].effective_switches, c[0][3].profiled_value)
-                else:
-                    fdesclog_content += ';None;None;None;'
-                script_index += 1
-                fdesclog_content += fconfig.trigger_expression.replace(';', ' ').replace('&apos', '') + ';'
+                    # select closest checkpoint
+                    checkpoint_linked = 0
+                    for ct in checkpointlist:
+                        if ct < inj_time[0]:
+                            checkpoint_linked = ct
+
+                    dT.append(float(modelconf.workload_time) - checkpoint_linked)
+                    inj_script += "\nset ExecTime {0}ns".format(str(int(modelconf.workload_time) - int(checkpoint_linked)) if fconfig.trigger_expression == '' else str(int(modelconf.workload_time)))
+                    for i in range(fconfig.multiplicity):
+                        injcode = c[i][2].replace('#DURATION', '{0:0.5f}ns'.format(duration))
+                        if fconfig.trigger_expression == '':  # time-driven injection
+                            inj_script += "\n\twhen \"\\$now >= {0}ns\" {{\n\t\tputs \"Time: $::now: Injection of {1}\"\n\t{2}\n\t}}\n".format(str(int(inj_time[i]) - int(checkpoint_linked)), fconfig.model, injcode)
+                            fname = "fault_" + str_index + "__checkpoint_" + str(checkpoint_linked) + ".do"
+                        else:  # event-driven injection (on trigger expression)
+                            inj_script += "" + + "\n\nwhen {0} {{\n\twhen \"\\$now >= {1}ns\" {{\n\t\tputs \"Time: $::now: Injection of {2}\"\n\t{3}\n\t}}\n}}".format(fconfig.trigger_expression, str(int(inj_time[i])), fconfig.model, injcode)
+                            fname = "fault_" + str_index + "__checkpoint_0" + ".do"
+                    if config.SBFI.checkpoint_mode == CheckpointModes.ColdRestore:
+                        inj_script += "\n\ndo {0}".format(toolconf.list_init_file)
+                    inj_script += "\nrun $ExecTime; config list -strobeperiod 1ns -strobestart [expr $now/1000] -usestrobe 1; run 1ns;"
+                    dumpfilename = "dump_{0}_nodename.lst".format(str_index)
+                    inj_script += "\nwrite list -events {0}/{1}".format(toolconf.result_dir, dumpfilename)
+                    if config.SBFI.checkpoint_mode == CheckpointModes.ColdRestore:
+                        inj_script += "\nquit\n"
+
+                    robust_file_write(fname, inj_script)
+                    sys.stdout.write('Stored script: {0:06d}\r'.format(script_index))
+                    sys.stdout.flush()
+                    fdesclog_content += "\n" + str(script_index) + ";" + dumpfilename + ";" + c[0][0] + ";" + instance.type + ";" + c[0][1] + ";" + fconfig.model + fconfig.modifier + ";" + fconfig.forced_value + ";" + str(duration) + ";" + str(inj_time[0]) + ";" + str(int(modelconf.workload_time) - int(inj_time[0]))
+                    if c[0][3] is not None:
+                        fdesclog_content += ';{0:.2f};{1:d};{2:s};'.format(c[0][3].total_time, c[0][3].effective_switches, c[0][3].profiled_value)
+                    else:
+                        fdesclog_content += ';None;None;None;'
+                    script_index += 1
+                    fdesclog_content += fconfig.trigger_expression.replace(';', ' ').replace('&apos', '') + ';'
     robust_file_write(os.path.join(modelconf.work_dir, toolconf.result_dir, toolconf.exp_desc_file), fdesclog_content)
 
     checkpoint_speedup = len(dT) * float(modelconf.workload_time) / (sum(dT))
@@ -296,7 +475,7 @@ def mixed_faultload_generator(config, modelconf, toolconf, faultdict):
                         inj_script += "\n\ndo " + toolconf.list_init_file
                     inj_script += "\nrun [scaleTime $ExecTime 1.01]; config list -strobeperiod 1ns -strobestart [expr $now/1000] -usestrobe 1; run 1ns;"
                     dumpfilename = "dump_" + str_index + "_nodename.lst"
-                    inj_script += "\nwrite list " + toolconf.result_dir + '/' + dumpfilename
+                    inj_script += "\nwrite list -events " + toolconf.result_dir + '/' + dumpfilename
                     if config.injector.checkpoint_mode == CheckpointModes.ColdRestore:
                         inj_script += "\nquit\n"
 

@@ -182,8 +182,6 @@ def Estimate_LUT_switching_activity(LutMapList, DAVOS_Config):
     nodelist = inj_nodes.get_all_by_typelist(CellTypes)
 
     #f = open('Log.txt','w')
-
-    
     index = 0
     stdenv = DAVOS_Config.ExperimentalDesignConfig.design_genconf.uut_root
     if not stdenv.endswith('/'): stdenv += '/'
@@ -313,6 +311,56 @@ def Estimate_LUT_switching_activity(LutMapList, DAVOS_Config):
     #    f.write( '\n'.join(i.type + ' : ' + i.name.replace(DAVOS_Config.ExperimentalDesignConfig.design_genconf.uut_root,'').replace('\\','') for i in nodelist))
     #Build Trace/List script for ModelSim
     return(ProfileRes)
+
+
+def estimate_RTL_switching_activity(modelconf, nodelist):
+    reg_dict = {}
+    label_index = 0
+    for node in nodelist:
+        x = re.search('(.+?)\(([0-9]+)\)$', node.name)
+        if x is not None:
+            regname, index = x.group(1), x.group(2)
+        else:
+            regname, index = node.name, -1
+        if regname in reg_dict:
+            reg = reg_dict[regname]
+        else:
+            reg = {'label': 'reg_{0:05d}'.format(label_index), 'indexes': [], 'type': node.type}
+            label_index+=1
+        if index >= 0:
+            reg['indexes'].append(index)
+        reg_dict[regname] = reg
+
+    profiling_script = ("view list\nradix hex\n" +
+                        "\n".join(['add list -label {0:s} {1:s};'.format(reg_dict[regname]['label'], regname) for regname in reg_dict.keys()]))
+
+    tracefile = 'profiling.evt'
+    profiling_script += "\nrun {0:d}ns\nwrite list -events {1:s}\nquit;\n\n\n".format(modelconf.workload_time, tracefile)
+    with open('profiling.do', 'w') as f:
+        f.write(profiling_script)
+    cmdline = 'vsim -c -restore {0:s} -do \"do profiling.do\" > profiling_log.txt 2> profiling_err.txt'.format(os.path.join(modelconf.work_dir, modelconf.checkpoint))
+    proc = subprocess.Popen(cmdline, shell=True)
+    proc.wait()
+    sw_events = {}
+    with open(tracefile, 'r') as f:
+        for line in f.readlines():
+            if line.startswith('@'):
+                evt = int(re.findall("[0-9]+", line)[0])/1000
+            else:
+                lbl = line.split()[0]
+                if lbl in sw_events:
+                    sw_events[lbl].append(evt)
+                else:
+                    sw_events[lbl] = [evt]
+    for regname, desc in reg_dict.iteritems():
+        desc['sw_events'] = sw_events[desc['label']]
+    return reg_dict
+
+
+
+
+
+
 
 
 if __name__ == "__main__":

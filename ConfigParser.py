@@ -178,6 +178,7 @@ class FaultModelConfig:
             self.trigger_expression = ''
             self.simulataneous_faults = False
             self.CCF = None
+            self.stagger_offsets = []
         else:
             self.build_from_xml(xnode)
                  
@@ -206,7 +207,7 @@ class FaultModelConfig:
         self.multiplicity = int(xnode.get('multiplicity', '1'))
         self.simulataneous_faults = True if int(xnode.get('simultaneous_faults','')=='yes') else False
         self.CCF = re.findall('{(.*?)}', xnode.get('CCF',''))
-
+        self.stagger_offsets = [map(int, x.split('-')) for x in xnode.get('stagger_offsets', '').replace(' ', '').split(',')]
 
 
 
@@ -402,7 +403,8 @@ class SBFIConfiguration:
         self.observation_items = []
         self.fault_model = []
         self.analyzer = None
-        self.workload_split_factor = 20
+        self.workload_split_factor = 10
+        self.faultload_mode = 0
         if xnode != None:
             self.build_from_xml(xnode)
 
@@ -428,6 +430,7 @@ class SBFIConfiguration:
             self.fault_model.append(FaultModelConfig(i))
         tag = xnode.findall('Analyzer')
         if len(tag) > 0: self.analyzer = SBFIConfigAnalyzer(tag[0])
+        self.faultload_mode = int(xnode.get('faultload_mode', '0'))
 
 
 

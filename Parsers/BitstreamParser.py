@@ -259,8 +259,8 @@ class DevicePartDetails:
 
     def parse(self, name):
         s7_devices = {'7s':'spartan', '7a':'artix', '7k':'kintex', '7vx':'virtex', '7vh':'virtex-hpc', '7z':'zynq'}
-        us_devices = {'vu':'virtex', 'ku':'kintex', 'ka':'artix'}
-        ptn = 'xc({0:s})([0-9]+)(p|t)?\-?([a-z0-9]+)(\-[a-z0-9])?'.format('|'.join(s7_devices.keys() + us_devices.keys()))
+        us_devices = {'vu':'virtex', 'ku':'kintex', 'ka':'artix', 'zu':'zynq'}
+        ptn = 'xc({0:s})([0-9]+)(p|t|eg|ev)?\-?([a-z0-9]+)(\-[a-z0-9])?'.format('|'.join(s7_devices.keys() + us_devices.keys()))
         match = re.match(ptn, name)
         if match:
             if match.group(1) in s7_devices.keys():
@@ -268,6 +268,8 @@ class DevicePartDetails:
                 self.family = s7_devices[match.group(1)]
             elif match.group(1) in us_devices.keys():
                 if match.group(3) == 'p':
+                    self.series = FPGASeries.USP
+                elif match.group(3) in ['eg','ev']:
                     self.series = FPGASeries.USP
                 else:
                     self.series = FPGASeries.US

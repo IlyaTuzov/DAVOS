@@ -376,17 +376,20 @@ def to_string(obj, msg=''):
     res = '\n' + msg
     if str(type(obj)).find('str') >= 0 or str(type(obj)).find('int') >= 0 :
         return (res + str(obj))
-    for key, val in obj.__dict__.items():
-        if str(type(getattr(obj, key))).find('list') >= 0:
-            a = getattr(obj, key)
-            for i in range(0, len(a)):
-                res += to_string(a[i], '->' + str(key) + '[' + str(i) + '] = ')
-        elif str(type(getattr(obj, key))).find('class') >= 0:
-            res += to_string(getattr(obj, key), str('\n->' + key + ' = '))
-        else:
-            x = str("\n\t%s = %s" % (key, str(val)))
-            if x.find('object at') < 0:
-                res += x
+    if isinstance(obj, dict):
+        for key, val in obj.__dict__.items():
+            if str(type(getattr(obj, key))).find('list') >= 0:
+                a = getattr(obj, key)
+                for i in range(0, len(a)):
+                    res += to_string(a[i], '->' + str(key) + '[' + str(i) + '] = ')
+            elif str(type(getattr(obj, key))).find('class') >= 0:
+                res += to_string(getattr(obj, key), str('\n->' + key + ' = '))
+            else:
+                x = str("\n\t%s = %s" % (key, str(val)))
+                if x.find('object at') < 0:
+                    res += x
+    elif isinstance(obj, list):
+        res += str(obj)
     return (res)
 
 
@@ -451,6 +454,13 @@ class Table:
         else:
             for c in self.columns:
                 c.append("")
+    @staticmethod
+    def merge(name, tables):
+        res = Table(name, tables[0].labels)
+        for t in tables:
+            for row_index in range(t.rownum()):
+                res.add_row(t.get_row(row_index))
+        return(res)
 
     def put(self, row, col, data):
         try:
@@ -497,9 +507,12 @@ class Table:
             del ist[-1]
         return ist
 
-    def build_from_csv(self, fname):
-        with open(fname, 'r') as fdesc:
-            content = fdesc.read()
+    def build_from_csv(self, file):
+        if isinstance(file, str):
+            with open(file, 'r') as csv_file:
+                content = csv_file.read()
+        else:
+            content = file.read()
         lines = content.split('\n')
         t = re.findall("sep\s*?=\s*?([;,]+)", lines[0])
         if len(t) == 0:
@@ -1034,7 +1047,7 @@ def rreplace(s, old, new, occurrence):
 # Model of fault injection targets (simNodes.xml)
 # ---------------------------------------------------
 class InjectionNode:
-    def __init__(self, xnode):
+    def __init__(self, xnode=None):
         if xnode is None:
             self.type = ""
             self.name = ""
@@ -1316,6 +1329,7 @@ class ExpDescItem:
         self.effective_switches = int(0)
         self.effective_switches_from = ''
         self.effective_switches_to = ''
+        self.sw_per_cycle = float(0)
         self.logic_group = ''
         self.profiled_value = ''
         self.on_trigger = ''
@@ -1332,6 +1346,9 @@ class ExpDescItem:
         if ind['TIME_INSTANCE'] != None:  self.injection_time = float(values[ind['TIME_INSTANCE']])
         if ind['OBSERVATION_TIME'] != None:  self.observation_time = float(values[ind['OBSERVATION_TIME']])
         if ind['INJECTION_CASE'] != None:  self.injection_case = values[ind['INJECTION_CASE']]
+        if ind['HEAD_TIME'] != None:  self.head_time = float(values[ind['HEAD_TIME']])
+        if ind['INTERVAL'] != None:  self.offset_interval = values[ind['INTERVAL']]
+        if ind['OFFSET'] != None:  self.offset = float(values[ind['OFFSET']])
         if ind['MAX_ACTIVITY_DURATION'] != None:
             try:
                 self.max_activity_duration = float(values[ind['MAX_ACTIVITY_DURATION']])
@@ -1339,11 +1356,13 @@ class ExpDescItem:
                 self.max_activity_duration = float(0)
         if ind['EFFECTIVE_SWITHES'] != None:
             try:
-                self.effective_switches = float(values[ind['EFFECTIVE_SWITHES']])
+                self.effective_switches = int(values[ind['EFFECTIVE_SWITHES']])
             except ValueError:
-                self.effective_switches = float(0)
+                self.effective_switches = int(0)
+        if ind['SW_PER_CYCLE'] != None: self.sw_per_cycle = float(values[ind['SW_PER_CYCLE']])
         if ind['PROFILED_VALUE'] != None: self.profiled_value = values[ind['PROFILED_VALUE']]
         if ind['ON_TRIGGER'] != None: self.on_trigger = values[ind['ON_TRIGGER']]
+        if ind['ACTIVE_NODES'] != None: self.active_nodes = set((values[ind['ACTIVE_NODES']]).split(':'))
         return (self)
 
     def to_string(self):
@@ -1376,11 +1395,16 @@ class ExpDescTable:
         ind['DURATION'] = get_strcontains_index(headers, 'DURATION')
         ind['TIME_INSTANCE'] = get_strcontains_index(headers, 'TIME_INSTANCE')
         ind['OBSERVATION_TIME'] = get_strcontains_index(headers, 'OBSERVATION_TIME')
+        ind['HEAD_TIME'] = get_strcontains_index(headers, 'HEAD_TIME')
+        ind['INTERVAL'] = get_strcontains_index(headers, 'INTERVAL')
+        ind['OFFSET'] = get_strcontains_index(headers, 'OFFSET')
         ind['MAX_ACTIVITY_DURATION'] = get_strcontains_index(headers, 'MAX_ACTIVITY_DURATION')
         ind['EFFECTIVE_SWITHES'] = get_strcontains_index(headers, 'EFFECTIVE_SWITHES')
+        ind['SW_PER_CYCLE'] = get_strcontains_index(headers, 'SW_PER_CYCLE')
         ind['PROFILED_VALUE'] = get_strcontains_index(headers, 'PROFILED_VALUE')
         ind['ON_TRIGGER'] = get_strcontains_index(headers, 'ON_TRIGGER')
         ind['INJECTION_CASE'] = get_strcontains_index(headers, 'INJECTION_CASE')
+        ind['ACTIVE_NODES'] = get_strcontains_index(headers, 'ACTIVE_NODES')
         for l in lines:
             if re.match('^\s*?[0-9]+', l):
                 c = ExpDescItem()

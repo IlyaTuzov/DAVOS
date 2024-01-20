@@ -29,6 +29,7 @@ from Davos_Generic import *
 from Datamanager import *
 
 target_filter = ''
+ANALYSIS_MODE = 2
 
 class CompareGroup:
     def __init__(self, TargetNode, InjTime):
@@ -70,7 +71,9 @@ def compare_traces(ref_trace, inj_trace, time_window):
                     mismatches_out += 1
     return (mismatches_int, mismatches_out)
 
+ref_bus_trace = None
 def trace_fault_effect(ref_trace, master_trace, slave_trace, time_window, mode):
+    global ref_bus_trace
     if mode == 1:
         time_point = ref_trace.vectors[-1].time
         ref_v = ref_trace.get_vector_by_time(time_point, None)
@@ -91,12 +94,34 @@ def trace_fault_effect(ref_trace, master_trace, slave_trace, time_window, mode):
             else:
                 return 'signaled_failure'
     elif mode == 2:
-        
-        pass
+        bus_labels = ['core0.ahbo.hbusreq', 'core0.ahbo.hburst', 'core0.ahbo.htrans', 'core0.ahbo.hwdata',
+                      'core0.ahbo.hwrite', 'core0.ahbo.haddr', 'core0.ahbo.hsize']
+        if ref_bus_trace is None:
+            ref_bus_trace = ref_trace.select_columns(bus_labels)
+        mas_bus_trace = master_trace.select_columns(bus_labels)
+        slv_bus_trace = slave_trace.select_columns(bus_labels)
+        ref_vf = [v for v in ref_bus_trace.vectors if v.time > time_window[0]]
+        mas_vf = [v for v in mas_bus_trace.vectors if v.time > time_window[0]]
+        slv_vf = [v for v in slv_bus_trace.vectors if v.time > time_window[0]]
+        for i in range(len(ref_vf)):
+            master_reference = False if (len(mas_vf) <= i) else (mas_vf[i].internals == ref_vf[i].internals)
+            master_slave = False if ((len(mas_vf) <= i) or (len(slv_vf)<=i)) else (mas_vf[i].internals == slv_vf[i].internals)
+            if master_reference:
+                if master_slave:
+                    continue
+                else:
+                    return 'false_alarm'
+            else:
+                if master_slave:
+                    return 'sdc'
+                else:
+                    return 'signaled_failure'
+        return 'masked'
+
+
 
 def trace_diversity(ref_trace, head_trace, trail_trace, inj_time, offset, c_index):   
     c_index_I0, c_index_I1, c_index_R0, c_index_R1 = c_index['Inst0'], c_index['Inst1'], c_index['Regf0'], c_index['Regf1']
-
     time_points = [v.time for v in ref_trace.select_vectors('sample_clk', '1')]
     compared_vectors, missing_vectors = 0, 0
     mismatches_inst, mismatches_regf = 0, 0
@@ -124,8 +149,8 @@ def trace_diversity(ref_trace, head_trace, trail_trace, inj_time, offset, c_inde
     cpu_state['regf_head']  = head_trace.vector_dict[t+offset].internals[c_index_R0:c_index_R1+1]
     cpu_state['regf_trail'] = trail_trace.vector_dict[t].internals[c_index_R0:c_index_R1+1]   
     
-    print('inj_time={0:0.1f}, time_points[0] = {1:0.1f}, inst_head = {2:0.1f}, inst_trail = {3:0.1f}'.format(
-        inj_time, time_points[0], head_trace.vector_dict[t+offset].time, trail_trace.vector_dict[t].time))
+    #print('inj_time={0:0.1f}, time_points[0] = {1:0.1f}, inst_head = {2:0.1f}, inst_trail = {3:0.1f}'.format(
+    #    inj_time, time_points[0], head_trace.vector_dict[t+offset].time, trail_trace.vector_dict[t].time))
     return( float(mismatches_inst)/compared_vectors, float(mismatches_regf)/compared_vectors, cpu_state)
 
 
@@ -175,7 +200,8 @@ if __name__ == "__main__":
         datamodel.reference.JnGrLst = config.SBFI.analyzer.join_group_list.copy()
         datamodel.reference.reference_dump.join_output_columns(datamodel.reference.JnGrLst.copy())
         
-        tw = config.SBFI.analyzer.time_window if config.SBFI.analyzer.time_window is not None else (datamodel.reference.reference_dump.vectors[0].time, datamodel.reference.reference_dump.vectors[-1].time)
+        tw = config.SBFI.analyzer.time_window if config.SBFI.analyzer.time_window is not None \
+            else (datamodel.reference.reference_dump.vectors[0].time, datamodel.reference.reference_dump.vectors[-1].time)
 
         c_index = dict()
         vname, c_index['Inst0'] = datamodel.reference.reference_dump.get_index_by_label('u0.iu0.r.d.inst(0)')
@@ -235,7 +261,7 @@ if __name__ == "__main__":
 
                 failure_mode = trace_fault_effect(
                     datamodel.reference.reference_dump, head_trace, trail_trace,
-                    (tw[0]+ desctable.items[sim_id].injection_time, tw[1]), 1)
+                    (tw[0]+ desctable.items[sim_id].injection_time + offset, tw[1]), ANALYSIS_MODE)
                 group[failure_mode] += 1
 
                 diversity_inst, diversity_regf, cpu_state = trace_diversity(datamodel.reference.reference_dump, head_trace, trail_trace,
