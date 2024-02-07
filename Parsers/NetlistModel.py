@@ -122,9 +122,9 @@ class DevSRL:
             self.config_index =int(xmltag.get('config_order_index'))
             for tag in xmltag.findall('ClockRegion'):
                 c = DevClockRegion(tag)
-                if c.TileYmin is None or c.TileYmax is None:
-                    print('DevSRL.build_from_xml: skipping clockRegion[{0:d}:{1:d}]'.format(c.X, c.Y))
-                    continue
+                #if c.TileYmin is None or c.TileYmax is None:
+                #    print('DevSRL.build_from_xml: skipping clockRegion[{0:d}:{1:d}]'.format(c.X, c.Y))
+                #    continue
                 self.ClockRegionDict[(c.X, c.Y)] = c
             for cr_key, cr in self.ClockRegionDict.iteritems():
                 for tile_key, tile in cr.TileDict.iteritems():
@@ -138,6 +138,8 @@ class DevSRL:
 
     def get_TileY_range(self):
         self.TileYmin = min(c.TileYmin for c in self.ClockRegionDict.values())
+        if self.TileYmin == None:
+            self.TileYmin = 0        
         self.TileYmax = max(c.TileYmax for c in self.ClockRegionDict.values())
         return(self.TileYmin, self.TileYmax)
 

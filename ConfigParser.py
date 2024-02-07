@@ -207,11 +207,11 @@ class FaultModelConfig:
         self.multiplicity = int(xnode.get('multiplicity', '1'))
         self.simulataneous_faults = True if int(xnode.get('simultaneous_faults','')=='yes') else False
         self.CCF = re.findall('{(.*?)}', xnode.get('CCF',''))
-        self.stagger_offsets = [map(int, x.split('-')) for x in xnode.get('stagger_offsets', '').replace(' ', '').split(',')]
-
-
-
+        bf = xnode.get('stagger_offsets', '').replace(' ', '').split(',')
+        if bf != None: self.stagger_offsets = [map(int, x.split('-')) for x in bf if x != ""]
         return(0)
+        
+        
 
 class SBFIConfigInjector:
     def __init__(self, xnode):

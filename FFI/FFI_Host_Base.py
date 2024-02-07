@@ -35,6 +35,7 @@ class SEU_item:
         self.Word, self.Bit, self.Mask = 0x0, 0x0, 0x0
         self.Time = 0
         self.Duration = 0
+        self.ReferenceWord = 0x0
 
 class FaultModels:
     PermanentSBU, TransientSBU = range(2)
@@ -125,6 +126,7 @@ class FFIHostBase(object):
                         seu.Bit = random.randint(0, 31)
                         essential_bit_mask = frame.mask[seu.Word]
                     seu.Mask = 0x1 << seu.Bit
+                    seu.ReferenceWord = frame.data[seu.Word]
                     f = FarFields.from_FAR(seu.FAR, self.design.series)
                     seu.DesignNode = 'EB:{0:08x}:(Type_{1:01d}/Top_{2:01d}/Row_{3:01d}/Column_{4:03d}/Frame_{5:02d})/Word_{6:03d}/Bit_{7:02d}'.format(
                         seu.SLR, f.BlockType, f.Top, f.Row, f.Major, f.Minor, seu.Word, seu.Bit)
@@ -148,6 +150,7 @@ class FFIHostBase(object):
                         frame = self.design.CM.get_frame_by_FAR(seu.FAR, lut.slr.fragment.SLR_ID)
                         essential_bit_mask = frame.mask[seu.Word]
                     seu.Mask = 0x1 << seu.Bit
+                    seu.ReferenceWord = frame.data[seu.Word]
                     seu.DesignNode = '{0:s}/bit_{1:02d}'.format(lut.name, lut_bit_index)
                     seu.Time = random.randint(exp_conf.injection_time[0], exp_conf.injection_time[1])
                     seu.Duration = 0 if fexp_conf.FaultModel == FaultModels.PermanentSBU else random.randint(exp_conf.fault_duration[0], exp_conf.fault_duration[1]) 
@@ -179,10 +182,34 @@ class FFIHostBase(object):
                                     seu.SLR,  seu.FAR,    seu.Word,       seu.Mask, 
                                     seu.Time, seu.Duration]:
                             f.write(struct.pack(specificator, atr))
+                            
+                            
+    def export_fault_list_full(self):
+        specificator = '<L'         #Little Endian
+        fname = os.path.join(self.generatedFilesDir, 'Faultlist_0.bin')
+        self.faultload_files.append(fname)
+        with open(fname, 'wb') as f:
+            #Header: Base + 0x0
+            for atr in [0xFA01FA01, len(self.fault_list), 0x1, 0x0,
+                        0x0, 0x0, 0x0, 0x0,
+                        0x0, 0x0, 0x0, 0x0,
+                        0x0, 0x0, 0x0, 0x0]:
+                f.write(struct.pack(specificator, atr))
+            offset = 0
+            #Fault descriptors: Base + 0x40 + i*11*4 
+            for i in range(len(self.fault_list)):
+                fdesc = self.fault_list[i]
+                fdesc.PartIdx = 0
+                for seu in fdesc.SeuItems:
+                    seu.Offset = offset
+                    for atr in [fdesc.Id, seu.Offset, fdesc.CellType, fdesc.FaultModel,
+                                seu.SLR,  seu.FAR,    seu.Word,       seu.Mask, 
+                                seu.Time, seu.Duration, seu.ReferenceWord]:
+                        f.write(struct.pack(specificator, atr))  
 
     def get_fdesc_labels(self):
         return ['Id', 'PartIdx', 'CellType', 'FaultModel', 'Multiplicity', 'FailureMode', 'Offset', 'DesignNode', 'SLR', 'FAR',
-                'Word', 'Bit', 'Mask', 'Time', 'Duration']
+                'Word', 'Bit', 'Mask', 'Time', 'Duration', 'ReferenceWord']
 
     def faultdesc_format_str(self, idx):
         res = []
@@ -191,7 +218,7 @@ class FFIHostBase(object):
             res.append(map(str, [
                 fdesc.Id, fdesc.PartIdx, fdesc.CellType, fdesc.FaultModel, fdesc.Multiplicity,  fdesc.FailureMode,
                 seu.Offset, seu.DesignNode, '0x{0:08x}'.format(seu.SLR), '0x{0:08x}'.format(seu.FAR), seu.Word, seu.Bit,
-                '0x{0:08x}'.format(seu.Mask), seu.Time, seu.Duration]))
+                '0x{0:08x}'.format(seu.Mask), seu.Time, seu.Duration, '0x{0:08x}'.format(seu.ReferenceWord)]))
         return res
 
     def export_fault_list_csv(self):

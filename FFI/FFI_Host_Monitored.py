@@ -84,6 +84,14 @@ class JobDescriptor:
 
 
 class FFIHostMonitored(FFIHostBase):
-    def __init__(self, targetDir, DevicePart, modelId):
+    def __init__(self, targetDir, DevicePart):
         super(FFIHostMonitored, self).__init__(targetDir, DevicePart)
-        self.modelId = modelId
+
+    def run(self):
+        print("Running BAFFI in monitored mode \nMethod run() is not implemented")
+
+
+
+class FFIHostZynq(FFIHostMonitored):
+    def __init__(self, targetDir, DevicePart):
+        super(FFIHostZynq, self).__init__(targetDir, DevicePart)
