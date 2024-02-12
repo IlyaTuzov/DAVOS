@@ -11,6 +11,10 @@
 # ------------------------------------------------------------------------------------------------------
 
 from FFI_Host_Base import *
+from serial import Serial
+import serial.tools.list_ports
+import datetime
+import re
 
 
 class JobDescriptor:
@@ -84,14 +88,84 @@ class JobDescriptor:
 
 
 class FFIHostMonitored(FFIHostBase):
-    def __init__(self, targetDir, DevicePart):
+    def __init__(self, targetDir, DevicePart, portname):
         super(FFIHostMonitored, self).__init__(targetDir, DevicePart)
+        self.serialport = None
+        self.portname = portname
+        self.logtimeout = 5
+
+    def connect_serial_port(self):
+        if self.serialport != None:
+            if self.serialport.isOpen():
+                self.serialport.close()
+        try:
+            self.serialport = serial.Serial(self.portname, 115200, timeout = self.logtimeout)
+            self.serialport.open()
+            print("Conneted to serial port: {0:s}".format(self.portname))
+        except Exception as e:
+           print('Exception when opening serial port: {0:s}'.format(str(e)))
+
+
+    def launch_injector_app(self):
+        print("ERROR: Invoked abstract method launch_injector_app() of FFIHostMonitored class")
 
     def run(self):
-        print("Running BAFFI in monitored mode \nMethod run() is not implemented")
+        print("Running BAFFI in monitored mode")
+        zynq_statms_ptn = re.compile("\[\s*(\d+\.\d+)\s*s\].*?FaultId=\s*([0-9]+).*?Fmode=\s*?([a-zA-Z]+)")
+        FpgaAppTrace_fname = os.path.join(self.generatedFilesDir, 'FpgaAppTrace_{0:s}.txt'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
+        exp_start_time = time.time()
+        with open(FpgaAppTrace_fname, 'a') as trace:
+            self.connect_serial_port()
+            self.launch_injector_app()
+            faultid = 0
+            timest = 0.0
+            while( faultid != len(self.fault_list)-1 ):
+                line = self.serialport.readline()
+                if line != None:
+                    trace.write(line)
+                    if line.find('FFI experiment completed') >= 0:
+                        break
+                matchDesc = re.search(zynq_statms_ptn, line)
+                if matchDesc is not None:
+                    faultid = int(matchDesc.group(2))
+                    faultdesc = self.fault_list[faultid]
+                    faultdesc.FailureMode = matchDesc.group(3)
+                    faultdesc.exp_time = float(matchDesc.group(1)) - timest
+                    timest = float(matchDesc.group(1))
+                    self.InjStat.append(faultdesc.FailureMode)
+                    print("Fault [{0:5d}]: {1:10s}, Target: {2:s}\n\tExp.Time: {3:.3f} s / {4:.1f} s, Statistics: {5:s}\n".format(
+                        faultid, faultdesc.FailureMode, faultdesc.SeuItems[0].DesignNode,
+                        faultdesc.exp_time, float(time.time() - exp_start_time), self.InjStat.to_string()))
+                    for row in self.faultdesc_format_str(faultid):
+                        self.logfile.write('\n'+';'.join(row))
+                    self.logfile.flush()
+        self.serialport.close()
+
 
 
 
 class FFIHostZynq(FFIHostMonitored):
-    def __init__(self, targetDir, DevicePart):
-        super(FFIHostZynq, self).__init__(targetDir, DevicePart)
+    def __init__(self, targetDir, DevicePart, hw_config, fsbl_file, injector_app, portname):
+        super(FFIHostZynq, self).__init__(targetDir, DevicePart, portname)
+        self.mic_script = os.path.join(self.moduledir, 'FFI/FFI_Zynq/zynq_init.tcl')
+        self.hw_config = hw_config
+        self.fsbl_file = fsbl_file
+        self.injector_app = injector_app
+
+    def launch_injector_app(self):
+        script = 'xsct {0:s} {1:s} {2:s} {3:s} {4:s} {5:s}'.format(
+            self.mic_script, 
+            self.design.files['BIT'][0], 
+            self.hw_config, 
+            self.fsbl_file,
+            self.injector_app,
+            self.faultload_files[0] )
+        print('Running Zynq Injector App: {0:s}'.format(script))
+        with open(os.path.join(self.generatedFilesDir, 'Zynq_init.log'), 'w') as logfile, \
+                open(os.path.join(self.generatedFilesDir, 'Zynq_init.err'), 'w') as errfile:
+            proc = subprocess.Popen(script, stdin=subprocess.PIPE, stdout=logfile, stderr=errfile, shell=True)
+            proc.wait()
+        print('Launched Zynq Injector App')
+
+
+

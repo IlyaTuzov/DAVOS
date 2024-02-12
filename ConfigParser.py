@@ -799,6 +799,10 @@ class FFIConfiguration:
         self.pblock = None
         self.dut_script = ""
         self.failure_modes_to_reset = []
+        self.hw_config = ""
+        self.fsbl_file = ""
+        self.injector_app = ""
+        self.serial_port = ""
         if xnode != None:
             self.build_from_xml(xnode)
 
@@ -833,7 +837,10 @@ class FFIConfiguration:
         self.fault_model = int(xnode.get('fault_model', '0'))
         self.dut_script = xnode.get('dut_script', '')
         self.failure_modes_to_reset = xnode.get('failure_modes_to_reset', '').replace(" ", "").split(',')
-
+        self.hw_config = xnode.get('hw_config', '')
+        self.fsbl_file = xnode.get('fsbl_file', '')
+        self.injector_app = xnode.get('injector_app', '')
+        self.serial_port = xnode.get('serial_port', '')
         cp = xnode.get('post_injection_recovery_nodes', '')
         if cp != '': self.post_injection_recovery_nodes = ast.literal_eval(cp)
         self.hdf_path = xnode.get('hdf_path', '')

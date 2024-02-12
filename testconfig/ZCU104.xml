@@ -156,6 +156,11 @@
 			custom_lut_mask 	    = "off"
             node_list               = ""
 			mode 				    = "101"
+
+            hw_config               = "/home/tuil/Lenet5/MiniLenetFloat_22/design_1_wrapper.xsa"
+            fsbl_file               = "/home/tuil/Lenet5/Vitis/design_1_wrapper/export/design_1_wrapper/sw/design_1_wrapper/boot/fsbl.elf"
+            injector_app            = "/home/tuil/Lenet5/Vitis/CNNFI/Debug/CNNFI.elf"
+            serial_port             = "/dev/ttyUSB3"
 		>
 		</FFI>
      </DAVOS>

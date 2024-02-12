@@ -22,14 +22,13 @@ from Reportbuilder import *
 
 
 def run_zynq_injector(davosconf, modelconf):
-    Injector = FFIHostZynq(modelconf.work_dir, davosconf.FFI.device_part)
-    #Injector = FFIHostZynq(modelconf.work_dir,
-    #                       0,
-    #                       os.path.join(modelconf.work_dir, davosconf.FFI.hdf_path),
-    #                       os.path.join(modelconf.work_dir, davosconf.FFI.init_tcl_path),
-    #                       os.path.join(modelconf.work_dir, davosconf.FFI.injectorapp_path),
-    #                       davosconf.FFI.memory_buffer_address,
-    #                       True)
+    Injector = FFIHostZynq( modelconf.work_dir, 
+                            davosconf.FFI.device_part, 
+                            davosconf.FFI.hw_config, 
+                            davosconf.FFI.fsbl_file, 
+                            davosconf.FFI.injector_app,
+                            davosconf.FFI.serial_port)
+
     hashing = False
     if davosconf.FFI.injector_phase:
         if davosconf.FFI.pblock is not None:
@@ -56,7 +55,7 @@ def run_zynq_injector(davosconf, modelconf):
             Injector.sample_SEU(pb, CellTypes.BRAM, davosconf.FFI)
         Injector.export_fault_list_full()
         Injector.export_fault_list_csv()
-        raw_input('Injector configured, Press any key to run the experiment...')
+        #raw_input('Injector configured, Press any key to run the experiment...')
         Injector.run()
         
 
