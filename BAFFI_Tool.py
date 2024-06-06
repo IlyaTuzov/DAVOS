@@ -55,7 +55,7 @@ def run_zynq_injector(davosconf, modelconf):
             Injector.sample_SEU(pb, CellTypes.BRAM, davosconf.FFI)
         Injector.export_fault_list_full()
         Injector.export_fault_list_csv()
-        #raw_input('Injector configured, Press any key to run the experiment...')
+        raw_input('Injector configured, Press any key to run the experiment...')
         Injector.run()
         
 

@@ -249,9 +249,10 @@ Please check the LICENSE.txt file (that is included as a part of this package) f
 ## Acknowledgement
 
 - This work has been carried-out under the support of the "Programa de Ayudas de Investigación y Desarrollo" (PAID) de la Universitat Politècnica de València.
-- Adaptation to the NOEL-V RISCV platform is currently supported by the:
+- Adaptation to the NOEL-V RISCV platform has been supported by the:
   * SELENE project (www.selene-project.eu) funded by the European Unions Horizon 2020 research and innovation programme under grant agreement No. 871467, and
   * FRACTAL project (https://fractal-project.eu/) funded by the ECSEL Joint Undertaking (JU) under grant agreement No. 877056
-    
+- Extension of BAFFI tool to new FPGAs and generic RISCV platforms is currently funded by the ISOLDE project (https://www.isolde-project.eu). The ISOLDE project, nr. 101112274 is supported by the Chips Joint Undertaking and its members Austria, Czechia, France, Germany, Italy, Romania, Spain, Sweden, Switzerland.
+
 
 

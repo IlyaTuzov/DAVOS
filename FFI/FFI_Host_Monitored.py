@@ -92,7 +92,7 @@ class FFIHostMonitored(FFIHostBase):
         super(FFIHostMonitored, self).__init__(targetDir, DevicePart)
         self.serialport = None
         self.portname = portname
-        self.logtimeout = 5
+        self.logtimeout = 30
 
     def connect_serial_port(self):
         if self.serialport != None:
@@ -101,7 +101,7 @@ class FFIHostMonitored(FFIHostBase):
         try:
             self.serialport = serial.Serial(self.portname, 115200, timeout = self.logtimeout)
             self.serialport.open()
-            print("Conneted to serial port: {0:s}".format(self.portname))
+            print("Connected to serial port: {0:s}".format(self.portname))
         except Exception as e:
            print('Exception when opening serial port: {0:s}'.format(str(e)))
 
@@ -111,7 +111,7 @@ class FFIHostMonitored(FFIHostBase):
 
     def run(self):
         print("Running BAFFI in monitored mode")
-        zynq_statms_ptn = re.compile("\[\s*(\d+\.\d+)\s*s\].*?FaultId=\s*([0-9]+).*?Fmode=\s*?([a-zA-Z]+)")
+        zynq_statms_ptn = re.compile("\[\s*(\d+\.\d+)\s*s\].*?FaultId=\s*([0-9]+).*?Time=\s*([0-9]+).*?Fmode=\s*?([a-zA-Z]+)")
         FpgaAppTrace_fname = os.path.join(self.generatedFilesDir, 'FpgaAppTrace_{0:s}.txt'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
         exp_start_time = time.time()
         with open(FpgaAppTrace_fname, 'a') as trace:
@@ -123,18 +123,18 @@ class FFIHostMonitored(FFIHostBase):
                 line = self.serialport.readline()
                 if line != None:
                     trace.write(line)
-                    if line.find('FFI experiment completed') >= 0:
+                    if line.find('experiment completed') >= 0:
                         break
                 matchDesc = re.search(zynq_statms_ptn, line)
                 if matchDesc is not None:
                     faultid = int(matchDesc.group(2))
                     faultdesc = self.fault_list[faultid]
-                    faultdesc.FailureMode = matchDesc.group(3)
+                    faultdesc.FailureMode = matchDesc.group(4)
                     faultdesc.exp_time = float(matchDesc.group(1)) - timest
                     timest = float(matchDesc.group(1))
                     self.InjStat.append(faultdesc.FailureMode)
-                    print("Fault [{0:5d}]: {1:10s}, Target: {2:s}\n\tExp.Time: {3:.3f} s / {4:.1f} s, Statistics: {5:s}\n".format(
-                        faultid, faultdesc.FailureMode, faultdesc.SeuItems[0].DesignNode,
+                    print("Fault [{0:5d}]: {1:10s}, Target: {2:s}\n\tInjTime: {3:d} cycles\n\tExp.Time: {4:.3f} s / {5:.1f} s, Statistics: {6:s}\n".format(
+                        faultid, faultdesc.FailureMode, faultdesc.SeuItems[0].DesignNode, faultdesc.SeuItems[0].Time,
                         faultdesc.exp_time, float(time.time() - exp_start_time), self.InjStat.to_string()))
                     for row in self.faultdesc_format_str(faultid):
                         self.logfile.write('\n'+';'.join(row))

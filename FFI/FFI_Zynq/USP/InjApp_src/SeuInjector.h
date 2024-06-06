@@ -98,6 +98,8 @@ typedef struct{
 	u32 Offset;
 	u32 CellType;
 	u32 FaultModel;
+	u32 CellY;
+	u32 CellLabel;
 	u32 SLR;
 	u32 FAR;
 	u32 word;
@@ -136,8 +138,8 @@ typedef struct{
 
 
 
-u32 FPGA_ReadFrame(u32 FAR, u32 *FrameBuffer);
-u32 FPGA_WriteFrame(u32 FAR, u32 *FrameBuffer, u32 SlrIDcode);
+u32 FPGA_ReadFrame(u32 FAR, u32 *FrameBuffer, u32 ReadbackCaptureEnable);
+u32 FPGA_WriteFrame(u32 FAR, u32 *FrameBuffer, u32 SlrIDcode, u32 Restore);
 int ProcessFaultDescriptor(InjectorDescriptor * InjDesc, FaultDescriptor *fdesc, int recover);
 int Inject(InjectorDescriptor * InjDesc, FaultDescriptor *fdesc);
 int Recover(InjectorDescriptor * InjDesc, FaultDescriptor *fdesc);
@@ -151,5 +153,63 @@ void WaitClockStops();
 char *Fmode_to_string(FailureMode f);
 void Log_Result(InjectorDescriptor *InjDesc, FaultDescriptor *fdesc, FailureMode fmode, char *message);
 void get_stat_msg(InjectorDescriptor *InjDesc, char *buffer);
+
+
+void PSU_Mask_Write(unsigned long offset, unsigned long mask, unsigned long val);
+unsigned long PL_reset() ;
+void RunClock(u32 cnum);
+void PL_reset_sync();
+void WaitClockStops();
+void StopClock();
+void BitFlip(InjectorDescriptor * InjDesc, u32 FAR, u32 word, u32 bit);
+
+u16 readback_slice_reg(InjectorDescriptor * InjDesc, u32 Y, u32 FAR);
+void Flip_SliceReg(InjectorDescriptor * InjDesc, u32 Y, u32 label, u32 FAR);
+void Set_SliceReg(InjectorDescriptor * InjDesc, u32 Y, u32 FAR, u16 val);
+void disconnect_SliceReg(InjectorDescriptor * InjDesc, u32 Y, u32 label, u32 FAR);
+
+
+typedef struct {
+	u32 rb_far;
+	u32 rb_word;
+	u32 rb_bit;
+	u32 sr_far;
+	u32 sr_word;
+	u32 sr_bit;
+	u32 inv_far;
+	u32 inv_word;
+	u32 inv_bit;
+	u32 iclk_far;
+	u32 iclk_word;
+	u32 iclk_bit;
+	u32 dcon_far;
+	u32 dcon_word;
+	u32 dcon_bit;
+} FF_CBL;
+
+
+FF_CBL get_ff_clb(u32 Y, u32 label, u32 FAR);
+
+typedef struct{
+	u32 Y[32];
+	u32 label[32];
+	int len;
+	u32 FAR;
+} REGDESC;
+
+extern const u32 rb_os_word[32];
+extern const u32 rb_os_bit[32];
+extern const u32 sr_os_word[32];
+extern const u32 sr_os_bit[32];
+extern const u32 inv_os_far[32];
+extern const u32 inv_os_word[32];
+extern const u32 inv_os_bit[32];
+extern const u32 iclk_os_far[32];
+extern const u32 iclk_os_word[32];
+extern const u32 iclk_os_bit[32];
+extern const u32 dcon_os_far[32];
+extern const u32 dcon_os_word[32];
+extern const u32 dcon_os_bit[32];
+
 
 #endif

@@ -6,13 +6,13 @@
         -->
     <DAVOS
         report_dir = "/home/tuil/HTWEB"
-        experiment_label = "ZCU104_Lenet"
+        experiment_label = "ZCU104_MC8051"
         platform = "Multicore"
         maxproc = "4" >
 
 
         <ModelConfig
-            work_dir = "/home/tuil/Lenet5/MiniLenetFloat_22"
+            work_dir = "/home/tuil/MC8051_ZC104/MC8051_FFI"
             checkpoint = ""
             design_type = "RTL"
             label = "Lenet"
@@ -136,14 +136,15 @@
             fault_duration          = "1:10"
 
 	-->
+    <!--
         <FFI
 			dut_scope 			    = "design_1_i/cnn_0/U0"
 			pblock 				    = "TestIP:tiles:X27Y0:X69Y269"
 			target_logic 		    = "LUT"
 			fault_multiplicity	    = "1"
-			sample_size_goal 	    = "1000"
+			sample_size_goal 	    = "100"
 			error_margin_goal 	    = "0.5"            
-			injection_time 		    = "0:0"
+			injection_time 		    = "1000:50000"
             fault_model             = "0"
             fault_duration          = "0:0"
             CCF                     = ""            
@@ -163,5 +164,40 @@
             serial_port             = "/dev/ttyUSB3"
 		>
 		</FFI>
+-->
+
+        <FFI
+			dut_scope 			    = "design_1_i/mc8051_top_0/inst/i_mc8051_core"
+			pblock 				    = ""
+			target_logic 		    = "FF"
+			fault_multiplicity	    = "1"
+			sample_size_goal 	    = "1000"
+			error_margin_goal 	    = "0.5"            
+			injection_time 		    = "1000:25000"
+            fault_model             = "1"
+            fault_duration          = "0:0"
+            CCF                     = ""            
+            dut_script 			    = ""
+            failure_modes_to_reset  = "timeout, sdc, linux_crash, testbench_exception"
+
+			injector 			    = "ZYNQ"
+            injector_phase 		    = "on"
+            reportbuilder_phase     = "on"
+			custom_lut_mask 	    = "off"
+            node_list               = ""
+			mode 				    = "101"
+
+            hw_config               = "/home/tuil/MC8051_ZC104/MC8051_FFI/design_1_wrapper.xsa"
+            fsbl_file               = "/home/tuil/MC8051_ZC104/Vitis/design_1_wrapper/export/design_1_wrapper/sw/design_1_wrapper/boot/fsbl.elf"
+            injector_app            = "/home/tuil/MC8051_ZC104/Vitis/ZC104FFI/Debug/ZC104FFI.elf"
+            serial_port             = "/dev/ttyUSB3"
+		>
+		</FFI>
+
+
+
+
+
+
      </DAVOS>
 </data>

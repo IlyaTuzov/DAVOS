@@ -18,11 +18,11 @@ import re
 import shutil
 import glob
 import xml.etree.ElementTree as ET
+from BitstreamParser import *
+from NetlistModel import *
 DAVOSPATH = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 sys.path.insert(1, DAVOSPATH)
 import Davos_Generic
-from BitstreamParser import *
-from NetlistModel import *
 import pickle
 
 
@@ -359,9 +359,9 @@ class VivadoDesignModel:
         return res
 
     def cells_to_table(self, celldesclist, labels):
-        res = Table('Cells', ['Slice', 'Bel', 'Bitmap'] + labels)
+        res = Table('Cells', ['Slice', 'Bel'] + labels)
         for cell in celldesclist:
-            data = [str(cell.slice.Name), str(cell.label), cell.bitmap_to_string()]
+            data = [str(cell.slice.Name), str(cell.label)]
             data += ['0x{0:016x}'.format(getattr(cell, item)) if item in ['init'] else str(getattr(cell, item))
                     for item in labels]
             res.add_row(data)

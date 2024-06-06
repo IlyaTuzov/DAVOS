@@ -122,9 +122,6 @@ class DevSRL:
             self.config_index =int(xmltag.get('config_order_index'))
             for tag in xmltag.findall('ClockRegion'):
                 c = DevClockRegion(tag)
-                #if c.TileYmin is None or c.TileYmax is None:
-                #    print('DevSRL.build_from_xml: skipping clockRegion[{0:d}:{1:d}]'.format(c.X, c.Y))
-                #    continue
                 self.ClockRegionDict[(c.X, c.Y)] = c
             for cr_key, cr in self.ClockRegionDict.iteritems():
                 for tile_key, tile in cr.TileDict.iteritems():
@@ -138,8 +135,6 @@ class DevSRL:
 
     def get_TileY_range(self):
         self.TileYmin = min(c.TileYmin for c in self.ClockRegionDict.values())
-        if self.TileYmin == None:
-            self.TileYmin = 0        
         self.TileYmax = max(c.TileYmax for c in self.ClockRegionDict.values())
         return(self.TileYmin, self.TileYmax)
 
@@ -174,7 +169,6 @@ class DevLayout:
                 print "\tSlices of type {0:20s} : {1:d}".format(t, s)
             #for k in sorted(self.clb_column_dict.keys()):
             #    print "CLB Column {0:03d} : Slices {1:s}".format(k, str(self.clb_column_dict[k]))
-
 
     def extract_slices(self):
         for slr_key, slr in self.slr_by_layout_index.iteritems():
@@ -241,19 +235,6 @@ class NetlistCellDescriptor(object):
         self.connections = {}
         self.slr = None
         self.bitmap = dict()    # key: bit_index, value: (FAR, word, bit)
-
-    def bitmap_to_string(self):
-        FAR_set, word_set, bit_set = set(), set(), set()
-        for bit in self.bitmap:
-            item = self.bitmap[bit]
-            FAR_set.add(item[0])
-            word_set.add(item[1])
-            bit_set.add(item[2])
-        return("(FAR: {0:s}) : (word: {1:s}) : (bit: {2:s})".format(
-            ' '.join(['0x{0:08X}'.format(i) for i in sorted(list(FAR_set))]),
-            ' '.join(['{0:d}'.format(i) for i in sorted(list(word_set))]),
-            ' '.join(['{0:d}'.format(i) for i in sorted(list(bit_set))]) ))
-
 
 
 class LutCellDescritor(NetlistCellDescriptor):

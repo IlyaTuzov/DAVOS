@@ -25,29 +25,29 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 ELFSIZE += \
-CNNFI.elf.size \
+ZC104FFI.elf.size \
 
 
 # All Target
-all: CNNFI.elf secondary-outputs
+all: ZC104FFI.elf secondary-outputs
 
 # Tool invocations
-CNNFI.elf: $(OBJS) ../src/lscript.ld $(USER_OBJS)
+ZC104FFI.elf: $(OBJS) ../src/lscript.ld $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: ARM v8 gcc linker'
-	aarch64-none-elf-gcc -Wl,-T -Wl,../src/lscript.ld -L/home/tuil/Lenet5/Vitis/design_1_wrapper/export/design_1_wrapper/sw/design_1_wrapper/standalone_psu_cortexa53_0/bsplib/lib -o "CNNFI.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	aarch64-none-elf-gcc -Wl,-T -Wl,../src/lscript.ld -L/home/tuil/MC8051_ZC104/Vitis/design_1_wrapper/export/design_1_wrapper/sw/design_1_wrapper/standalone_psu_cortexa53_0/bsplib/lib -o "ZC104FFI.elf" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
-CNNFI.elf.size: CNNFI.elf
+ZC104FFI.elf.size: ZC104FFI.elf
 	@echo 'Invoking: ARM v8 Print Size'
-	aarch64-none-elf-size CNNFI.elf  |tee "CNNFI.elf.size"
+	aarch64-none-elf-size ZC104FFI.elf  |tee "ZC104FFI.elf.size"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(EXECUTABLES)$(OBJS)$(S_UPPER_DEPS)$(C_DEPS)$(ELFSIZE) CNNFI.elf
+	-$(RM) $(EXECUTABLES)$(OBJS)$(S_UPPER_DEPS)$(C_DEPS)$(ELFSIZE) ZC104FFI.elf
 	-@echo ' '
 
 secondary-outputs: $(ELFSIZE)
