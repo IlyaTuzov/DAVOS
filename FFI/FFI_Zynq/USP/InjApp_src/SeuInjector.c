@@ -1,117 +1,28 @@
 
+ /*
+   Copyright (c) 2024 by Universitat Politecnica de Valencia.
+   This file is a part of the DAVOS toolkit
+   and is released under the "MIT license agreement".
+   Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+   ------------------------------------------------------------------------------------------------------
+   Description:
+      An library for implementing FPGA-based fault injection tools
+      that access Configuration memory through the ICAP interface
 
+   Author: Ilya Tuzov, Universitat Politecnica de Valencia
+   ------------------------------------------------------------------------------------------------------
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include "platform.h"
 #include "xilfpga.h"
 #include "xilfpga_pcap.h"
-//#include "xilfpga_pcap.lc"
 #include "/opt/Xilinx/Vitis/2022.2/data/embeddedsw/lib/sw_services/xilfpga_v6_3/src/interface/zynqmp/xilfpga_pcap.c"
 #include "SeuInjector.h"
-
+#include "mapping.cdf"
 
 u32 PCAP_DataBuffer[1000];
-
-//readback offsets within the group of two slices
-const u32 rb_os_word[32] = {
-    0, 0, 0, 0,  0, 0, 1, 1,    //top: 0, label: 0 - 7  (A-H)
-    0, 0, 0, 0,  1, 1, 1, 1,    //top: 0, label: 8 - 15 (A2-H2)
-    1, 1, 1, 1,  2, 2, 2, 2,    //top: 1, label: 0 - 7  (A-H)
-    1, 2, 2, 2,  2, 2, 2, 2,    //top: 1, label: 8 - 15 (A2-H2)
-    };
-
-const u32 rb_os_bit[32]  = {
-    2, 4, 8, 10, 26,28, 0, 2,  //top: 0, label: 0 - 7  (A-H)
-    14,16,20,22,  6, 8,12,14,  //top: 0, label: 8 - 15 (A2-H2)
-    18,20,24,26, 10,12,16,18,  //top: 1, label: 0 - 7  (A-H)
-    30, 0, 4, 6, 22,24,28,30   //top: 1, label: 8 - 15 (A2-H2)
-    };
-
-
-//set-reset level (0 -> set, 1 -> reset)
-const u32 sr_os_word[32] = {
-    0, 0, 0, 0,  0, 0, 0, 1,    //top: 0, label: 0 - 7  (A-H)
-    0, 0, 0, 0,  1, 1, 1, 1,    //top: 0, label: 8 - 15 (A2-H2)
-    1, 1, 1, 1,  2, 2, 2, 2,    //top: 1, label: 0 - 7  (A-H)
-    1, 2, 2, 2,  2, 2, 2, 2     //top: 1, label: 8 - 15 (A2-H2)
-    };
-
-const u32 sr_os_bit[32]  = {
-    1, 5, 7,11,  25,29,31, 3,   //top: 0, label: 0 - 7  (A-H)
-    13,17,19,23,  5, 9,11,15,   //top: 0, label: 8 - 15 (A2-H2)
-    17,21,23,27,  9,13,15,19,   //top: 1, label: 0 - 7  (A-H)
-    29, 1, 3, 7, 21,25,27,31    //top: 1, label: 8 - 15 (A2-H2)
-    };
-
-//inverter of set-reset line
-const u32 inv_os_far[32] =  {
-    9, 9, 9, 9,   8, 8, 8, 8,   //top: 0, label: 0 - 7  (A-H)
-    9, 9, 9, 9,   8, 8, 8, 8,   //top: 0, label: 8 - 15 (A2-H2)
-    9, 9, 9, 9,   8, 8, 8, 8,   //top: 1, label: 0 - 7  (A-H)
-    9, 9, 9, 9,   8, 8, 8, 8    //top: 1, label: 8 - 15 (A2-H2)
-
-    };
-
-const u32 inv_os_word[32] = {
-    0, 0, 0, 0,   0, 0, 0, 0,   //top: 0, label: 0 - 7  (A-H)
-    0, 0, 0, 0,   0, 0, 0, 0,   //top: 0, label: 8 - 15 (A2-H2)
-    2, 2, 2, 2,   2, 2, 2, 2,   //top: 1, label: 0 - 7  (A-H)
-    2, 2, 2, 2,   2, 2, 2, 2    //top: 1, label: 8 - 15 (A2-H2)
-    };
-
-const u32 inv_os_bit[32]  = {
-    18,18,18,18, 31,31,31,31,  //top: 0, label: 0 - 7  (A-H)
-    18,18,18,18, 31,31,31,31,  //top: 0, label: 8 - 15 (A2-H2)
-    2, 2, 2, 2,  15,15,15,15,   //top: 1, label: 0 - 7  (A-H)
-    2, 2, 2, 2,  15,15,15,15    //top: 1, label: 8 - 15 (A2-H2)
-    };
-
-//inverter of CLK line
-const u32 iclk_os_far[32] =  {
-	8, 8, 8, 8,   8, 8, 8, 8,   //top: 0, label: 0 - 7  (A-H)
-	8, 8, 8, 8,   8, 8, 8, 8,   //top: 0, label: 8 - 15 (A2-H2)
-	8, 8, 8, 8,   8, 8, 8, 8,   //top: 1, label: 0 - 7  (A-H)
-	8, 8, 8, 8,   8, 8, 8, 8    //top: 1, label: 8 - 15 (A2-H2)
-    };
-
-const u32 iclk_os_word[32] = {
-    0, 0, 0, 0,   0, 0, 0, 0,   //top: 0, label: 0 - 7  (A-H)
-    0, 0, 0, 0,   0, 0, 0, 0,   //top: 0, label: 8 - 15 (A2-H2)
-    2, 2, 2, 2,   2, 2, 2, 2,   //top: 1, label: 0 - 7  (A-H)
-    2, 2, 2, 2,   2, 2, 2, 2    //top: 1, label: 8 - 15 (A2-H2)
-    };
-
-const u32 iclk_os_bit[32]  = {
-    19,19,19,19, 29,29,29,29,  //top: 0, label: 0 - 7  (A-H)
-	19,19,19,19, 29,29,29,29,  //top: 0, label: 8 - 15 (A2-H2)
-    3, 3, 3, 3,  13,13,13,13,   //top: 1, label: 0 - 7  (A-H)
-	3, 3, 3, 3,  13,13,13,13    //top: 1, label: 8 - 15 (A2-H2)
-    };
-
-
-//inverter of set-reset line
-const u32 dcon_os_far[32] =  {
-    14,14,14,14,  14,14,14,14,   //top: 0, label: 0 - 7  (A-H)
-	15,15,15,15,  15,15,15,15,   //top: 0, label: 8 - 15 (A2-H2)
-	15,15,15,15,  15,15,15,15,   //top: 1, label: 0 - 7  (A-H)
-	15,15,15,15,  15,15,15,15    //top: 1, label: 8 - 15 (A2-H2)
-
-    };
-
-const u32 dcon_os_word[32] = {
-    0, 0, 0, 0,   0, 1, 1, 1,   //top: 0, label: 0 - 7  (A-H)
-    0, 0, 0, 0,   0, 0, 0, 0,   //top: 0, label: 8 - 15 (A2-H2)
-    1, 1, 1, 2,   2, 2, 2, 2,   //top: 1, label: 0 - 7  (A-H)
-	0, 0, 0, 0,   0, 0, 0, 0    //top: 1, label: 8 - 15 (A2-H2)
-    };
-
-const u32 dcon_os_bit[32]  = {
-     2,8,14,20,  26, 0, 6,12,  //top: 0, label: 0 - 7  (A-H)
-	0, 0, 0, 0,   0, 0, 0, 0,  //top: 0, label: 8 - 15 (A2-H2)
-    17,23,29,3,   9,15,21,27,   //top: 1, label: 0 - 7  (A-H)
-	0, 0, 0, 0,   0, 0, 0, 0    //top: 1, label: 8 - 15 (A2-H2)
-    };
 
 
 
@@ -212,12 +123,100 @@ void Flip_SliceReg(InjectorDescriptor * InjDesc, u32 Y, u32 label, u32 FAR){
 }
 
 
+u32 get_latch(InjectorDescriptor * InjDesc, u32 len, u32 FAR, u32 * offsets){
+	u32 result = 0;
+	u32 buffer[FRAME_SIZE];
+	XFpga_Initialize(&(InjDesc->XFpgaInstance));
+	int Status = FPGA_ReadFrame(FAR, buffer, 1);
+	for(int i =0;i<len;i++){
+		u32 word = offsets[i]/32;
+		u32 bit = offsets[i]%32;
+		u32 v = (buffer[word] >> bit) & 0x1;
+		result = result | (v << i );
+	}
+	return result;
+}
+
+
+void Flip_BRAM(InjectorDescriptor * InjDesc, u32 FAR, u32 word, u32 mask, u32 Type0_FAR){
+	//printf("Pre clock: %08x\n", get_latch(InjDesc, 8, 0x00100c05, offsets));
+	u32 buffer[FRAME_SIZE];
+	FPGA_ReadFrame(Type0_FAR, buffer, 1);
+	FPGA_ReadFrame(FAR, InjDesc->FrameData, 1);
+	InjDesc->FrameData[word] = InjDesc->FrameData[word] ^ mask;
+	mask_bram_frame(InjDesc->FrameData);
+	FPGA_WriteFrame(FAR, InjDesc->FrameData, InjDesc->SlrId[0], 0);
+	recover_BRAM_latches(InjDesc, Type0_FAR, buffer);
+}
+
+
+
+
+void trigger_bram_clock(InjectorDescriptor * InjDesc, u32 FAR){
+	u32 buffer[FRAME_SIZE];
+	//FRAME 0x5
+	FPGA_ReadFrame((FAR & 0xFFFFFF00) | 0x5, InjDesc->FrameData, 0);
+	memcpy(buffer, InjDesc->FrameData, FRAME_SIZE*4);
+	for(int group=0; group<6; group++){
+		for(int i=0;i<6;i++){
+			u32 word = group*15 + bram_clock_offset_f5[i].word;
+			if(group > 2) word += 3;
+			InjDesc->FrameData[word] ^= (1 << bram_clock_offset_f5[i].bit);
+		}
+	}
+	FPGA_WriteFrame((FAR & 0xFFFFFF00) | 0x5, InjDesc->FrameData, InjDesc->SlrId[0], 0);
+	FPGA_WriteFrame((FAR & 0xFFFFFF00) | 0x5, buffer, InjDesc->SlrId[0], 0);
+	//FRAME 0x4
+	FPGA_ReadFrame((FAR & 0xFFFFFF00) | 0x4, InjDesc->FrameData, 0);
+	memcpy(buffer, InjDesc->FrameData, FRAME_SIZE*4);
+	for(int group=0; group<6; group++){
+		for(int i=0;i<2;i++){
+			u32 word = group*15 + bram_clock_offset_f4[i].word;
+			if(group > 2) word += 3;
+			InjDesc->FrameData[word] ^= (1 << bram_clock_offset_f4[i].bit);
+		}
+	}
+	FPGA_WriteFrame((FAR & 0xFFFFFF00) | 0x4, InjDesc->FrameData, InjDesc->SlrId[0], 0);
+	FPGA_WriteFrame((FAR & 0xFFFFFF00) | 0x4, buffer, InjDesc->SlrId[0], 0);
+}
+
+
+void trigger_bram_reset(InjectorDescriptor * InjDesc, u32 FAR){
+	FPGA_ReadFrame((FAR & 0xFFFFFF00) | 0x4, InjDesc->FrameData, 0);
+	for(int group=0; group<6; group++){
+		for(int i=0;i<6;i++){
+			u32 word = group*15 + bram_reset_offset_f4[i].word;
+			if(group > 2) word += 3;
+			InjDesc->FrameData[word] ^= (1 << bram_reset_offset_f4[i].bit);
+		}
+	}
+	FPGA_WriteFrame((FAR & 0xFFFFFF00) | 0x4, InjDesc->FrameData, InjDesc->SlrId[0], 0);
+	FPGA_ReadFrame((FAR & 0xFFFFFF00) | 0x5, InjDesc->FrameData, 0);
+	for(int group=0; group<6; group++){
+		for(int i=0;i<2;i++){
+			u32 word = group*15 + bram_reset_offset_f5[i].word;
+			if(group > 2) word += 3;
+			InjDesc->FrameData[word] ^= (1 << bram_reset_offset_f5[i].bit);
+		}
+	}
+	FPGA_WriteFrame((FAR & 0xFFFFFF00) | 0x5, InjDesc->FrameData, InjDesc->SlrId[0], 0);
+}
+
+
+
+
+
 int InjectorInitialize(InjectorDescriptor *InjDesc){
 	printf("Initializing fault injector\n");
+    //PCAP test
+	u32 Status = XFpga_Initialize(&(InjDesc->XFpgaInstance));
+	if (Status != XST_SUCCESS) {
+		printf("XFpga_Initialize: fail");
+	}
 	InjDesc->host_socket_ptr   = (uint32_t*) HOST_SOCKET_ADR;
 	InjDesc->SlrId[0] = 0x04a5a093;
 	//InjDesc->SlrId[1] = 0x04b22093;
-	//InjDesc->SlrId[2] = 0x04b24093;
+	//InjDesc->SlrId[2] = 0x04b24093;s
 	InjDesc->DebugMode = 1;
 
 	if( *((u32*)(HOST_FAULT_LIST_ADR + 0x0)) != 0xFA01FA01){
@@ -244,11 +243,13 @@ int InjectorInitialize(InjectorDescriptor *InjDesc){
 	for(int i=Masked;i<=Signalled;i++){
 		printf("\tFailureMode[%d] = %s\n", i, FailureModeLabels[i]);
 	}
+
 	for(int i=0;i<InjDesc->FaultListSize;i++){
 		fdesc = InjDesc->fault_list_ptr + i;
-		printf("FaultId: %5d, CellType: %d, FaultModel: %d, Y: %3d, Label: %2d, FAR: %08x, Time: %8d\n",
-				fdesc->Id, fdesc->CellType, fdesc->FaultModel, fdesc->CellY, fdesc->CellLabel, fdesc->FAR, fdesc->time);
+		printf("FaultId: %5d, CellType: %d, FaultModel: %d, Y: %3d, Label: %2d, FAR: %08x, Time: %8d, Type0_FAR=%08x\n",
+				fdesc->Id, fdesc->CellType, fdesc->FaultModel, fdesc->CellY, fdesc->CellLabel, fdesc->FAR, fdesc->time, fdesc->Type0_FAR);
 	}
+
 	XTime_GetTime(&InjDesc->Tstart);
 	return(0);
 }
@@ -260,6 +261,16 @@ void get_stat_msg(InjectorDescriptor *InjDesc, char *buffer){
 	for(int i=0;i<NUM_FAILURE_MODES;i++){
 		float f_rate = (100.0* InjDesc->StatFmodeCount[i]) / total;
 		sprintf(buffer + strlen(buffer), "%s= %d (%0.2f%%), ", FailureModeLabels[i], InjDesc->StatFmodeCount[i], f_rate);
+	}
+}
+
+
+void mask_bram_frame(u32 *data){
+	for(int group=0; group<6; group++){
+	    u32 w1 = group*15 + 3  + (group > 2 ? 3 : 0);
+	    u32 w2 = group*15 + 10 + (group > 2 ? 3 : 0);
+	    data[w1] &= 0xFFFFEFFF;
+	    data[w2] &= 0xEFFFFFFF;
 	}
 }
 
@@ -294,6 +305,14 @@ int ProcessFaultDescriptor(InjectorDescriptor * InjDesc, FaultDescriptor *fdesc,
 		else if( f_item->CellType == 2 ){
 			if(!recover){
 				Flip_SliceReg(InjDesc, f_item->CellY, f_item->CellLabel, f_item->FAR);
+			}
+		}
+		else if(f_item->CellType == 3){
+			if(!recover){
+				Flip_BRAM(InjDesc, f_item->FAR, f_item->word, f_item->mask, f_item->Type0_FAR);
+			}
+			else{
+				Flip_BRAM(InjDesc, f_item->FAR, f_item->word, f_item->mask, f_item->Type0_FAR);
 			}
 		}
 		f_item++;
@@ -348,6 +367,58 @@ int Recover_Bitmask(InjectorDescriptor * InjDesc, FaultDescriptor *fdesc){
 	}
 	return(0);
 }
+
+
+
+
+
+void recover_BRAM_latches(InjectorDescriptor * InjDesc, u32 FAR, u32 *Fsnaphot){
+	int Status;
+	u32 reference_frame[FRAME_SIZE];
+	Status = FPGA_ReadFrame(FAR, InjDesc->FrameData, 0);
+	memcpy(reference_frame, InjDesc->FrameData, FRAME_SIZE*4);
+	for(int group=0; group<6; group++){
+		for(int i=0;i<128;i++){
+			//get saved latch value
+			CMcoord rb = bram_latch_rb[i];
+			u32 word = group*15 + rb.word + (group > 2 ? 3 : 0);
+			u32 bitval = (Fsnaphot[word] >> rb.bit) & 0x1;
+			//set SR latch value
+			CMcoord sr = bram_latch_sr[i];
+			word = group*15 + sr.word + (group > 2 ? 3 : 0);
+			InjDesc->FrameData[word] &= (~(1 << sr.bit));
+			InjDesc->FrameData[word] |= (bitval << sr.bit); //(1<<sr.bit);
+		}
+	}
+	FPGA_WriteFrame(FAR, InjDesc->FrameData, InjDesc->SlrId[0], 0);
+	trigger_bram_reset(InjDesc, FAR);
+	trigger_bram_clock(InjDesc, FAR);
+	trigger_bram_reset(InjDesc, FAR);
+	//FPGA_WriteFrame(FAR, reference_frame, InjDesc->SlrId[0], 0);
+}
+
+
+
+
+
+u32 LoadBitstream(InjectorDescriptor * InjDesc){
+	UINTPTR KeyAddr = (UINTPTR)NULL;
+	u32 Status;
+	XTime Tps, Tpe;
+	XTime_GetTime(&Tps);
+	int bitstream_size = 19311213;
+	Status = XFpga_BitStream_Load(&(InjDesc->XFpgaInstance), HOST_BITSTREAM, KeyAddr, bitstream_size, 0x0);
+	XTime_GetTime(&Tpe);
+	if (Status == XFPGA_SUCCESS){
+		printf("PL Configuration done successfully in %8.5f seconds (bitfile at %08x : %d bytes)\n",
+				1.0*(Tpe-Tps)/(COUNTS_PER_SECOND), HOST_BITSTREAM, bitstream_size);
+	}
+	else {
+		printf("PL configuration failed Status = %08x\n", Status);
+	}
+	XFpga_Initialize(&(InjDesc->XFpgaInstance));
+}
+
 
 
 u32 FPGA_ReadFrame(u32 FAR, u32 *FrameBuffer, u32 ReadbackCaptureEnable){

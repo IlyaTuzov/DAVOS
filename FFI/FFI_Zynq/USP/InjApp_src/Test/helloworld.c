@@ -1,4 +1,16 @@
 
+ /*
+   Copyright (c) 2024 by Universitat Politecnica de Valencia.
+   This file is a part of the DAVOS toolkit
+   and is released under the "MIT license agreement".
+   Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+   ------------------------------------------------------------------------------------------------------
+   Description:
+      A sample Zynq ultrascale+ application for FPGA fault injection experiments 
+
+   Author: Ilya Tuzov, Universitat Politecnica de Valencia
+   ------------------------------------------------------------------------------------------------------
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -95,6 +107,8 @@ int InjectionFlowDutEnvelope(InjectorDescriptor *InjDesc, FaultDescriptor *fdesc
 	FailureMode res = Unknown;
 	int mismatches=0;
 
+	//LoadBitstream(InjDesc);
+
 	//1. Set the DUT input data
 	u32 input_data = 0x9;
 	XGpioPs_SetDirection(&Gpio,    XGPIOPS_BANK3, 0xFF0000FF);
@@ -153,6 +167,16 @@ void RunInjectionFlow(InjectorDescriptor *InjDesc, FaultDescriptor *fdesc, int W
 	WaitClockStops();
 }
 
+void print_frame(u32 *data){
+	for(int i=0;i<93;i++){
+		printf("data[%3d] = %08x\n", i, data[i]);
+	}
+}
+
+
+
+
+
 
 int main()
 {
@@ -169,19 +193,13 @@ int main()
     Status = XGpioPs_CfgInitialize(&Gpio, ConfigPtr, ConfigPtr->BaseAddr);
     printf("EMIO-GPIO banks: %d, pins: %d\n", Gpio.MaxBanks, Gpio.MaxPinNum);
 
-    //PCAP test
-    XFpga XFpgaInstance = {0U};
-	Status = XFpga_Initialize(&XFpgaInstance);
-	if (Status != XST_SUCCESS) {
-		printf("XFpga_Initialize: fail");
-	}
-
 
 	InjectorInitialize(&InjDesc);
 	InjDesc.DebugMode = 0;
 
 	StopClock();
 
+	LoadBitstream(&InjDesc);
 	//RunDutTest(0);
 
 
@@ -194,7 +212,6 @@ int main()
 		u32 current_id = fdesc->Id;
 		while(current_id == fdesc->Id) fdesc++;
 	}
-
 
 
 

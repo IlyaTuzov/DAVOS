@@ -1,3 +1,18 @@
+
+ /*
+   Copyright (c) 2024 by Universitat Politecnica de Valencia.
+   This file is a part of the DAVOS toolkit
+   and is released under the "MIT license agreement".
+   Please check the LICENSE.txt file (that is included as a part of this package) for the license details.
+   ------------------------------------------------------------------------------------------------------
+   Description:
+      An library for implementing FPGA-based fault injection tools
+      that access Configuration memory through the ICAP interface
+
+   Author: Ilya Tuzov, Universitat Politecnica de Valencia
+   ------------------------------------------------------------------------------------------------------
+*/
+
 #ifndef BAFFI_DEF
 
 #include "xtime_l.h"
@@ -107,6 +122,7 @@ typedef struct{
 	u32 time;
 	u32 Duration;
 	u32 ReferenceWordData;
+	u32 Type0_FAR;
 } FaultDescriptor;
 
 
@@ -126,6 +142,7 @@ static const char *FailureModeLabels[NUM_FAILURE_MODES] = {"Unknown", "Masked", 
 
 
 typedef struct{
+	XFpga 			XFpgaInstance;
 	u32 			SlrId[10];
 	uint32_t 		* host_socket_ptr;
 	FaultDescriptor * fault_list_ptr;
@@ -137,13 +154,19 @@ typedef struct{
 } InjectorDescriptor;
 
 
+typedef struct {
+	u32 FAR;
+	u32 word;
+	u32 bit;
+} CMcoord;
+
 
 u32 FPGA_ReadFrame(u32 FAR, u32 *FrameBuffer, u32 ReadbackCaptureEnable);
 u32 FPGA_WriteFrame(u32 FAR, u32 *FrameBuffer, u32 SlrIDcode, u32 Restore);
 int ProcessFaultDescriptor(InjectorDescriptor * InjDesc, FaultDescriptor *fdesc, int recover);
 int Inject(InjectorDescriptor * InjDesc, FaultDescriptor *fdesc);
 int Recover(InjectorDescriptor * InjDesc, FaultDescriptor *fdesc);
-
+u32 LoadBitstream(InjectorDescriptor * InjDesc);
 
 
 void PSU_Mask_Write(unsigned long offset, unsigned long mask, unsigned long val);
@@ -167,7 +190,11 @@ u16 readback_slice_reg(InjectorDescriptor * InjDesc, u32 Y, u32 FAR);
 void Flip_SliceReg(InjectorDescriptor * InjDesc, u32 Y, u32 label, u32 FAR);
 void Set_SliceReg(InjectorDescriptor * InjDesc, u32 Y, u32 FAR, u16 val);
 void disconnect_SliceReg(InjectorDescriptor * InjDesc, u32 Y, u32 label, u32 FAR);
-
+void Flip_BRAM(InjectorDescriptor * InjDesc, u32 FAR, u32 word, u32 mask, u32 Type0_FAR);
+void trigger_bram_clock(InjectorDescriptor * InjDesc, u32 FAR);
+void trigger_bram_reset(InjectorDescriptor * InjDesc, u32 FAR);
+void recover_BRAM_latches(InjectorDescriptor * InjDesc, u32 FAR, u32 *Fsnaphot);
+void mask_bram_frame(u32 *data);
 
 typedef struct {
 	u32 rb_far;
@@ -210,6 +237,14 @@ extern const u32 iclk_os_bit[32];
 extern const u32 dcon_os_far[32];
 extern const u32 dcon_os_word[32];
 extern const u32 dcon_os_bit[32];
+
+extern const CMcoord bram_clock_offset_f5 [6];
+extern const CMcoord bram_clock_offset_f4 [2];
+extern const CMcoord bram_reset_offset_f4 [6];
+extern const CMcoord bram_reset_offset_f5 [2];
+extern const CMcoord bram_latch_sr[128];
+extern const CMcoord bram_latch_rb[128];
+
 
 
 #endif
